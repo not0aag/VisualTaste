@@ -1,0 +1,35 @@
+# Data and derived artefacts (regenerable from the originals archive)
+data/
+archive/
+logs/
+*.db
+*.db-wal
+*.db-shm
+*.npy
+*.npz
+*.parquet
+*.faiss
+*.joblib
+
+# Secrets and local config
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+playwright-report/
+test-results/
+
+# OS
+Thumbs.db
+desktop.ini

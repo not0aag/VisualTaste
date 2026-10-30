@@ -1,0 +1,17 @@
+# Normalise to LF in the repository; Git checks out whatever the platform wants.
+* text=auto eol=lf
+
+# Binary assets, never line-ending-converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.npy binary
+*.parquet binary
+*.faiss binary
+*.joblib binary
+*.db binary
+*.woff2 binary
+
+# Executed notebooks carry output blobs; keep diffs out of code review.
+*.ipynb -diff
