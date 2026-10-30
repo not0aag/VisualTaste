@@ -151,9 +151,16 @@ class Settings(BaseSettings):
     # folder with 80,000 entries makes NTFS lookups and Explorer slow, and on
     # Windows it also pushes paths towards the 260-character limit.
 
-    def original_path(self, image_id: str, ext: str) -> Path:
+    def original_path(self, source: str, image_id: str, ext: str) -> Path:
+        """`<ARCHIVE>/originals/<source>/<id[:2]>/<image_id>.<ext>` (brief §6.2).
+
+        The source name is part of the path so that the archive stays readable
+        by a human and so that one source can be re-acquired or audited without
+        touching the others. Derivatives are *not* sharded by source: by then an
+        image is just an image, and the DB records where it came from.
+        """
         ext = ext if ext.startswith(".") else f".{ext}"
-        return self.originals_dir / image_id[:2] / f"{image_id}{ext}"
+        return self.originals_dir / source / image_id[:2] / f"{image_id}{ext}"
 
     def display_path(self, image_id: str) -> Path:
         return self.display_dir / image_id[:2] / f"{image_id}.webp"

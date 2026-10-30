@@ -28,14 +28,25 @@ class TestLayout:
     def test_paths_are_sharded_by_the_first_two_hex_characters(self, settings):
         image_id = "a1b2c3d4e5f60718"
 
-        assert settings.original_path(image_id, ".jpg").parent.name == "a1"
+        assert settings.original_path("pd12m", image_id, ".jpg").parent.name == "a1"
         assert settings.display_path(image_id).parent.name == "a1"
         assert settings.thumb_path(image_id).parent.name == "a1"
 
     def test_original_path_accepts_extension_with_or_without_dot(self, settings):
         image_id = "0123456789abcdef"
-        assert settings.original_path(image_id, "jpg") == settings.original_path(image_id, ".jpg")
-        assert settings.original_path(image_id, "jpg").name == f"{image_id}.jpg"
+        assert settings.original_path("megalith", image_id, "jpg") == settings.original_path(
+            "megalith", image_id, ".jpg"
+        )
+        assert settings.original_path("megalith", image_id, "jpg").name == f"{image_id}.jpg"
+
+    def test_originals_are_grouped_by_source_then_shard(self, settings):
+        # Brief section 6.2: originals/<source>/<id[:2]>/<image_id>.<ext>.
+        # Derivatives deliberately omit the source -- see the docstring.
+        path = settings.original_path("open_images", "ab12cd34ef567890", ".jpg")
+
+        assert path.parent.parent.name == "open_images"
+        assert path.parent.name == "ab"
+        assert path.relative_to(settings.originals_dir).parts[0] == "open_images"
 
     def test_derivatives_are_always_webp(self, settings):
         image_id = "0123456789abcdef"

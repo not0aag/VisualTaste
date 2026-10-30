@@ -1,7 +1,7 @@
 # Progress
 
-**Current phase:** 1 — Environment, repo, benchmarks
-**Last green commit:** _(none yet)_
+**Current phase:** 3 — Ingestion + DB (Phase 2 downloads running in background)
+**Last green commit:** `589b884` — phase 1, 2026-10-30
 **Running jobs:** none
 
 Resume rule (brief §2): read `VISUALTASTE_BUILD_PROMPT.md`, then this file, then
@@ -13,7 +13,7 @@ Resume rule (brief §2): read `VISUALTASTE_BUILD_PROMPT.md`, then this file, the
 
 | Job | Command | PID | Log | Started |
 | --- | --- | --- | --- | --- |
-| _(none)_ | | | | |
+| acquire (all 4 sources) | `python -m visualtaste.jobs.acquire` | 37440 | `logs/acquire_full.log` | 2026-10-30 19:37 |
 
 ---
 
@@ -46,17 +46,20 @@ Resume rule (brief §2): read `VISUALTASTE_BUILD_PROMPT.md`, then this file, the
 
 ## Phase 2 — Acquisition
 
-- [ ] `data/http.py`: ≤4 concurrency, backoff with jitter, descriptive UA, TLS on,
+- [x] `data/http.py`: ≤4 concurrency, backoff with jitter, descriptive UA, TLS on,
       disk guard
-- [ ] `data/manifest.py`: resumable parquet manifest, atomic writes
-- [ ] `sources/megalith.py` (30,000 via the DrawThings mirror)
-- [ ] `sources/pd12m.py` (25,000, stratified by source organisation, MD5 verified)
-- [ ] `sources/openimages.py` (15,000 from the validation split, attribution kept)
-- [ ] `sources/unsplash_lite.py` (10,000 at `w=2048&q=85&fm=jpg`)
-- [ ] Licence gate: no licence URL means the image is never written
-- [ ] `jobs/acquire.py` driver with per-source summary
+- [x] `data/manifest.py`: resumable parquet manifest, atomic writes
+- [x] `sources/megalith.py` (30,000 via the DrawThings mirror)
+- [x] `sources/pd12m.py` (25,000, stratified by source organisation, MD5 verified)
+- [x] `sources/openimages.py` (15,000 from the validation split, attribution kept)
+- [x] `sources/unsplash_lite.py` (10,000 at `w=2048&q=85&fm=jpg`)
+- [x] Licence gate: no licence URL means the image is never written
+- [x] `jobs/acquire.py` driver with per-source summary
 - [ ] ~80k candidates in the archive; failure rate per source < 5%
-- [ ] Re-run downloads nothing new (resumability proven, not asserted)
+      (running; smoke-tested at small targets: open_images 0%, pd12m 0%,
+      unsplash_lite 0% failures)
+- [x] Re-run downloads nothing new — proven by `tests/test_sources.py`
+      (Megalith shard resume) and `tests/test_manifest.py`, plus a live re-run
 - [ ] `tests/fixtures/` seeded from the first Megalith shard
 - [ ] Per-source summary table pasted into this file
 
