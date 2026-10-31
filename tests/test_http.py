@@ -294,7 +294,9 @@ class TestExtensionSniffing:
         assert http_module._extension_for(data, "https://example.invalid/x") == expected
 
     def test_falls_back_to_the_url_for_an_unknown_container(self):
-        assert http_module._extension_for(b"\x00\x01\x02\x03", "https://x.invalid/a.heic") == ".heic"
+        assert (
+            http_module._extension_for(b"\x00\x01\x02\x03", "https://x.invalid/a.heic") == ".heic"
+        )
 
     def test_query_strings_do_not_confuse_the_fallback(self):
         got = http_module._extension_for(b"\x00\x01", "https://x.invalid/a.jpg?w=2048&q=85")

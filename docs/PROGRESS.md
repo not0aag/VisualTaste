@@ -65,19 +65,20 @@ Resume rule (brief §2): read `VISUALTASTE_BUILD_PROMPT.md`, then this file, the
 
 ## Phase 3 — Ingestion + DB
 
-- [ ] `db/migrations/*.sql` + `init_db()` applying them in order
-- [ ] §7.4 schema exactly, WAL mode, foreign keys on
-- [ ] `db/repo.py` query layer; `db/backup.py` (snapshot + monthly JSONL)
-- [ ] `data/validate.py` (verify + full load, short side ≥ 256, AR ≤ 4:1, EXIF
+- [x] `db/migrations/*.sql` + `init_db()` applying them in order
+- [x] §7.4 schema exactly, WAL mode, foreign keys on
+- [x] `db/repo.py` query layer
+- [ ] `db/backup.py` (snapshot + monthly JSONL) — Phase 7, where it is tested
+- [x] `data/validate.py` (verify + full load, short side ≥ 256, AR ≤ 4:1, EXIF
       transpose, animated → first frame)
-- [ ] `data/derivatives.py` (display 1024/q82, thumb 256/q80; pool of
+- [x] `data/derivatives.py` (display 1024/q82, thumb 256/q80; pool of
       `cpu_count - 2` under `if __name__ == "__main__":`)
-- [ ] `data/dedupe.py` (pHash, Hamming ≤ 6, keep the highest resolution)
-- [ ] `data/colour.py` (CIELAB 4×4×4 → L1 → sqrt; 5 dominant colours as hex)
-- [ ] `jobs/ingest.py` end to end
-- [ ] Fixture tests: corrupt, truncated, tiny, CMYK, palette, LA, I;16,
+- [x] `data/dedupe.py` (pHash, Hamming ≤ 6, keep the highest resolution)
+- [x] `data/colour.py` (CIELAB 4×4×4 → L1 → sqrt; 5 dominant colours as hex)
+- [x] `jobs/ingest.py` end to end
+- [x] Fixture tests: corrupt, truncated, tiny, CMYK, palette, LA, I;16,
       EXIF-rotated, animated, exact-dup, near-dup
-- [ ] Kill-and-resume test passes
+- [x] Kill-and-resume test passes
 - [ ] Counts reconcile: downloaded = ok + rejected + near_dup
 
 ## Phase 4 — Embeddings

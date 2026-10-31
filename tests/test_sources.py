@@ -204,13 +204,25 @@ class TestMegalithExtraction:
         metadata = shard_metadata(keys)
 
         first = megalith._extract_shard(
-            settings, manifest, FetchStats(), tar_path=str(tar_path), shard=0,
-            metadata=metadata, remaining=10, max_bytes=8 * 1024**2,
+            settings,
+            manifest,
+            FetchStats(),
+            tar_path=str(tar_path),
+            shard=0,
+            metadata=metadata,
+            remaining=10,
+            max_bytes=8 * 1024**2,
         )
         second_stats = FetchStats()
         second = megalith._extract_shard(
-            settings, manifest, second_stats, tar_path=str(tar_path), shard=0,
-            metadata=metadata, remaining=10, max_bytes=8 * 1024**2,
+            settings,
+            manifest,
+            second_stats,
+            tar_path=str(tar_path),
+            shard=0,
+            metadata=metadata,
+            remaining=10,
+            max_bytes=8 * 1024**2,
         )
 
         assert first == 4
@@ -227,16 +239,28 @@ class TestMegalithExtraction:
 
         # A run killed after 2 images.
         megalith._extract_shard(
-            settings, manifest, FetchStats(), tar_path=str(tar_path), shard=0,
-            metadata=metadata, remaining=2, max_bytes=8 * 1024**2,
+            settings,
+            manifest,
+            FetchStats(),
+            tar_path=str(tar_path),
+            shard=0,
+            metadata=metadata,
+            remaining=2,
+            max_bytes=8 * 1024**2,
         )
         manifest.flush(force=True)
 
         # A fresh process reloads the manifest and picks up the other 4.
         resumed = Manifest.load(tmp_path / "m.parquet", megalith.SOURCE)
         extracted = megalith._extract_shard(
-            settings, resumed, FetchStats(), tar_path=str(tar_path), shard=0,
-            metadata=metadata, remaining=10, max_bytes=8 * 1024**2,
+            settings,
+            resumed,
+            FetchStats(),
+            tar_path=str(tar_path),
+            shard=0,
+            metadata=metadata,
+            remaining=10,
+            max_bytes=8 * 1024**2,
         )
 
         assert extracted == 4
@@ -251,8 +275,14 @@ class TestMegalithExtraction:
         stats = FetchStats()
 
         extracted = megalith._extract_shard(
-            settings, manifest, stats, tar_path=str(tar_path), shard=0,
-            metadata=shard_metadata(["000000001"]), remaining=10, max_bytes=1000,
+            settings,
+            manifest,
+            stats,
+            tar_path=str(tar_path),
+            shard=0,
+            metadata=shard_metadata(["000000001"]),
+            remaining=10,
+            max_bytes=1000,
         )
 
         assert extracted == 0
@@ -267,8 +297,14 @@ class TestMegalithExtraction:
         stats = FetchStats()
 
         extracted = megalith._extract_shard(
-            settings, manifest, stats, tar_path=str(tar_path), shard=0,
-            metadata=metadata, remaining=10, max_bytes=8 * 1024**2,
+            settings,
+            manifest,
+            stats,
+            tar_path=str(tar_path),
+            shard=0,
+            metadata=metadata,
+            remaining=10,
+            max_bytes=8 * 1024**2,
         )
 
         assert extracted == 0
@@ -282,8 +318,14 @@ class TestMegalithExtraction:
         manifest = Manifest.load(tmp_path / "m.parquet", megalith.SOURCE)
 
         extracted = megalith._extract_shard(
-            settings, manifest, FetchStats(), tar_path=str(tar_path), shard=0,
-            metadata=shard_metadata(["000000001"]), remaining=10, max_bytes=8 * 1024**2,
+            settings,
+            manifest,
+            FetchStats(),
+            tar_path=str(tar_path),
+            shard=0,
+            metadata=shard_metadata(["000000001"]),
+            remaining=10,
+            max_bytes=8 * 1024**2,
         )
 
         assert extracted == 1
@@ -332,10 +374,28 @@ class TestPd12mGates:
     def test_rows_without_a_licence_url_are_dropped(self):
         frame = pd12m_frame(
             [
-                {"id": "a", "url": "u1", "license": "https://cc0", "mime_type": "image/jpeg",
-                 "width": 800, "height": 600, "hash": "h", "source": "Museum", "caption": None},
-                {"id": "b", "url": "u2", "license": None, "mime_type": "image/jpeg",
-                 "width": 800, "height": 600, "hash": "h", "source": "Museum", "caption": None},
+                {
+                    "id": "a",
+                    "url": "u1",
+                    "license": "https://cc0",
+                    "mime_type": "image/jpeg",
+                    "width": 800,
+                    "height": 600,
+                    "hash": "h",
+                    "source": "Museum",
+                    "caption": None,
+                },
+                {
+                    "id": "b",
+                    "url": "u2",
+                    "license": None,
+                    "mime_type": "image/jpeg",
+                    "width": 800,
+                    "height": 600,
+                    "hash": "h",
+                    "source": "Museum",
+                    "caption": None,
+                },
             ]
         )
 
@@ -346,10 +406,28 @@ class TestPd12mGates:
     def test_unwanted_containers_are_dropped(self):
         frame = pd12m_frame(
             [
-                {"id": "a", "url": "u1", "license": "https://cc0", "mime_type": "image/tiff",
-                 "width": 800, "height": 600, "hash": "h", "source": "M", "caption": None},
-                {"id": "b", "url": "u2", "license": "https://cc0", "mime_type": "image/jpeg",
-                 "width": 800, "height": 600, "hash": "h", "source": "M", "caption": None},
+                {
+                    "id": "a",
+                    "url": "u1",
+                    "license": "https://cc0",
+                    "mime_type": "image/tiff",
+                    "width": 800,
+                    "height": 600,
+                    "hash": "h",
+                    "source": "M",
+                    "caption": None,
+                },
+                {
+                    "id": "b",
+                    "url": "u2",
+                    "license": "https://cc0",
+                    "mime_type": "image/jpeg",
+                    "width": 800,
+                    "height": 600,
+                    "hash": "h",
+                    "source": "M",
+                    "caption": None,
+                },
             ]
         )
 
@@ -358,10 +436,28 @@ class TestPd12mGates:
     def test_the_same_url_under_two_institutions_is_kept_once(self):
         frame = pd12m_frame(
             [
-                {"id": "a", "url": "same", "license": "https://cc0", "mime_type": "image/jpeg",
-                 "width": 800, "height": 600, "hash": "h", "source": "M1", "caption": None},
-                {"id": "b", "url": "same", "license": "https://cc0", "mime_type": "image/jpeg",
-                 "width": 800, "height": 600, "hash": "h", "source": "M2", "caption": None},
+                {
+                    "id": "a",
+                    "url": "same",
+                    "license": "https://cc0",
+                    "mime_type": "image/jpeg",
+                    "width": 800,
+                    "height": 600,
+                    "hash": "h",
+                    "source": "M1",
+                    "caption": None,
+                },
+                {
+                    "id": "b",
+                    "url": "same",
+                    "license": "https://cc0",
+                    "mime_type": "image/jpeg",
+                    "width": 800,
+                    "height": 600,
+                    "hash": "h",
+                    "source": "M2",
+                    "caption": None,
+                },
             ]
         )
 
@@ -505,10 +601,7 @@ class TestOpenImagesAttribution:
         assert candidate.upstream_md5 == "d230696cd20e374f7eaf4db191320170"
 
     def test_base64_digests_are_decoded_to_hex(self):
-        assert (
-            openimages.original_md5_hex(oi_row())
-            == "d230696cd20e374f7eaf4db191320170"
-        )
+        assert openimages.original_md5_hex(oi_row()) == "d230696cd20e374f7eaf4db191320170"
 
     def test_a_missing_or_malformed_digest_is_none_rather_than_an_error(self):
         assert openimages.original_md5_hex(oi_row(OriginalMD5="")) is None
@@ -618,10 +711,7 @@ class TestUnsplashTsvReading:
         import zipfile
 
         zip_path = tmp_path / "unsplash.zip"
-        tsv = (
-            "photo_id\tphoto_description\tphotographer_username\n"
-            'abc\tshe said "hello\tsomeone\n'
-        )
+        tsv = 'photo_id\tphoto_description\tphotographer_username\nabc\tshe said "hello\tsomeone\n'
         with zipfile.ZipFile(zip_path, "w") as archive:
             archive.writestr("photos.tsv000", tsv)
 
@@ -636,5 +726,5 @@ class TestUnsplashTsvReading:
         with zipfile.ZipFile(zip_path, "w") as archive:
             archive.writestr("something_else.tsv", "x\n")
 
-        with pytest.raises(RuntimeError, match="no photos.tsv"):
+        with pytest.raises(RuntimeError, match=r"no photos\.tsv"):
             unsplash.read_photos_tsv(zip_path)
