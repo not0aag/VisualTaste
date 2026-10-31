@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark mode follows the system, per brief section 7.9. No toggle: the app is
+   one person's, on one machine, and their OS already knows the answer. */
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply font-sans antialiased text-canvas-900 dark:text-canvas-100;
+    /* No external font requests at runtime; the system stack is the fallback. */
+  }
+
+  /* A visible focus ring, because the whole app is usable from the keyboard
+     and an invisible focus would make that unusable. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-canvas-500 ring-offset-2 ring-offset-canvas-100 dark:ring-offset-canvas-950;
+  }
+}

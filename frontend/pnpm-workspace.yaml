@@ -1,0 +1,6 @@
+# pnpm 11 blocks dependency install scripts unless they are allowed here.
+# esbuild's script places the platform binary that Vite and Vitest need in
+# order to run at all, so it is allowed explicitly -- rather than approving
+# every dependency's scripts, which is what `pnpm approve-builds` would do.
+allowBuilds:
+  esbuild: true
