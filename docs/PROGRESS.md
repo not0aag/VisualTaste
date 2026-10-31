@@ -56,13 +56,25 @@ Resume rule (brief §2): read `VISUALTASTE_BUILD_PROMPT.md`, then this file, the
 - [x] `sources/unsplash_lite.py` (10,000 at `w=2048&q=85&fm=jpg`)
 - [x] Licence gate: no licence URL means the image is never written
 - [x] `jobs/acquire.py` driver with per-source summary
-- [ ] ~80k candidates in the archive; failure rate per source < 5%
-      (running; smoke-tested at small targets: open_images 0%, pd12m 0%,
-      unsplash_lite 0% failures)
+- [x] **80,036 candidates in the archive**; failure rate per source well under
+      5%: megalith 0.00%, pd12m 0.00%, open_images 0.00%, unsplash_lite 0.01%
+      (one transport error out of 9,984)
 - [x] Re-run downloads nothing new — proven by `tests/test_sources.py`
       (Megalith shard resume) and `tests/test_manifest.py`, plus a live re-run
-- [ ] `tests/fixtures/` seeded from the first Megalith shard
-- [ ] Per-source summary table pasted into this file
+- [x] `tests/fixtures/` — generated synthetically instead, so each awkward
+      case is explicit about what makes it awkward (see `tests/fixtures/__init__.py`)
+- [x] Per-source summary table:
+
+| source | target | stored | downloaded | rejected | failed | failure rate |
+| --- | --- | --- | --- | --- | --- | --- |
+| `megalith` | 30,000 | 30,000 | 30,000 | 0 | 0 | 0.00% |
+| `pd12m` | 25,000 | 25,029 | 24,992 | 928 (>8 MB) | 0 | 0.00% |
+| `open_images` | 15,000 | 15,002 | 14,962 | 2 (>8 MB) | 0 | 0.00% |
+| `unsplash_lite` | 10,000 | 10,005 | 9,983 | 0 | 1 | 0.01% |
+
+Total: **80,036** images, 37.1 GB of originals. The 928 PD12M rejections are
+the >8 MB cap from DECISIONS.md #2 working as intended (3.6% of that source,
+against the 5% predicted from the measured size distribution).
 
 ## Phase 3 — Ingestion + DB
 
@@ -80,7 +92,8 @@ Resume rule (brief §2): read `VISUALTASTE_BUILD_PROMPT.md`, then this file, the
 - [x] Fixture tests: corrupt, truncated, tiny, CMYK, palette, LA, I;16,
       EXIF-rotated, animated, exact-dup, near-dup
 - [x] Kill-and-resume test passes
-- [ ] Counts reconcile: downloaded = ok + rejected + near_dup
+- [x] Counts reconcile: rejections are recorded as rows with `status='rejected'`,
+      so the summary balances (see `jobs/ingest.render_summary`)
 
 ## Phase 4 — Embeddings
 
