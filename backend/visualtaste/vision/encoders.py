@@ -214,16 +214,39 @@ def _load_siglip2(spec: EncoderSpec, device: torch.device) -> ImageEncoder:
     )
 
 
+class DinoV2Preprocess:
+    """DINOv2's image transform, as a picklable object rather than a closure.
+
+    This exists because of a Windows detail with teeth. `DataLoader` workers are
+    *spawned* there, not forked, so everything handed to them must be picklable
+    -- and a function defined inside another function cannot be pickled:
+
+        AttributeError: Can't get local object '_load_dinov2.<locals>.preprocess'
+
+    The embedding job needs those workers, because decoding 80,000 WebP files is
+    its actual bottleneck. So the transform is a module-level callable class,
+    which pickles by reference. The wrapped Hugging Face processor is a
+    configuration object and pickles fine.
+
+    (`open_clip`'s transform is already a `torchvision.transforms.Compose` of
+    module-level transforms, so SigLIP 2 needed no equivalent.)
+    """
+
+    def __init__(self, processor) -> None:
+        self.processor = processor
+
+    def __call__(self, image: Image) -> torch.Tensor:
+        # The processor returns a batch of 1; drop that axis so this matches the
+        # open_clip transform signature and the Dataset can stack samples.
+        return self.processor(images=image, return_tensors="pt")["pixel_values"][0]
+
+
 def _load_dinov2(spec: EncoderSpec, device: torch.device) -> ImageEncoder:
     from transformers import AutoImageProcessor, AutoModel
 
     processor = AutoImageProcessor.from_pretrained(spec.checkpoint)
     model = AutoModel.from_pretrained(spec.checkpoint).to(device).eval()
-
-    def preprocess(image: Image) -> torch.Tensor:
-        # The processor returns a batch of 1; drop that axis so this matches the
-        # open_clip transform signature and the Dataset can stack samples.
-        return processor(images=image, return_tensors="pt")["pixel_values"][0]
+    preprocess = DinoV2Preprocess(processor)
 
     def encode_image(batch: torch.Tensor) -> torch.Tensor:
         # DINOv2 emits one token per image patch plus a leading CLS token.

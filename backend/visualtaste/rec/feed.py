@@ -109,18 +109,14 @@ def candidate_positions(
         )
         selected = {
             row["image_id"]
-            for row in connection.execute(
-                "SELECT image_id FROM images WHERE status = 'ok'"
-            )
+            for row in connection.execute("SELECT image_id FROM images WHERE status = 'ok'")
         }
 
     seen = seen_image_ids(connection, profile_id)
     available = selected - seen
 
     positions = [
-        index
-        for index, image_id in enumerate(features.image_ids)
-        if image_id in available
+        index for index, image_id in enumerate(features.image_ids) if image_id in available
     ]
     return np.array(positions, dtype=np.int64)
 
@@ -153,8 +149,7 @@ def build_batch(
     scores = np.asarray(model.score(features, candidates), dtype=np.float32)
     if len(scores) != len(candidates):
         raise ValueError(
-            f"{model.rung} returned {len(scores)} scores for "
-            f"{len(candidates)} candidates"
+            f"{model.rung} returned {len(scores)} scores for {len(candidates)} candidates"
         )
 
     if rerank is not None:

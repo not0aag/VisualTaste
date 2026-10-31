@@ -157,23 +157,17 @@ def set_active(connection: sqlite3.Connection, version: str) -> None:
 
     with transaction(connection):
         connection.execute("UPDATE rec_models SET is_active = 0 WHERE is_active = 1")
-        connection.execute(
-            "UPDATE rec_models SET is_active = 1 WHERE version = ?", (version,)
-        )
+        connection.execute("UPDATE rec_models SET is_active = 1 WHERE version = ?", (version,))
     logger.info("activated model version %s", version)
 
 
 def active_version(connection: sqlite3.Connection) -> ModelVersion | None:
-    row = connection.execute(
-        "SELECT * FROM rec_models WHERE is_active = 1 LIMIT 1"
-    ).fetchone()
+    row = connection.execute("SELECT * FROM rec_models WHERE is_active = 1 LIMIT 1").fetchone()
     return ModelVersion.from_row(row) if row else None
 
 
 def get_version(connection: sqlite3.Connection, version: str) -> ModelVersion | None:
-    row = connection.execute(
-        "SELECT * FROM rec_models WHERE version = ?", (version,)
-    ).fetchone()
+    row = connection.execute("SELECT * FROM rec_models WHERE version = ?", (version,)).fetchone()
     return ModelVersion.from_row(row) if row else None
 
 
@@ -197,9 +191,7 @@ def list_versions(
     return [ModelVersion.from_row(row) for row in rows]
 
 
-def update_metrics(
-    connection: sqlite3.Connection, version: str, metrics: dict[str, Any]
-) -> None:
+def update_metrics(connection: sqlite3.Connection, version: str, metrics: dict[str, Any]) -> None:
     """Attach evaluation results to a version, merging with what is there.
 
     Merging rather than replacing, because a version is typically scored more
@@ -218,9 +210,7 @@ def update_metrics(
     connection.commit()
 
 
-def artifact_dir(
-    connection: sqlite3.Connection, version: str, *, models_root: Path
-) -> Path:
+def artifact_dir(connection: sqlite3.Connection, version: str, *, models_root: Path) -> Path:
     """Where a version's artefacts live, preferring the recorded path.
 
     Falls back to `<models_root>/<version>` so that a database copied between

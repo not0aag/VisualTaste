@@ -115,7 +115,9 @@ class TestBuildLabelSet:
         labels = build_label_set(db, profile)
 
         assert len(labels) == 4
-        by_id = dict(zip(labels.image_ids, zip(labels.targets, labels.weights, strict=True), strict=True))
+        by_id = dict(
+            zip(labels.image_ids, zip(labels.targets, labels.weights, strict=True), strict=True)
+        )
         assert by_id[hex_id(1)] == (1.0, 1.0)
         assert by_id[hex_id(2)] == (1.0, 2.0)
         assert by_id[hex_id(3)] == (0.0, 1.0)

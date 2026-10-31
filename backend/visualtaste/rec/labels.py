@@ -168,9 +168,7 @@ def label_weights(
     return weights
 
 
-def latest_events(
-    connection: sqlite3.Connection, profile_id: int
-) -> list[sqlite3.Row]:
+def latest_events(connection: sqlite3.Connection, profile_id: int) -> list[sqlite3.Row]:
     """One row per image: the most recent non-undone event, in time order.
 
     The SQL is worth reading closely, because "the latest verdict wins" is easy
