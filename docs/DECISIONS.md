@@ -115,3 +115,100 @@ importable. An editable install is the standard way to get that without path
 hacks. Installed with `--no-deps`, because the dependency set is managed
 directly by `uv pip install` (see #3) and a re-resolve would fight the CUDA
 torch build.
+
+---
+
+## 7. Open Images integrity is checked against the S3 ETag, not `OriginalMD5`
+
+**Date:** 2026-10-30
+**Discovered by measurement, not documentation.** The attribution CSV gives an
+`OriginalSize` and an `OriginalMD5` per image, so the obvious design is to
+verify downloads against them. Checked against the bucket first:
+
+| object | S3 size | CSV `OriginalSize` | MD5 match |
+| --- | --- | --- | --- |
+| `validation/fe600639ac5f36c1.jpg` | 86,534 | 242,145 | no |
+| `validation/ba82c70cc6cdf449.jpg` | 133,986 | 1,658,910 | no |
+
+Open Images redistributes its **own re-encoded copies** (long side ~1024 px);
+the CSV describes the Flickr original each was made from. Verifying against
+`OriginalMD5` would have rejected every single image, and the failure would have
+looked like a corrupt bucket rather than a mismatched expectation.
+
+**Chosen:** verify against S3's `ETag`, which for these single-part objects is
+the MD5 of the stored bytes. `OriginalMD5` and `OriginalURL` are still kept, as
+§7.1 asks, as provenance of the upstream file -- in a `upstream_md5` manifest
+column that is explicitly never used as a verifier.
+
+Also decided here: rows with a non-zero `Rotation` are skipped. Open Images
+expects the consumer to apply that rotation, which is not part of this
+project's ingestion rules, and the validation split has 41,620 candidates for a
+15,000 target -- so skipping 476 of them is cheaper than handling a case that
+would otherwise show images on their side.
+
+Also: an Open Images row with no `Author` is dropped. These are CC BY 2.0, which
+requires attribution; an image we cannot credit is one we will not display.
+
+---
+
+## 8. Megalith records collection-level provenance as its licence URL
+
+**Date:** 2026-10-30
+**The problem.** The brief requires a licence URL per image and excludes images
+without one. Megalith-10M publishes **no per-image licence field**: the original
+parquet has `url`, `url_highres`, `url_source`, and the mirror's has `caption`,
+`url`, `key`, `sha256` and dimensions. The guarantee is collection-level -- the
+dataset was built by filtering Flickr to "no known copyright restrictions", CC0,
+Public Domain Mark and US Government Work.
+
+**Options considered:**
+
+1. Record the dataset's documented provenance as the licence URL, and store the
+   Flickr photo page as `source_url` so any individual image stays checkable by
+   a human in one click.
+2. Stamp every image with a specific licence, e.g. CC0.
+3. Query the Flickr API for each image's true licence.
+4. Drop Megalith and redistribute its 30,000 to the other three sources (Q4).
+
+**Chosen:** 1.
+**Why:** 2 is the tempting one and the wrong one -- it would record a precise
+claim we have not verified, which looks like evidence while being a guess, and
+this is exactly the kind of number the brief's §0.8 forbids fabricating. 3 needs
+an API key and 30,000 calls, outside what this brief authorises. 4 would discard
+the largest and cleanest block of the corpus over a metadata limitation rather
+than a licensing problem.
+
+The honest position is recorded rather than hidden: the licence URL points at
+the provenance statement, the per-image Flickr page is stored alongside it, and
+the module docstring in `data/sources/megalith.py` says plainly that this is
+collection-level and why.
+
+---
+
+## 9. Ingestion tuning: WebP effort 2, cheaper swatch k-means, one thread per worker
+
+**Date:** 2026-10-30
+**Trigger:** the first real ingestion run managed about 4 images/second, which
+projected to roughly two hours for Megalith alone. Profiled rather than guessed,
+on 10-15 real Megalith images.
+
+| Finding | Measured | Change |
+| --- | --- | --- |
+| WebP `method=4` (Pillow's default) | 412 ms/encode, 122.8 KB | `method=2`: 211 ms, 125.3 KB |
+| `KMeans(n_init=4)` over 4,096 px for the display swatches | 1,350 ms | 1,024 px, `n_init=1`, `max_iter=25`: 139 ms |
+| `np.unique(lab, axis=0)` guarding `k` | 14 ms | pack RGB into one integer: negligible |
+| 8 worker processes x 16 OpenMP threads | thrashing | pin `OMP_NUM_THREADS=1` per worker |
+
+Also found: `import sklearn` costs 9.2 seconds, which cProfile attributes to the
+first image and made the per-image cost look twice as bad as it is. It is paid
+once per worker process, so it is irrelevant across 30,000 images -- worth
+knowing before optimising the wrong thing.
+
+**Result, measured after the change: 40 images/second, a 10x improvement.**
+Megalith's 30,000 ingested in about 12 minutes instead of two hours.
+
+The trade accepted: 2% larger display WebP files (about 200 MB across 80,000
+images) in exchange for roughly half an hour of wall clock, and display-only
+colour swatches computed from 1,024 sampled pixels instead of 4,096. The
+64-bin colour *descriptor* -- the thing the models actually learn from -- is
+unchanged and still computed from every pixel of the thumbnail.

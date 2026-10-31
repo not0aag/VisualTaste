@@ -29,6 +29,12 @@ module. That is why the entry point is guarded by `if __name__ == "__main__"`
 and why `_process_one` is a module-level function taking plain data: a closure
 or a lambda cannot be pickled across a spawn.
 
+Each worker also pins its numeric libraries to a single thread. NumPy and
+scikit-learn default to using every core via OpenMP, so eight worker processes
+would each start sixteen threads and the machine would spend its time switching
+between 128 of them. The parallelism here is the process pool; the libraries
+inside it must stay sequential.
+
 Resumability
 ------------
 Every image already in `images` is skipped, so a run killed at any point and
@@ -42,6 +48,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sqlite3
 import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -138,6 +145,23 @@ class WorkItem:
     original_path: Path
     display_path: Path
     thumb_path: Path
+
+
+def _init_worker() -> None:
+    """Pin numeric libraries to one thread per worker process.
+
+    Set before NumPy and scikit-learn do their thread-pool setup, which happens
+    on first use rather than at import, so assigning the variables here is
+    effective. Without this, the process pool and OpenMP multiply instead of
+    cooperating.
+    """
+    for variable in (
+        "OMP_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+    ):
+        os.environ[variable] = "1"
 
 
 def _process_one(item: WorkItem) -> ProcessedImage:
@@ -391,11 +415,12 @@ def _process_all(items: list[WorkItem], pool_size: int) -> Iterator[ProcessedIma
     you instead of inside a dead subprocess.
     """
     if pool_size <= 1:
+        _init_worker()
         for item in items:
             yield _process_one(item)
         return
 
-    with ProcessPoolExecutor(max_workers=pool_size) as pool:
+    with ProcessPoolExecutor(max_workers=pool_size, initializer=_init_worker) as pool:
         futures = [pool.submit(_process_one, item) for item in items]
         for done in as_completed(futures):
             yield done.result()

@@ -1,6 +1,6 @@
 # Progress
 
-**Current phase:** 3 — Ingestion + DB (Phase 2 downloads running in background)
+**Current phase:** 4 — Embeddings (Phase 2 downloads + Phase 3 ingestion running)
 **Last green commit:** `589b884` — phase 1, 2026-10-30
 **Running jobs:** none
 
@@ -14,6 +14,7 @@ Resume rule (brief §2): read `VISUALTASTE_BUILD_PROMPT.md`, then this file, the
 | Job | Command | PID | Log | Started |
 | --- | --- | --- | --- | --- |
 | acquire (all 4 sources) | `python -m visualtaste.jobs.acquire` | 37440 | `logs/acquire_full.log` | 2026-10-30 19:37 |
+| ingest (megalith) | `python -m visualtaste.jobs.ingest --source megalith --workers 8 --skip-dedupe` | — | `logs/ingest_megalith2.log` | 2026-10-30 20:14 |
 
 ---
 
@@ -83,13 +84,13 @@ Resume rule (brief §2): read `VISUALTASTE_BUILD_PROMPT.md`, then this file, the
 
 ## Phase 4 — Embeddings
 
-- [ ] `vision/store.py`: float16 shards of 2,048 rows, atomic, matching IDs
-- [ ] `jobs/embed.py --model <key>`, incremental by missing ID
-- [ ] Per-image failures recorded in `embedding_errors`, batch never dies
+- [x] `vision/store.py`: float16 shards of 2,048 rows, atomic, matching IDs
+- [x] `jobs/embed.py --model <key>`, incremental by missing ID
+- [x] Per-image failures recorded in `embedding_errors`, batch never dies
 - [ ] Merged float32 `vectors.npy` + `ids.npy` + complete `meta.json`
 - [ ] Both models embedded for all `ok` candidates
-- [ ] Norms = 1 ± 1e-3 test
-- [ ] Kill-and-resume test; incremental test (add 10 → only 10 embedded)
+- [x] Norms = 1 ± 1e-3 test (`verify_normalised`, run after every merge)
+- [x] Kill-and-resume test; incremental test (add 10 → only 10 embedded)
 - [ ] Real-data loading benchmark appended to BENCHMARKS.md
 
 ## Phase 5 — Search, safety, selection
