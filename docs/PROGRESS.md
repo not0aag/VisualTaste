@@ -160,13 +160,48 @@ Final status counts: `ok` 78,197 · `near_dup` 1,044 · `removed` 789 ·
 
 ## Phase 8 — R1 + R2 + explanations
 
-- [ ] `rec/r1_rocchio.py` (α=1, β=0.5, optional 0.995^age decay)
-- [ ] `rec/r2_knn.py` (mean top-5 like cosine − 0.5 × top-5 dislike, via FAISS)
-- [ ] `rec/concepts.txt` (~400 terms) + `concepts.py` with the prompt template logged
-- [ ] Taste in words as z-scores against the mean concept similarity
-- [ ] `rec/explain.py` reason codes + one-line human sentence in the feed
-- [ ] §8 M1 and M2 worked examples asserted in tests
-- [ ] Simulator study R0-R2 written to EVALUATION.md
+- [x] `rec/r1_rocchio.py` (α=1, β=0.5, optional 0.995^age decay)
+- [x] `rec/r2_knn.py` (mean top-5 like cosine − 0.5 × top-5 dislike, via FAISS)
+- [x] `rec/concepts.txt` (637 terms across 10 groups) + `concepts.py` with the
+      prompt template `a photo of {}.` recorded in the cache metadata, so a
+      cache built under one template is never read under another
+- [x] Taste in words as z-scores against the mean concept similarity; a test
+      asserts the correction separates two tastes that raw cosines do not
+- [x] `rec/explain.py` reason codes + one-line human sentence in the feed.
+      Sentences are *derived* from the reason and its detail, so no rung writes
+      its own phrasing; a test asserts none of them flatter or overclaim
+- [x] §8 M1 and M2 worked examples asserted in tests (cos 8/9 and −0.596;
+      û = (0.976, −0.217) and its three scores 0.412 / 0.976 / −0.217)
+- [x] Simulator study R0–R2 written to EVALUATION.md, 5 seeds × 1,000 swipes
+
+Found and fixed while measuring, each with its own entry in `docs/DECISIONS.md`:
+
+- [x] **The simulator was measuring nothing** (#12). The brief's
+      `σ(10(cos − 0.25))` makes a user who likes 99.8% of this corpus, because
+      SigLIP 2 cosines sit near 0.5 — so R0, R1 and R2 all scored 0.88. The
+      offset is now calibrated per user to a 50% baseline; `--brief-offset`
+      reproduces the saturated run.
+- [x] **Candidate gathering cost more than the arithmetic** (#13). Both rungs
+      now score the whole pool and index afterwards: 7.0 ms instead of 58.5 ms.
+- [x] **R2 misses the latency budget beyond ~100 labels** (#14), reported
+      rather than worked around. FAISS halves the constant; the shape stays.
+- [x] **The feed never handed over from R0** (#15). Activating R1 on a fresh
+      profile would have 500'd on the first request.
+- [x] R0 is now `is_fitted` on construction, so it does not hand over to a
+      second copy of itself
+
+Measured, 2026-10-31 (`python -m visualtaste.jobs.evaluate --rungs r0,r1,r2
+--seeds 5 --swipes 1000`):
+
+| rung | like rate | vs R0 | interests found | scoring cost at 1,000 labels |
+| --- | --- | --- | --- | --- |
+| R0 | 0.454 ± 0.015 | — | 3 of 3 | 13.6 ms |
+| R1 | 0.592 ± 0.100 | +0.138 (4 of 5 seeds) | 2 of 3 | 7.2 ms |
+| R2 | 0.615 ± 0.084 | +0.161 (5 of 5 seeds) | 2 of 3 | 271.8 ms |
+
+H1 is supported. The result that matters more: both learned rungs find only two
+of the three planted interests, and buy their like rate by narrowing coverage
+from 100% of clusters to about 40%. That is the argument for R4.
 
 ## Phase 9 — R3 + ablations
 

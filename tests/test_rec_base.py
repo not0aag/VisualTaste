@@ -308,3 +308,30 @@ class TestColdStart:
         assert coldstart_is_active(29)
         assert not coldstart_is_active(30)
         assert not coldstart_is_active(500)
+
+
+class TestColdStartNeedsNoFit:
+    """R0 is ready on construction, not after `fit`.
+
+    The feed asks `is_fitted` of whatever model it is given, to decide whether
+    to hand over to the bootstrap. An R0 that answered False until someone
+    called `fit` made the API hand over from cold start *to cold start* and log
+    "r0 is not fitted yet" on every request -- harmless but wrong, and it would
+    have hidden a real handover failure in the same log line.
+    """
+
+    def test_a_freshly_constructed_model_is_already_fitted(self):
+        assert ColdStartRecommender().is_fitted
+
+    def test_it_scores_without_ever_being_fitted(self):
+        model = ColdStartRecommender(seed=1729)
+        features = bundle(10, clusters=[0, 1, 2, 0, 1, 2, 0, 1, 2, 0])
+
+        scores = model.score(features, np.arange(10))
+
+        assert scores.shape == (10,)
+
+    def test_fitting_it_anyway_changes_nothing_about_readiness(self):
+        model = ColdStartRecommender().fit(labelset(0), bundle())
+
+        assert model.is_fitted

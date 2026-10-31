@@ -279,3 +279,155 @@ different mechanism, handled by WAL plus `busy_timeout`.
 This is the kind of bug that only appears under real concurrency, which is
 exactly why the brief asks for an end-to-end test rather than trusting unit
 tests.
+
+---
+
+## 12. The simulator's like-probability offset is calibrated per user, not fixed at 0.25
+
+**Date:** 2026-10-31
+**Found by:** the first R0/R1/R2 study, in which all three rungs scored a like
+rate of 0.88 — including the one that picks by round-robin over clusters.
+
+The brief (§7.7) specifies the simulated user as
+
+    p(like | x) = sigma(10 (max_k cos(c_k, x) - 0.25))
+
+Taken literally on this corpus, that is a user who likes everything. Measured
+on the 50,000-image pool:
+
+| quantity | mean | p5 | p50 | p95 |
+| --- | --- | --- | --- | --- |
+| image-to-image cosine | 0.501 | 0.388 | 0.497 | 0.636 |
+| `max_k cos` to 3 planted centroids | 0.680 | 0.573 | 0.675 | 0.804 |
+
+with `p(like)` averaging **0.983** and **99.8%** of the pool above `p = 0.9`.
+
+The cause is the geometry of the embedding space. SigLIP 2 vectors occupy a
+narrow cone rather than the sphere, so two *unrelated* photographs already sit
+at cosine 0.5 — the well-known cone effect in contrastive models. An offset of
+0.25 is therefore below the entire distribution, the sigmoid saturates, and
+every rung is graded against a user who says yes to almost anything. The study
+measures nothing: a random recommender would have scored the same 0.88.
+
+**Chosen:** keep the formula and the slope, calibrate the offset per simulated
+user to the median of the affinity *that user* feels for this corpus
+(`eval/sim.calibrate_offset`), giving a 50% baseline like rate. `LOGIT_OFFSET`
+still holds the brief's 0.25 and `make_user` still defaults to it, so the
+brief's user remains available and reproducible — `jobs.evaluate --brief-offset`
+runs it, and `docs/EVALUATION.md` shows both, because the saturated run is the
+evidence that the calibration was needed.
+
+**Why per user rather than one global number:** a taste centred on a large
+cluster feels higher affinity across the whole corpus than one centred on a
+small cluster. A single offset would make some seeds systematically pickier
+than others, and that difference would show up in the results as if it were a
+property of the model under test.
+
+**Why the slope stays at 10:** over the measured spread of `max_k cos` (p5
+0.573 to p95 0.804) a slope of 10 makes `p(like)` run from about 0.26 to 0.79 —
+a soft boundary with real label noise, which is what §7.7 asks for. Raising it
+would make the user more decisive and the task easier.
+
+**What this does not fix:** the simulator's truth is still cosine to three
+centroids, so it still flatters Rocchio and logistic regression. Calibration
+makes the comparison possible; it does not make it a proxy for Alen.
+
+---
+
+## 13. Scoring the whole pool and indexing afterwards, instead of gathering candidates first
+
+**Date:** 2026-10-31
+**Found by:** the scoring-cost table in the first study — R1 at 66.9 ms for what
+should be a single 50,000 × 768 dot product.
+
+`score` received a candidate array and did the obvious thing:
+`features.siglip[candidates] @ u`. Measured on the real pool shape:
+
+| expression | mean |
+| --- | --- |
+| `siglip[candidates] @ u` | 58.5 ms |
+| `(siglip @ u)[candidates]` | **7.0 ms** |
+| `siglip[candidates]` alone (no arithmetic at all) | 93.3 ms |
+| `siglip[candidates] @ liked.T` (R2, 100 labels) | 94.7 ms |
+| `(siglip @ liked.T)[candidates]` | **49.8 ms** |
+
+The fancy index is a copy: 153 MB allocated and moved, scattered, before any
+arithmetic happens. The dot product reads the same 153 MB once, sequentially,
+inside BLAS. The operation is bound by memory bandwidth, not by floating-point
+throughput — 38 million multiply-adds is nothing for this CPU — so doing
+*strictly more arithmetic* is eight times faster.
+
+**Chosen:** both R1 and R2 score every row of the pool and index the result.
+The wasted work is proportional to the number of images already seen (a few
+thousand at most), so it never grows into a problem. A test asserts that
+scoring a subset equals scoring everything and then subsetting, in value and in
+order, because the failure mode — cards ranked by another image's score — would
+be subtle enough to survive for months.
+
+---
+
+## 14. R2 is a teaching rung, not a serving one, and the measurement says so
+
+**Date:** 2026-10-31
+
+The brief specifies R2's kNN scoring "via FAISS" (§7.5) and a 50 ms p95 for
+`/feed/next` across R1–R5. Both were implemented and measured, and they are
+incompatible beyond about 100 labels:
+
+| labels | R2 via FAISS | R1 |
+| --- | --- | --- |
+| 100 | 46 ms | 7 ms |
+| 1,000 | 268 ms | 7 ms |
+
+R2's cost is `pool x labels` because every candidate is compared against every
+label; R1's is `pool` because the labels are averaged into one vector first.
+FAISS halves R2's constant — worth doing, and done — but cannot change the
+shape.
+
+**Chosen:** implement R2 exactly as specified, measure it, and record the
+failure against the budget in `docs/EVALUATION.md` and `docs/BENCHMARKS.md`
+rather than quietly making the rung cheaper. It stays on the ladder because it
+is the rung that teaches why a single preference vector is not enough, and it
+is honest to serve for the first few dozen swipes.
+
+**Rejected:** capping the labels R2 uses (changes the model while keeping its
+name), shortlisting candidates from each like's neighbours (approximate, and
+`build_batch` needs a score for every candidate so that MMR can run in Phase
+10), and moving the multiply to the GPU (fixes it, but adds a GPU-resident
+serving path the brief does not ask for — the brief trains on the GPU and
+serves from NumPy).
+
+The honest conclusion is the one the ladder is built to produce: R3 scores on
+128 PCA dimensions with one weight vector, constant in the label count and
+about a millisecond, and that is the rung built to serve.
+
+---
+
+## 15. The feed hands over from R0 to the active rung by itself
+
+**Date:** 2026-10-31
+**Found by:** the first attempt at the Phase 8 study, which crashed on its first
+batch with `UnfittedModelError: r1 has not been fitted (it saw 0 labels and
+needs 5)`.
+
+Every rung above R0 has a minimum label count, and the error message already
+said "the feed should have fallen back to a lower rung" — but nothing did. A
+fresh profile with R1 active would have made the very first `/feed/next` return
+a 500, which is the state every new profile starts in.
+
+**Chosen:** `rec.feed.build_batch` takes a `bootstrap` model and uses it
+whenever the active model is not fitted. The API passes a single
+`ColdStartRecommender` held on `AppState` for the life of the process, and the
+simulator passes one per session — in both cases *one* instance, because R0
+keeps a round-robin position over the 64 clusters and a fresh instance per
+request would restart at cluster 0 and serve the same corner of the collection
+forever.
+
+The impression records the rung that actually served (`r0_bootstrap`), not the
+one that was configured. Filing a cold-start card under R1 would have corrupted
+every later comparison between them, which is the kind of error that is
+invisible until an evaluation disagrees with itself.
+
+Passing no bootstrap keeps the strict behaviour: an unfitted model raises. The
+fallback is opt-in, so a unit test still catches a model that should have been
+fitted and was not.

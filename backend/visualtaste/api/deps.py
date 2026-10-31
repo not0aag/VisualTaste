@@ -77,6 +77,13 @@ class AppState:
     profile_id: int | None = None
     notes: list[str] = field(default_factory=list)
 
+    #: R0, serving on behalf of the active rung until it has enough labels to
+    #: be fitted. One instance for the life of the process, not one per
+    #: request: it keeps a round-robin position over the 64 clusters, and a
+    #: fresh instance every request would restart at cluster 0 and show the
+    #: same corner of the collection forever.
+    bootstrap: Recommender | None = None
+
     # --- Per-request database access ----------------------------------------
 
     def connect(self) -> sqlite3.Connection:
@@ -111,6 +118,7 @@ class AppState:
             self._load_features(connection)
             self._load_indexes()
             self._load_model(connection)
+            self.bootstrap = ColdStartRecommender(seed=self.settings.seed)
             self._ensure_profile(connection)
         finally:
             connection.close()
@@ -331,6 +339,12 @@ class AppState:
             )
         return self.features
 
+    def require_bootstrap(self) -> Recommender:
+        """The cold-start model the feed falls back to. Created lazily for tests."""
+        if self.bootstrap is None:
+            self.bootstrap = ColdStartRecommender(seed=self.settings.seed)
+        return self.bootstrap
+
     def require_model(self) -> Recommender:
         if self.model is None:  # pragma: no cover - load() always sets one
             self.model = ColdStartRecommender(seed=self.settings.seed)
@@ -380,6 +394,14 @@ def load_rung(rung: str, settings: Settings) -> Recommender:
     """
     if rung == "r0":
         return ColdStartRecommender(seed=settings.seed)
+    if rung == "r1":
+        from visualtaste.rec.r1_rocchio import RocchioRecommender
+
+        return RocchioRecommender()
+    if rung == "r2":
+        from visualtaste.rec.r2_knn import KnnRecommender
+
+        return KnnRecommender()
     raise KeyError(f"unknown rung {rung!r}; it may be from a later phase than this build")
 
 

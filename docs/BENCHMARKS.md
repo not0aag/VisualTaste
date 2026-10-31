@@ -96,3 +96,51 @@ where the per-request cost is proportional to how many images have been seen --
 a few thousand at most -- instead of to the size of the corpus.
 
 Measured on the hardware at the top of this file, with the GPU idle.
+
+---
+
+## R2 kNN scoring cost: dense NumPy vs FAISS
+
+**Command:** a timing loop over the live 50,000 x 768 pool, `k = 5`, mean of 7
+runs per cell, machine otherwise idle.
+**Date:** 2026-10-31.
+
+| labelled vectors | dense NumPy | FAISS `IndexFlatIP` |
+| --- | --- | --- |
+| 50 | 64 ms | 32 ms |
+| 100 | 94 ms | 46 ms |
+| 200 | 165 ms | 65 ms |
+| 500 | 323 ms | 145 ms |
+| 1,000 | 608 ms | 268 ms |
+| 2,000 | 1,181 ms | 536 ms |
+
+The two agree to 4e-8 — identical arithmetic, different bookkeeping. The dense
+version materialises a 50,000 x N similarity matrix (200 MB at N = 1,000) and
+partitions it; FAISS blocks the multiply and keeps a running top-k heap.
+
+**The shape is the finding, not the constant.** R2's cost is proportional to
+`pool x labels`, so halving it with FAISS moves the point at which it misses
+the 50 ms budget from about 50 labels to about 100, and no further. R1 by
+contrast is 7.2 ms at 1,000 labels and would be 7.2 ms at 100,000, because it
+averages the labels into one vector first. See `docs/EVALUATION.md` for what
+that means for the ladder.
+
+---
+
+## Candidate gathering: the cost of a fancy index
+
+**Command:** a timing loop on arrays of the real pool's shape (50,000 x 768
+float32), mean of 10 runs.
+**Date:** 2026-10-31.
+
+| expression | mean |
+| --- | --- |
+| `siglip[candidates] @ u` | 58.5 ms |
+| `(siglip @ u)[candidates]` | **7.0 ms** |
+| `siglip[candidates]` alone, no arithmetic | 93.3 ms |
+
+Doing strictly more arithmetic is eight times faster, because the gather
+allocates and scatter-copies 153 MB while the dot product streams the same
+153 MB once through BLAS. This operation is memory-bandwidth bound: 38 million
+multiply-adds is nothing for this CPU. Both R1 and R2 score the whole pool and
+index afterwards (`docs/DECISIONS.md` #13).

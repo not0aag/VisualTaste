@@ -21,6 +21,21 @@ quota needs to know what is available in each cluster. Scoring 50,000 rows is
 one matrix multiply -- a few milliseconds -- so the simple thing is also the
 fast thing.
 
+The bootstrap, and why it lives here
+------------------------------------
+Every rung above R0 has a minimum label count: Rocchio needs likes to average,
+kNN needs neighbours to be near. Below it the model is unfitted and scoring
+raises. But the feed still has to return five cards -- a fresh profile with R1
+active is a completely ordinary state, and it is the state the very first swipe
+happens in.
+
+So `build_batch` takes a `bootstrap` model, used whenever the active one is not
+fitted yet. That is the ladder in `§7.5` made operational: R0 covers the
+collection until there is enough signal for the active rung to take over, and
+the handover happens by itself. The impression records the rung that actually
+served, not the one that was configured, because attributing a cold-start card
+to R1 would corrupt every later comparison between them.
+
 Why impressions are written before the response
 -----------------------------------------------
 An impression is the record that an image was *offered*. Without it, a like
@@ -131,6 +146,7 @@ def build_batch(
     model_version: str,
     n: int = DEFAULT_BATCH_SIZE,
     rerank=None,
+    bootstrap: Recommender | None = None,
 ) -> FeedBatch:
     """Produce the next `n` cards and write their impressions.
 
@@ -139,8 +155,23 @@ def build_batch(
     parameter rather than an import means the feed can be tested, and the
     simulator can be run, with and without exploration -- which is exactly the
     comparison Phase 10 has to make.
+
+    `bootstrap` serves in place of `model` while `model` has too few labels to
+    be fitted (see the module docstring). Passing none keeps the strict
+    behaviour: an unfitted model raises rather than silently serving something
+    else, which is what the tests want.
     """
     batch_id = uuid.uuid4().hex[:12]
+
+    if not model.is_fitted and bootstrap is not None:
+        logger.info(
+            "%s is not fitted yet; %s is serving this batch",
+            model.rung,
+            bootstrap.rung,
+        )
+        model = bootstrap
+        model_version = f"{bootstrap.rung}_bootstrap"
+
     candidates = candidate_positions(connection, features, profile_id)
 
     if len(candidates) == 0:

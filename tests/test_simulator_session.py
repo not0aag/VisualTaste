@@ -23,9 +23,11 @@ from visualtaste.eval.report import (
     summarise_session,
 )
 from visualtaste.eval.sim import make_user
-from visualtaste.rec.base import FeatureBundle
-from visualtaste.rec.labels import build_label_set
+from visualtaste.rec.base import FeatureBundle, UnfittedModelError
+from visualtaste.rec.feed import build_batch
+from visualtaste.rec.labels import LabelSet, build_label_set
 from visualtaste.rec.r0_coldstart import ColdStartRecommender
+from visualtaste.rec.r1_rocchio import RocchioRecommender
 
 POOL_SIZE = 400
 CLUSTERS = 8
@@ -375,3 +377,103 @@ class TestSummaries:
 
         assert "Rolling like rate" in text
         assert "`r0" in text
+
+
+class TestBootstrapHandover:
+    """R0 serving on behalf of a rung that has not got enough labels yet.
+
+    This is the ladder of §7.5 as an actual mechanism. Before it existed,
+    activating R1 on a fresh profile made the very first `/feed/next` raise --
+    the state every new profile starts in.
+    """
+
+    def _profile(self, connection):
+        profile_id = repo.create_profile(connection, note="bootstrap test")
+        connection.commit()
+        return profile_id
+
+    def test_an_unfitted_model_is_covered_by_the_bootstrap(self, corpus):
+        settings, connection, features = corpus
+        profile_id = self._profile(connection)
+
+        batch = build_batch(
+            connection,
+            features,
+            RocchioRecommender(),
+            profile_id=profile_id,
+            model_version="r1_v1",
+            bootstrap=ColdStartRecommender(seed=settings.seed),
+        )
+
+        assert len(batch.cards) == 5
+        assert batch.rung == "r0"
+
+    def test_the_impression_records_the_rung_that_actually_served(self, corpus):
+        # Attribution: a cold-start card filed under r1 would corrupt every
+        # later comparison between the two.
+        settings, connection, features = corpus
+        profile_id = self._profile(connection)
+
+        batch = build_batch(
+            connection,
+            features,
+            RocchioRecommender(),
+            profile_id=profile_id,
+            model_version="r1_v1",
+            bootstrap=ColdStartRecommender(seed=settings.seed),
+        )
+
+        versions = {
+            row["model_version"]
+            for row in connection.execute(
+                "SELECT model_version FROM impressions WHERE profile_id = ?", (profile_id,)
+            )
+        }
+        reasons = {card.reason for card in batch.cards}
+
+        assert versions == {"r0_bootstrap"}
+        assert reasons == {"cold_start"}
+
+    def test_without_a_bootstrap_an_unfitted_model_still_raises(self, corpus):
+        # The strict behaviour is what the unit tests rely on; the fallback is
+        # opt-in rather than a silent default.
+        _, connection, features = corpus
+        profile_id = self._profile(connection)
+
+        with pytest.raises(UnfittedModelError):
+            build_batch(
+                connection,
+                features,
+                RocchioRecommender(),
+                profile_id=profile_id,
+                model_version="r1_v1",
+            )
+
+    def test_a_fitted_model_serves_itself(self, corpus):
+        settings, connection, features = corpus
+        profile_id = self._profile(connection)
+        model = RocchioRecommender().fit(self._likes(features), features)
+
+        batch = build_batch(
+            connection,
+            features,
+            model,
+            profile_id=profile_id,
+            model_version="r1_v1",
+            bootstrap=ColdStartRecommender(seed=settings.seed),
+        )
+
+        assert batch.rung == "r1"
+        assert batch.model_version == "r1_v1"
+        assert {card.reason for card in batch.cards} == {"similar_likes"}
+
+    def _likes(self, features) -> LabelSet:
+        """Enough likes for R1 to be fitted, straight from the corpus."""
+        ids = features.image_ids[:8]
+        return LabelSet(
+            image_ids=list(ids),
+            targets=np.ones(len(ids), dtype=np.float32),
+            weights=np.ones(len(ids), dtype=np.float32),
+            actions=["like"] * len(ids),
+            timestamps=["2026-10-31T00:00:00"] * len(ids),
+        )

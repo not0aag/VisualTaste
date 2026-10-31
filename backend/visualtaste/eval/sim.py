@@ -23,6 +23,35 @@ coin flip. The slope of 10 means cosine 0.35 is already 73% likely and cosine
 0.15 is 27% -- a soft boundary, not a step, so the labels contain genuine noise
 and a model cannot reach AUC 1.0 by luck.
 
+The offset has to be calibrated, and this is the important part
+---------------------------------------------------------------
+Taken literally on this corpus, that formula describes a user who likes
+everything. Measured on the 50,000-image pool (2026-10-31):
+
+    image-to-image cosine     mean 0.501, p5 0.388, p50 0.497, p95 0.636
+    max_k cos to 3 centroids  mean 0.680, p5 0.573, p50 0.675, p95 0.804
+    p(like) under offset 0.25 mean 0.983, and 99.8% of the pool above p = 0.9
+
+SigLIP 2 embeddings occupy a narrow cone rather than the whole sphere, so two
+unrelated photographs already sit at cosine 0.5. An offset of 0.25 is therefore
+below *everything*, the sigmoid saturates, and the simulated user likes 98% of
+what it is shown. A study against that user cannot distinguish any rung from
+any other: R0, R1 and R2 all score a like rate of 0.88, and so would a model
+that picked at random.
+
+So `calibrate_offset` sets the offset to a quantile of the affinity the user
+actually feels for this corpus -- by default the median, giving a baseline like
+rate near 50% and leaving room for a model to be better or worse than chance.
+The slope stays at the brief's 10, which over the measured spread of max-cosine
+(p5 0.573 to p95 0.804) makes p(like) run from about 0.26 to 0.79: a soft
+boundary with genuine label noise, which is what the brief asks for.
+
+The brief's literal constant is kept as the default so that `LOGIT_OFFSET`
+still means what §7.7 says, and every study that calibrates records the offset
+it used. `docs/DECISIONS.md` carries the reasoning; `docs/EVALUATION.md` shows
+both the saturated and the calibrated run, because the saturated one is the
+evidence that the calibration was necessary.
+
 On top of that:
 
 - an image with p > 0.9 is **saved** rather than liked, with probability 0.3;
@@ -83,6 +112,12 @@ class SimulatedUser:
     drift_per_step: float = 0.0
     steps_taken: int = 0
 
+    #: The cosine at which this user is a coin flip. The brief's constant by
+    #: default; `make_user(calibrate=True)` replaces it with a quantile of the
+    #: affinity this user feels for the actual corpus. See the module docstring.
+    offset: float = LOGIT_OFFSET
+    slope: float = LOGIT_SLOPE
+
     #: Per-interest count of how many images it has been the best match for.
     #: Used by `recall_of_planted_interests` to say whether a model found all
     #: three or settled on one.
@@ -112,8 +147,13 @@ class SimulatedUser:
         return vectors @ self.centroids.T
 
     def like_probability(self, vectors: np.ndarray) -> np.ndarray:
-        """p(like | x) = sigma(10 (max_k cos(c_k, x) - 0.25))."""
-        return sigmoid(LOGIT_SLOPE * (self.affinity(vectors) - LOGIT_OFFSET))
+        """p(like | x) = sigma(slope (max_k cos(c_k, x) - offset)).
+
+        `slope` and `offset` default to the brief's 10 and 0.25; the offset is
+        normally calibrated to the corpus instead, for the reason set out at
+        the top of this module.
+        """
+        return sigmoid(self.slope * (self.affinity(vectors) - self.offset))
 
     def react(self, vectors: np.ndarray) -> list[str]:
         """Draw an action for each image: like, save, dislike or skip.
@@ -238,18 +278,84 @@ def plant_interests(
     return centroids[picked]
 
 
+#: Share of the corpus a calibrated user should like at p > 0.5. One half:
+#: a user who likes half of everything leaves the most room for a model to be
+#: measurably better or worse than chance in either direction.
+TARGET_LIKE_RATE = 0.5
+
+#: Rows sampled when calibrating. The affinity quantile is stable to three
+#: decimals well before this, and sampling keeps calibration off the critical
+#: path for a 50,000 x 768 corpus.
+CALIBRATION_SAMPLE = 20_000
+
+
+def calibrate_offset(
+    vectors: np.ndarray,
+    centroids: np.ndarray,
+    *,
+    target_like_rate: float = TARGET_LIKE_RATE,
+    rng: np.random.Generator | None = None,
+) -> float:
+    """The offset that makes this user like `target_like_rate` of this corpus.
+
+    p(like) exceeds one half exactly where `max_k cos` exceeds the offset, so
+    the offset wanted is the `1 - target` quantile of the affinity distribution:
+    at the median, half the corpus is above and half below.
+
+    Measuring it per user rather than fixing one global number matters, because
+    two planted tastes differ in how much of the corpus they are near -- a taste
+    centred on a large cluster feels higher affinity throughout than one centred
+    on a small one. Calibrating per user makes the comparison between seeds fair.
+    """
+    vectors = np.asarray(vectors, dtype=np.float32)
+    if len(vectors) > CALIBRATION_SAMPLE:
+        generator = rng or np.random.default_rng(0)
+        vectors = vectors[generator.choice(len(vectors), CALIBRATION_SAMPLE, replace=False)]
+
+    affinity = (vectors @ _normalise(centroids).T).max(axis=1)
+    offset = float(np.quantile(affinity, 1.0 - target_like_rate))
+    logger.info(
+        "calibrated offset %.3f for a %.0f%% baseline like rate "
+        "(affinity p5 %.3f p50 %.3f p95 %.3f); the brief's constant is %.2f",
+        offset,
+        target_like_rate * 100,
+        *np.percentile(affinity, [5, 50, 95]),
+        LOGIT_OFFSET,
+    )
+    return offset
+
+
 def make_user(
     vectors: np.ndarray,
     *,
     seed: int,
     cluster_labels: np.ndarray | None = None,
     drift_per_step: float = 0.0,
+    calibrate: bool = False,
+    target_like_rate: float = TARGET_LIKE_RATE,
 ) -> SimulatedUser:
-    """Build a simulated user with interests planted in this corpus."""
+    """Build a simulated user with interests planted in this corpus.
+
+    `calibrate` is off by default so that an unqualified `make_user` is exactly
+    the user §7.7 describes. Every study turns it on, because the uncalibrated
+    user likes 98% of this corpus and so measures nothing; see the module
+    docstring for the numbers.
+    """
+    centroids = plant_interests(vectors, seed=seed, cluster_labels=cluster_labels)
+    offset = LOGIT_OFFSET
+    if calibrate:
+        offset = calibrate_offset(
+            vectors,
+            centroids,
+            target_like_rate=target_like_rate,
+            rng=np.random.default_rng(seed),
+        )
+
     return SimulatedUser(
-        centroids=plant_interests(vectors, seed=seed, cluster_labels=cluster_labels),
+        centroids=centroids,
         rng=np.random.default_rng(seed + 1),
         drift_per_step=drift_per_step,
+        offset=offset,
     )
 
 

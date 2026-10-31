@@ -1,0 +1,669 @@
+# Concept vocabulary for "taste in words" (brief section 7.6).
+#
+# About 400 short terms, grouped by the kind of thing they describe. They are
+# scored against the preference vector with the SigLIP 2 text encoder, and
+# reported as z-scores against the mean concept similarity -- the raw cosines
+# are useless on their own because of the image-text modality gap.
+#
+# Chosen to be words a person would actually use about a picture. "Brutalist"
+# and "overcast" are useful feedback; "high aesthetic quality" is not, and
+# neither is anything so broad it matches everything.
+#
+# Lines beginning with # are comments; blank lines are ignored.
+
+# --- Styles and movements ---------------------------------------------------
+minimalist
+maximalist
+brutalist
+art deco
+art nouveau
+bauhaus
+mid-century modern
+baroque
+rococo
+gothic
+neoclassical
+victorian
+modernist
+postmodern
+constructivist
+surrealist
+impressionist
+expressionist
+cubist
+abstract
+figurative
+photorealistic
+painterly
+illustrative
+graphic
+decorative
+ornate
+austere
+rustic
+industrial
+folk art
+outsider art
+psychedelic
+retro
+futuristic
+vaporwave
+japonisme
+ukiyo-e
+chinoiserie
+islamic geometric
+celtic
+scandinavian
+mediterranean
+
+# --- Photographic treatment -------------------------------------------------
+black and white
+monochrome
+sepia
+high contrast
+low contrast
+soft focus
+sharp focus
+shallow depth of field
+deep focus
+long exposure
+motion blur
+bokeh
+grainy
+film grain
+overexposed
+underexposed
+backlit
+silhouette
+double exposure
+tilt shift
+fisheye
+wide angle
+telephoto
+macro
+aerial
+drone shot
+satellite view
+infrared
+x-ray
+cyanotype
+daguerreotype
+tintype
+photogram
+hand-coloured
+vignette
+lens flare
+light leak
+cross-processed
+
+# --- Materials and surfaces -------------------------------------------------
+wood
+walnut
+oak
+teak
+bamboo
+plywood
+stone
+marble
+granite
+slate
+limestone
+concrete
+brick
+terracotta
+ceramic
+porcelain
+glass
+stained glass
+frosted glass
+steel
+chrome
+brass
+copper
+bronze
+iron
+rust
+patina
+aluminium
+plastic
+resin
+rubber
+leather
+suede
+canvas
+linen
+cotton
+wool
+silk
+velvet
+lace
+denim
+felt
+paper
+parchment
+cardboard
+gold leaf
+enamel
+lacquer
+mosaic
+tile
+thatch
+moss
+sand
+gravel
+snow
+ice
+water
+smoke
+fog
+
+# --- Colour -----------------------------------------------------------------
+warm colours
+cool colours
+muted colours
+saturated colours
+pastel
+neon
+fluorescent
+earth tones
+jewel tones
+primary colours
+complementary colours
+monochromatic palette
+limited palette
+desaturated
+washed out
+vivid
+dark
+light
+bright
+dim
+red
+crimson
+scarlet
+pink
+magenta
+orange
+amber
+ochre
+yellow
+mustard
+gold
+olive
+green
+emerald
+teal
+turquoise
+cyan
+blue
+navy
+cobalt
+indigo
+violet
+purple
+lavender
+brown
+beige
+cream
+ivory
+grey
+charcoal
+black
+white
+silver
+
+# --- Composition ------------------------------------------------------------
+symmetry
+asymmetry
+rule of thirds
+centred composition
+diagonal composition
+leading lines
+repetition
+pattern
+grid
+radial
+spiral
+framing
+negative space
+dense
+sparse
+cluttered
+empty
+layered
+flat
+depth
+perspective
+one-point perspective
+isometric
+top down
+worm's eye view
+bird's eye view
+close-up
+extreme close-up
+wide shot
+panorama
+cropped
+full frame
+portrait orientation
+landscape orientation
+square format
+tiled
+scattered
+aligned
+overlapping
+reflection
+shadow play
+chiaroscuro
+rim lighting
+golden hour
+blue hour
+harsh light
+diffuse light
+dappled light
+spotlight
+
+# --- Subjects: natural ------------------------------------------------------
+landscape
+mountain
+hill
+valley
+cliff
+canyon
+desert
+dune
+forest
+woodland
+jungle
+rainforest
+meadow
+field
+grassland
+moorland
+tundra
+glacier
+volcano
+cave
+river
+stream
+waterfall
+lake
+pond
+marsh
+wetland
+coast
+beach
+cove
+island
+ocean
+wave
+sky
+cloud
+storm
+lightning
+rainbow
+sunset
+sunrise
+night sky
+stars
+moon
+aurora
+tree
+oak tree
+pine
+palm
+bare branches
+leaf
+flower
+rose
+orchid
+sunflower
+tulip
+wildflower
+blossom
+fern
+cactus
+succulent
+mushroom
+fruit
+seed pod
+bird
+seabird
+owl
+insect
+butterfly
+moth
+beetle
+bee
+spider
+fish
+shell
+coral
+mammal
+deer
+horse
+dog
+cat
+cattle
+sheep
+bear
+fox
+whale
+reptile
+snake
+lizard
+amphibian
+frog
+skeleton
+fossil
+mineral
+crystal
+
+# --- Subjects: built --------------------------------------------------------
+building
+house
+cottage
+cabin
+villa
+mansion
+apartment block
+tower
+skyscraper
+church
+cathedral
+chapel
+mosque
+temple
+shrine
+castle
+fort
+palace
+ruin
+barn
+warehouse
+factory
+power station
+bridge
+viaduct
+tunnel
+railway
+station
+airport
+harbour
+lighthouse
+windmill
+watermill
+silo
+greenhouse
+pavilion
+staircase
+doorway
+window
+arch
+column
+dome
+vault
+roof
+facade
+courtyard
+balcony
+corridor
+interior
+living room
+kitchen
+bedroom
+bathroom
+library
+museum
+gallery
+theatre
+studio
+workshop
+office
+shop
+market
+cafe
+restaurant
+street
+alley
+square
+park
+garden
+cemetery
+monument
+statue
+fountain
+
+# --- Subjects: people and objects -------------------------------------------
+portrait
+self-portrait
+group portrait
+candid
+crowd
+solitary figure
+child
+elderly person
+hands
+face
+eyes
+profile
+back view
+dancer
+musician
+worker
+craftsperson
+athlete
+soldier
+costume
+uniform
+traditional dress
+jewellery
+mask
+hat
+shoes
+still life
+tableware
+cutlery
+bottle
+vase
+basket
+book
+manuscript
+map
+letter
+newspaper
+poster
+sign
+typography
+lettering
+calligraphy
+handwriting
+stamp
+coin
+medal
+clock
+watch
+camera
+telescope
+microscope
+instrument
+tool
+machine
+engine
+gear
+circuit
+keyboard
+telephone
+radio
+television
+furniture
+chair
+armchair
+table
+desk
+bed
+cabinet
+shelf
+lamp
+mirror
+rug
+curtain
+textile
+quilt
+embroidery
+pottery
+sculpture
+carving
+relief
+painting
+drawing
+sketch
+print
+etching
+engraving
+woodcut
+lithograph
+collage
+diagram
+blueprint
+chart
+vehicle
+car
+vintage car
+bicycle
+motorcycle
+train
+locomotive
+tram
+bus
+truck
+tractor
+boat
+sailboat
+fishing boat
+ship
+canoe
+aircraft
+biplane
+helicopter
+rocket
+food
+bread
+cake
+fruit bowl
+vegetables
+fish dish
+meat
+cheese
+wine
+coffee
+tea
+
+# --- Scenes and activity ----------------------------------------------------
+cityscape
+skyline
+suburb
+village
+farmland
+industrial estate
+construction site
+quarry
+mine
+shipyard
+railway yard
+festival
+parade
+protest
+ceremony
+wedding
+funeral
+market day
+harvest
+fishing
+farming
+mining
+weaving
+pottery making
+blacksmithing
+printing
+cooking
+reading
+writing
+painting outdoors
+performance
+concert
+dance
+sport
+race
+game
+swimming
+sailing
+climbing
+hiking
+camping
+travel
+commute
+waiting
+sleeping
+working
+
+# --- Mood and atmosphere ----------------------------------------------------
+calm
+serene
+peaceful
+tranquil
+melancholy
+nostalgic
+wistful
+sombre
+bleak
+desolate
+lonely
+eerie
+uncanny
+mysterious
+dramatic
+tense
+chaotic
+energetic
+joyful
+playful
+whimsical
+humorous
+intimate
+cosy
+grand
+imposing
+monumental
+delicate
+fragile
+weathered
+decayed
+abandoned
+pristine
+polished
+raw
+rough
+clean
+dirty
+ordered
+disordered
+balanced
+unsettling
+dreamlike
+stark
+lush
+arid
+humid
+cold
+warm
+overcast
+sunlit
+moonlit
+foggy
+rainy
+snowy
+windy
+stormy
+hazy
+crisp

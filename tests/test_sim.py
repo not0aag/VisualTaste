@@ -17,6 +17,7 @@ from visualtaste.eval.sim import (
     LOGIT_SLOPE,
     SKIP_PROBABILITY,
     SimulatedUser,
+    calibrate_offset,
     create_simulated_profile,
     make_user,
     plant_interests,
@@ -329,3 +330,132 @@ class TestSimulatedProfile:
 
         assert repo.active_profile_id(connection) == real
         connection.close()
+
+
+class TestOffsetCalibration:
+    """The fix for a simulated user who liked 98% of the corpus.
+
+    These tests are about the *measurement* that justified the deviation from
+    the brief's constant, so they assert the mechanism (a quantile of the
+    affinity distribution) rather than a specific offset: the right offset is a
+    property of whatever corpus it is given.
+    """
+
+    def _cone_corpus(self, rows: int = 2_000, dim: int = 32) -> np.ndarray:
+        """Vectors in a narrow cone, like SigLIP 2's.
+
+        Built deliberately: random unit vectors in 32 dimensions are nearly
+        orthogonal (cosine ~ 0), which is exactly what the real embeddings are
+        *not*. A simulator tested only against orthogonal fixtures would never
+        have revealed the saturation.
+        """
+        rng = np.random.default_rng(7)
+        axis = np.zeros(dim, dtype=np.float32)
+        axis[0] = 1.0
+        # For `axis + sigma * noise` in d dimensions the expected pairwise
+        # cosine is about 1 / (1 + sigma^2 d), so sigma = 1/sqrt(d) puts the
+        # fixture at ~0.5 -- where SigLIP 2 actually sits.
+        points = axis + (1 / np.sqrt(dim)) * rng.normal(size=(rows, dim)).astype(np.float32)
+        return points / np.linalg.norm(points, axis=1, keepdims=True)
+
+    def test_the_fixture_really_is_a_cone(self):
+        vectors = self._cone_corpus()
+        rng = np.random.default_rng(0)
+        a = vectors[rng.choice(len(vectors), 500)]
+        b = vectors[rng.choice(len(vectors), 500)]
+
+        assert float(np.einsum("ij,ij->i", a, b).mean()) > 0.4
+
+    def test_the_briefs_offset_saturates_on_a_cone(self):
+        # The finding that motivated calibrating at all.
+        vectors = self._cone_corpus()
+        user = make_user(vectors, seed=1729)
+
+        probabilities = user.like_probability(vectors)
+
+        assert user.offset == LOGIT_OFFSET
+        assert float((probabilities > 0.9).mean()) > 0.9
+
+    def test_calibration_gives_a_roughly_even_split(self):
+        vectors = self._cone_corpus()
+        user = make_user(vectors, seed=1729, calibrate=True)
+
+        probabilities = user.like_probability(vectors)
+
+        assert float((probabilities > 0.5).mean()) == pytest.approx(0.5, abs=0.02)
+
+    def test_the_offset_lands_on_the_affinity_median(self):
+        vectors = self._cone_corpus()
+        user = make_user(vectors, seed=1729, calibrate=True)
+
+        median = float(np.median(user.affinity(vectors)))
+
+        assert user.offset == pytest.approx(median, abs=0.01)
+
+    def test_a_different_target_moves_the_split(self):
+        vectors = self._cone_corpus()
+        picky = make_user(vectors, seed=1729, calibrate=True, target_like_rate=0.2)
+
+        probabilities = picky.like_probability(vectors)
+
+        assert float((probabilities > 0.5).mean()) == pytest.approx(0.2, abs=0.03)
+        assert picky.offset > make_user(vectors, seed=1729, calibrate=True).offset
+
+    def test_calibration_is_per_user_not_global(self):
+        # Two planted tastes sit near differently sized regions of the corpus,
+        # so a single global offset would make one user pickier than the other
+        # for a reason that has nothing to do with the model being tested.
+        vectors = self._cone_corpus()
+        offsets = {
+            seed: make_user(vectors, seed=seed, calibrate=True).offset
+            for seed in (1729, 1730, 1731)
+        }
+
+        assert len({round(offset, 4) for offset in offsets.values()}) > 1
+
+    def test_calibration_is_deterministic(self):
+        vectors = self._cone_corpus()
+
+        first = make_user(vectors, seed=1729, calibrate=True).offset
+        second = make_user(vectors, seed=1729, calibrate=True).offset
+
+        assert first == second
+
+    def test_calibrate_offset_can_be_called_directly(self):
+        vectors = self._cone_corpus()
+        centroids = vectors[:3]
+
+        offset = calibrate_offset(vectors, centroids)
+        affinity = (vectors @ centroids.T).max(axis=1)
+
+        assert offset == pytest.approx(float(np.median(affinity)), abs=0.01)
+
+    def test_it_normalises_the_centroids_it_is_given(self):
+        # The quantile is of a *cosine*, so un-normalised centroids would
+        # scale the whole distribution and silently mis-calibrate.
+        vectors = self._cone_corpus()
+        centroids = vectors[:3]
+
+        plain = calibrate_offset(vectors, centroids)
+        scaled = calibrate_offset(vectors, centroids * 5.0)
+
+        assert plain == pytest.approx(scaled, abs=1e-4)
+
+    def test_calibration_does_not_change_the_slope(self):
+        # Only the offset deviates from §7.7; the soft boundary is the brief's.
+        vectors = self._cone_corpus()
+
+        assert make_user(vectors, seed=1729, calibrate=True).slope == LOGIT_SLOPE
+
+    def test_a_calibrated_user_still_likes_its_interests_most(self):
+        # Calibration must not break the thing being simulated: images near a
+        # planted centroid should still be the ones most likely to be liked.
+        vectors = self._cone_corpus()
+        user = make_user(vectors, seed=1729, calibrate=True)
+        affinity = user.affinity(vectors)
+        probabilities = user.like_probability(vectors)
+
+        nearest = np.argsort(-affinity)[:100]
+        furthest = np.argsort(affinity)[:100]
+
+        assert probabilities[nearest].mean() > probabilities[furthest].mean()

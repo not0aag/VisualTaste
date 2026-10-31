@@ -56,6 +56,10 @@ def next_batch(
         profile_id=profile_id,
         model_version=state.model_version,
         n=n,
+        # R0 covers the collection until the active rung has enough labels to
+        # be fitted. Without this, activating R1 on a fresh profile would make
+        # the first request fail instead of starting the ladder.
+        bootstrap=state.require_bootstrap(),
     )
 
     cards: list[FeedCardOut] = []

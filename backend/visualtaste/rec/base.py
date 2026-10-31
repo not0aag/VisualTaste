@@ -124,11 +124,24 @@ class Explanation:
     it. `detail` carries whatever that code needs -- the three nearest liked
     ids, a cluster label, a probability. `sentence` is the one line shown on the
     card.
+
+    The sentence is *derived* from the reason and the detail by
+    `rec.explain.sentence_for` unless one is passed explicitly. Rungs therefore
+    produce a code and its evidence and never phrasing, which is what keeps the
+    wording consistent across seven models: when "close to three images you
+    liked" needs rewording, there is one place to reword it, and a new rung
+    cannot invent its own voice by accident.
     """
 
     reason: str
-    sentence: str
+    sentence: str = ""
     detail: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self.sentence:
+            from visualtaste.rec.explain import sentence_for
+
+            self.sentence = sentence_for(self.reason, self.detail)
 
     def to_json(self) -> str:
         return json.dumps({"reason": self.reason, "sentence": self.sentence, **self.detail})

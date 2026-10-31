@@ -66,6 +66,13 @@ class ColdStartRecommender(Recommender):
         # survives across requests rather than restarting every batch.
         self._draws_per_cluster: dict[int, int] = {}
 
+        # Fitted from the moment it exists, without anyone calling `fit`. A
+        # rule with no parameters has nothing to learn, and the feed's
+        # bootstrap check (`rec/feed.build_batch`) asks `is_fitted` of whatever
+        # model it is given -- so an R0 that reported False would hand over to
+        # a second copy of itself and log a confusing "r0 is not fitted yet".
+        self.is_fitted = True
+
     def _fit(self, labels, features) -> None:
         """R0 has nothing to learn. Present because the interface requires it."""
 
@@ -129,10 +136,6 @@ class ColdStartRecommender(Recommender):
 
         return Explanation(
             reason="cold_start",
-            sentence=(
-                "Still learning what you like -- this is one of a spread of "
-                "different kinds of image, chosen to cover the collection."
-            ),
             detail={"cluster64": cluster, "draws_so_far": sum(self._draws_per_cluster.values())},
         )
 

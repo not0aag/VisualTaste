@@ -44,6 +44,7 @@ from visualtaste.eval.metrics import (
 )
 from visualtaste.eval.sim import SimulatedUser, create_simulated_profile
 from visualtaste.rec.feed import build_batch
+from visualtaste.rec.r0_coldstart import ColdStartRecommender
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,13 @@ def run_session(
     clusters = np.asarray(features.cluster64) if features.cluster64 is not None else None
     seen_positions: list[int] = []
 
+    # One instance for the whole session, because R0 keeps a round-robin
+    # position across batches. Rebuilding it per batch would restart at cluster
+    # 0 every time and make the cold-start phase cover far less ground than it
+    # does in the live app -- flattering or penalising every rung's early
+    # labels for a reason that has nothing to do with the rung.
+    bootstrap = ColdStartRecommender(seed=seed)
+
     while len(result.actions) < swipes:
         batch = build_batch(
             connection,
@@ -123,6 +131,10 @@ def run_session(
             profile_id=profile_id,
             model_version=f"sim_{model.rung}_{seed}",
             n=batch_size,
+            # The same handover the API does: R0 serves until the rung under
+            # test has enough labels. A study that skipped it would measure
+            # each rung from a warm start it never gets in practice.
+            bootstrap=bootstrap,
         )
         if not batch.cards:
             logger.info("%s: the pool ran out after %d swipes", model.rung, len(result.actions))
