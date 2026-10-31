@@ -1,6 +1,6 @@
 # Progress
 
-**Current phase:** 7 — Logging + evaluation harness
+**Current phase:** 8 — R1 Rocchio + R2 kNN + explanations
 **Last green commit:** `589b884` — phase 1, 2026-10-30
 **Running jobs:** none
 
@@ -145,14 +145,18 @@ Final status counts: `ok` 78,197 · `near_dup` 1,044 · `removed` 789 ·
 
 ## Phase 7 — Logging + evaluation harness
 
-- [ ] Impression/event/undo/supersede semantics tested
-- [ ] `eval/sim.py` planted-taste simulator driving the real feed code path
-- [ ] `eval/metrics.py` hand-implemented, §8 M10 examples asserted, AUC
-      cross-checked against sklearn
-- [ ] `eval/replay.py` time-ordered cuts + paired bootstrap 90% interval
-- [ ] `eval/propensity.py` self-normalised IPS, labelled noisy/educational
-- [ ] `eval/interleave.py` team-draft with sign test
-- [ ] Backups tested (DB snapshot to archive, keep 14; monthly JSONL append)
+- [x] Impression/event/undo/supersede semantics tested
+- [x] `eval/sim.py` planted-taste simulator driving the real feed code path
+      (asserted: impressions and events both reach the database)
+- [x] `eval/metrics.py` hand-implemented; §8 M10 asserted exactly (AUC 0.75,
+      NDCG@5 0.699, M5 loss 1.313); AUC and log loss cross-checked against sklearn
+- [x] `eval/replay.py` time-ordered cuts + paired bootstrap 90% interval;
+      a test asserts no test event ever precedes its training cut
+- [x] `eval/propensity.py` self-normalised IPS with an effective-sample-size
+      gate, labelled noisy/educational in the module docstring and the output
+- [x] `eval/interleave.py` team-draft with coin-flip first pick and sign test
+- [x] Backups tested (DB snapshot via `conn.backup`, keep 14; append-only
+      idempotent monthly JSONL that tolerates a truncated final line)
 
 ## Phase 8 — R1 + R2 + explanations
 
