@@ -57,3 +57,42 @@ Embedding will therefore be bound by reading and decoding 80,000 WebP files,
 not by the GPU. That is what the real-data benchmark in Phase 4 measures, and it
 is why the embedding job's `DataLoader` gets worker processes rather than a
 bigger batch.
+
+## Real-data embedding throughput (2026-10-31 16:44 UTC)
+
+- Command: `python -m visualtaste.jobs.embed --model all`
+- Includes WebP decode, preprocessing, host-to-device copy and the forward pass -- unlike the synthetic benchmark above, which times the forward pass alone.
+
+| model | embedded | failed | images/s | batch | total on disk |
+| --- | --- | --- | --- | --- | --- |
+| `dinov2_b14` | 79779 | 0 | 54 | 256 | 79779 |
+| `siglip2_b16_224` | 79779 | 0 | 41 | 128 | 79779 |
+
+- `dinov2_b14`: 17% of the synthetic-tensor rate (322 img/s), so the remaining 83% is decoding and IO.
+- `siglip2_b16_224`: 9% of the synthetic-tensor rate (438 img/s), so the remaining 91% is decoding and IO.
+
+## `GET /api/feed/next` latency (2026-10-31)
+
+- Command: 40 sequential calls through FastAPI's `TestClient` against the real
+  50,000-image selected pool, cold-start rung (R0), after three warm-up calls.
+- Target: p95 < 50 ms (brief §7.5).
+
+| version | median | p95 | max |
+| --- | --- | --- | --- |
+| first measurement | 216 ms | 245 ms | 264 ms |
+| after the fix | **34.4 ms** | **39.4 ms** | 43.9 ms |
+
+The first measurement missed the budget by five times, and the cause was one
+function. `candidate_positions` queried the 50,000 selected ids on every
+request and then looped over all 79,779 bundle rows testing set membership --
+roughly 130,000 Python-level operations on the hot path.
+
+Two changes fixed it. The `FeatureBundle` is now built over the selected pool
+rather than the whole embedded corpus, which both removes 30,000 unusable rows
+and makes the PCA-128 block align exactly (it is fitted on the selected pool,
+so against the full corpus it was incomplete and therefore silently dropped).
+And the candidate set is now computed as "every row, minus the seen ones",
+where the per-request cost is proportional to how many images have been seen --
+a few thousand at most -- instead of to the size of the corpus.
+
+Measured on the hardware at the top of this file, with the GPU idle.

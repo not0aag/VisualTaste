@@ -39,14 +39,53 @@ The condition never arose.
 
 ---
 
-## Q3, Q4, Q5
+## Q3 and Q4
 
-**Not asked yet.** No admin prompt, login wall or physical action has been
-needed (Q3); no data source has refused the planned use (Q4); the safety screen
-runs in Phase 5, so its flag rate is not yet known (Q5).
+**Not asked.** No admin prompt, login wall or physical action has been needed
+(Q3), and no data source refused the planned use (Q4) — all four were reachable
+and all four finished under a 0.01% failure rate.
+
+---
+
+## Q5 — Safety screen flagged more than 0.5% of candidates
+
+**Asked:** 2026-10-31
+**Context:** The screen flagged **789 of 78,986** images (0.999%), above the
+0.5% in §3 Q5.
+
+**The important caveat, given with the question:** that trip is mechanical, not
+a finding. §7.2 step 7 requires flagging *the top 1% by score regardless of
+content*, so the flag rate is always ≥1% and Q5 fires however clean the corpus
+is. Measured breakdown:
+
+| | count | share |
+| --- | --- | --- |
+| Above the calibrated threshold (0.0478) | 676 | 0.856% |
+| Flagged by the top-1% rule (by construction) | 789 | 0.999% |
+
+Margins ran from −0.107 to 0.115, with the top-1% cutoff at 0.046 — a narrow
+band, so this was "the 789 most unsafe-looking images", not 789 confident
+judgements. PD12M is largely museum collections, so many were likely to be
+anatomical studies, classical nudes and medical illustration.
+
+**Options offered:** (1) keep them quarantined for manual review in the app
+(recommended); (2) auto-remove all 789 (the brief's stated default);
+(3) drop the top-1% rule and keep only the calibrated threshold.
+
+**Default if unanswered:** option 2, per the brief.
+
+**Answer:** Option 2 — auto-remove all 789.
+
+**Applied:** each flagged image set to `status='removed'` and recorded in
+`removals` with the reason
+`safety_screen: auto-removed by owner decision (Q5, 2026-10-31)`. Nothing was
+deleted from disk: the originals, derivatives and rows all remain, so the
+decision is reversible with a single `UPDATE` if he changes his mind. The
+50,000-image selection was unaffected — it had already excluded them.
 
 ---
 
 ## Q6 — End of build
 
 Pending. Sent once every Phase 1-14 Definition of Done holds, per §12.
+

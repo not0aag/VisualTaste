@@ -88,37 +88,38 @@ def candidate_positions(
     features: FeatureBundle,
     profile_id: int,
 ) -> np.ndarray:
-    """Row indices of selected images this profile has not acted on.
+    """Row indices of pool images this profile has not acted on.
 
-    "Not acted on" uses `seen_image_ids`, which includes undone events: an
-    image rated and then un-rated has still been seen, and offering it again as
-    if it were new would look like a bug.
+    The bundle *is* the selected pool (see `api/deps.AppState._load_features`),
+    so every row is a candidate until it has been seen. That makes this the set
+    difference between all rows and the seen ones.
+
+    "Seen" uses `seen_image_ids`, which includes undone events: an image rated
+    and then un-rated has still been seen, and offering it again as if it were
+    new would look like a bug.
+
+    Why it is written this way. The obvious version queried the 50,000 selected
+    ids on every request and then looped over every row of the bundle testing
+    membership -- around 130,000 Python-level operations on the hot path, which
+    measured at a 245 ms p95 against the brief's 50 ms budget. Now the only
+    per-request work is proportional to the number of images already *seen*, a
+    few thousand at most even after months of use, plus one array write.
     """
-    selected = {
-        row["image_id"]
-        for row in connection.execute(
-            "SELECT image_id FROM images WHERE selected = 1 AND status = 'ok'"
-        )
-    }
-    if not selected:
-        # Before `jobs.select` has run, nothing is marked selected. Falling back
-        # to every usable image keeps the feed working during a partial build.
-        logger.warning(
-            "no images are marked selected; falling back to all usable images. "
-            "Run `python -m visualtaste.jobs.select`."
-        )
-        selected = {
-            row["image_id"]
-            for row in connection.execute("SELECT image_id FROM images WHERE status = 'ok'")
-        }
-
     seen = seen_image_ids(connection, profile_id)
-    available = selected - seen
+    if not seen:
+        return np.arange(len(features), dtype=np.int64)
 
-    positions = [
-        index for index, image_id in enumerate(features.image_ids) if image_id in available
+    seen_positions = [
+        position
+        for position in (features.position(image_id) for image_id in seen)
+        if position is not None
     ]
-    return np.array(positions, dtype=np.int64)
+    if not seen_positions:
+        return np.arange(len(features), dtype=np.int64)
+
+    available = np.ones(len(features), dtype=bool)
+    available[np.asarray(seen_positions, dtype=np.int64)] = False
+    return np.flatnonzero(available).astype(np.int64)
 
 
 def build_batch(

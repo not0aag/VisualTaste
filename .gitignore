@@ -38,3 +38,4 @@ desktop.ini
 frontend/playwright-report/
 frontend/test-results/
 frontend/.vitest/
+.e2e/

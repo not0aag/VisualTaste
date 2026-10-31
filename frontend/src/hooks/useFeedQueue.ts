@@ -69,6 +69,26 @@ export function useFeedQueue() {
   /** Ids already queued, so a refill cannot introduce a duplicate card. */
   const queuedIds = useRef(new Set<string>())
 
+  /**
+   * The authoritative queue, mirrored into state only for rendering.
+   *
+   * This ref exists because of a bug the end-to-end test caught: two
+   * keystrokes inside one render frame both read `queue[0]` from their render
+   * closure, so both rated the *same* card and one image received two
+   * verdicts while another was skipped entirely. Twenty swipes produced
+   * eighteen distinct images.
+   *
+   * `setQueue(previous => ...)` fixes the *update* but not the *read* -- the
+   * card being acted on still came from stale state. So reads go through the
+   * ref, which is mutated synchronously, and React state follows it.
+   */
+  const queueRef = useRef<FeedCard[]>([])
+
+  const commitQueue = useCallback((next: FeedCard[]) => {
+    queueRef.current = next
+    setQueue(next)
+  }, [])
+
   const refill = useCallback(async () => {
     if (fetching.current) return
     fetching.current = true
@@ -84,7 +104,7 @@ export function useFeedQueue() {
       fresh.forEach((card) => queuedIds.current.add(card.image.image_id))
 
       if (batch.cards.length === 0) setExhausted(true)
-      if (fresh.length > 0) setQueue((previous) => [...previous, ...fresh])
+      if (fresh.length > 0) commitQueue([...queueRef.current, ...fresh])
     } catch (cause) {
       if (cause instanceof ApiError) {
         setError(cause.detail)
@@ -96,7 +116,7 @@ export function useFeedQueue() {
       fetching.current = false
       setLoading(false)
     }
-  }, [])
+  }, [commitQueue])
 
   useEffect(() => {
     void refill()
@@ -118,11 +138,13 @@ export function useFeedQueue() {
 
   const swipe = useCallback(
     async (action: Action, dwellMs: number | null) => {
-      const card = queue[0]
+      // Read through the ref, not the render closure: a second keystroke in
+      // the same frame must act on the next card, not re-rate this one.
+      const card = queueRef.current[0]
       if (!card) return
 
       // Optimistic: the card leaves immediately.
-      setQueue((previous) => previous.slice(1))
+      commitQueue(queueRef.current.slice(1))
       setError(null)
 
       try {
@@ -139,7 +161,7 @@ export function useFeedQueue() {
       } catch (cause) {
         // Rollback. A silently dropped swipe would mean a label Alen believes
         // he gave that the model never received.
-        setQueue((previous) => [card, ...previous])
+        commitQueue([card, ...queueRef.current])
         setError(
           cause instanceof ApiError
             ? `Could not save that: ${cause.detail}`
@@ -147,7 +169,7 @@ export function useFeedQueue() {
         )
       }
     },
-    [queue],
+    [commitQueue],
   )
 
   const undo = useCallback(async () => {
@@ -157,7 +179,7 @@ export function useFeedQueue() {
       setLabels(result.labels_so_far)
       // The same card object, so its impression id survives and a re-rating
       // still attaches to the offer that was actually made.
-      setQueue((previous) => [lastSwipe.card, ...previous])
+      commitQueue([lastSwipe.card, ...queueRef.current])
       setLastSwipe(null)
       setExhausted(false)
       setError(null)
@@ -168,7 +190,7 @@ export function useFeedQueue() {
           : 'Could not undo that.',
       )
     }
-  }, [lastSwipe])
+  }, [lastSwipe, commitQueue])
 
   const state: FeedQueueState = {
     current: queue[0] ?? null,

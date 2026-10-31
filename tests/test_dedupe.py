@@ -223,3 +223,96 @@ class TestEmbeddingDuplicates:
     def test_the_default_threshold_matches_the_brief(self):
         assert EMBEDDING_COSINE_THRESHOLD == 0.95
         assert PHASH_HAMMING_THRESHOLD == 6
+
+
+class TestTransitiveChains:
+    """The bug that made the dedupe pass non-idempotent.
+
+    A chain where A resembles B and B resembles C, but A does not resemble C,
+    must collapse to a single group in one pass. The naive algorithm claimed B
+    for A and then skipped C (its only partner already claimed), so C survived
+    and a *second* run folded it -- successive runs folding 48 images, then 12,
+    then more.
+    """
+
+    def _chain(self):
+        # Three hashes each 4 bits from the next, so A-B and B-C are within the
+        # 6-bit threshold but A-C (8 bits) is not.
+        return [
+            HashedImage("a_biggest", "0000000000000000", 4000, 3000),
+            HashedImage("b_middle", "000000000000000f", 1200, 900),
+            HashedImage("c_smallest", "00000000000000ff", 400, 300),
+        ]
+
+    def test_a_chain_collapses_in_one_pass(self):
+        items = self._chain()
+
+        groups = find_near_duplicate_groups(items)
+
+        assert len(groups) == 1
+        assert groups[0].kept == "a_biggest"
+        assert set(groups[0].duplicates) == {"b_middle", "c_smallest"}
+
+    def test_the_endpoints_are_not_directly_similar(self):
+        # Confirms the fixture really is a chain rather than a clique, so the
+        # test above is exercising transitivity.
+        assert hamming_distance("0000000000000000", "00000000000000ff") == 8
+        assert hamming_distance("0000000000000000", "000000000000000f") == 4
+
+    def test_running_it_again_folds_nothing_further(self):
+        # The property the resumability contract depends on.
+        items = self._chain()
+        groups = find_near_duplicate_groups(items)
+        folded = {d for g in groups for d in g.duplicates}
+
+        survivors = [item for item in items if item.image_id not in folded]
+
+        assert find_near_duplicate_groups(survivors) == []
+
+    def test_an_embedding_chain_also_collapses_in_one_pass(self):
+        import numpy as np
+
+        # Three vectors in a line: consecutive pairs above 0.95, the ends below.
+        angle = np.arccos(0.97)
+        raw = np.array(
+            [
+                [1.0, 0.0],
+                [np.cos(angle), np.sin(angle)],
+                [np.cos(2 * angle), np.sin(2 * angle)],
+            ],
+            dtype=np.float32,
+        )
+        vectors = raw / np.linalg.norm(raw, axis=1, keepdims=True)
+        ids = ["big", "mid", "small"]
+        pixels = {"big": 9_000_000, "mid": 1_000_000, "small": 100_000}
+
+        groups = find_embedding_duplicate_groups(ids, vectors, pixels=pixels)
+
+        assert float(vectors[0] @ vectors[2]) < 0.95, "the fixture is not a chain"
+        assert len(groups) == 1
+        assert groups[0].kept == "big"
+        assert set(groups[0].duplicates) == {"mid", "small"}
+
+    def test_an_embedding_pass_is_idempotent(self):
+        import numpy as np
+
+        rng = np.random.default_rng(1729)
+        raw = rng.normal(size=(60, 6)).astype(np.float32)
+        # Build a few chains so there is something to collapse.
+        raw[1] = raw[0] + 0.01
+        raw[2] = raw[1] + 0.01
+        raw[40] = raw[39] + 0.01
+        vectors = raw / np.linalg.norm(raw, axis=1, keepdims=True)
+        ids = [f"i{n:03d}" for n in range(60)]
+        pixels = {image_id: 1000 - index for index, image_id in enumerate(ids)}
+
+        first = find_embedding_duplicate_groups(ids, vectors, pixels=pixels)
+        folded = {d for g in first for d in g.duplicates}
+        keep = [i for i, image_id in enumerate(ids) if image_id not in folded]
+
+        second = find_embedding_duplicate_groups(
+            [ids[i] for i in keep], vectors[keep], pixels=pixels
+        )
+
+        assert first, "the fixture should produce at least one group"
+        assert second == [], "a second pass must find nothing"

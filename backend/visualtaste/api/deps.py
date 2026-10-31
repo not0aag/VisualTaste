@@ -141,12 +141,23 @@ class AppState:
             logger.warning(self.notes[-1])
 
     def _load_features(self, connection: sqlite3.Connection) -> None:
-        """Assemble the `FeatureBundle` from the merged embedding files.
+        """Assemble the `FeatureBundle` for the selected pool.
 
-        SigLIP 2 is the index: it defines the row order every other block is
-        aligned to. A block that is missing rows for some images is dropped
-        entirely rather than padded, because a padded block would silently feed
-        zeros to a model as if they were real features.
+        **The pool, not the whole corpus.** 79,779 images are embedded but only
+        50,000 are `selected = 1`, and the difference matters for two reasons.
+
+        PCA-128 is fitted on the selected pool (brief §7.3), so it covers
+        exactly those 50,000 rows. Building the bundle over all 79,779 made the
+        PCA block incomplete, and because an incomplete block is dropped rather
+        than padded, R3's entire feature space quietly disappeared -- visible
+        only as a note on `GET /health`.
+
+        And the feed's candidate pool *is* the selected pool, so indexing the
+        bundle to it removes 30,000 rows that no request can ever use.
+
+        SigLIP 2 defines the row order; every other block is aligned to it. A
+        block missing rows is dropped entirely rather than padded, because
+        padded zeros would reach a model looking like real features.
         """
         siglip_store = EmbeddingStore(self.settings.embedding_dir(SIGLIP2_KEY), SIGLIP2_KEY)
         if not siglip_store.vectors_path.exists():
@@ -157,8 +168,24 @@ class AppState:
             logger.warning(self.notes[-1])
             return
 
-        vectors, ids = siglip_store.load()
-        image_ids = ids.tolist()
+        all_vectors, all_ids = siglip_store.load()
+        pool = self._selected_pool(connection)
+
+        if pool:
+            keep = [i for i, image_id in enumerate(all_ids.tolist()) if image_id in pool]
+            vectors = all_vectors[keep]
+            image_ids = [all_ids[i] for i in keep]
+        else:
+            # Before `jobs.select` has run nothing is marked selected, so fall
+            # back to everything embedded. Noted, because a feed drawing from
+            # the unselected corpus is not the one the brief specifies.
+            self.notes.append(
+                "no images are marked selected; using the whole embedded corpus. "
+                "Run `python -m visualtaste.jobs.select`."
+            )
+            logger.warning(self.notes[-1])
+            vectors = all_vectors
+            image_ids = all_ids.tolist()
 
         dinov2 = self._aligned_block(
             EmbeddingStore(self.settings.embedding_dir(DINOV2_KEY), DINOV2_KEY),
@@ -185,6 +212,15 @@ class AppState:
             colour is not None,
             pca is not None,
         )
+
+    def _selected_pool(self, connection: sqlite3.Connection) -> set[str]:
+        """The image ids the feed may draw from: selected and still usable."""
+        return {
+            row["image_id"]
+            for row in connection.execute(
+                "SELECT image_id FROM images WHERE selected = 1 AND status = 'ok'"
+            )
+        }
 
     def _aligned_block(
         self, store: EmbeddingStore, image_ids: list[str], name: str

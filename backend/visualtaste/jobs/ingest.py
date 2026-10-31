@@ -478,6 +478,89 @@ def _insert(
     )
 
 
+def colour_for_thumb(thumb_path: Path) -> np.ndarray | None:
+    """Recompute one image's colour descriptor from its thumbnail.
+
+    Module-level and taking a plain path, so it can be sent to a worker process
+    on Windows (see `_init_worker`).
+    """
+    from PIL import Image
+
+    try:
+        with Image.open(thumb_path) as thumb:
+            thumb.load()
+            return colour_descriptor(thumb.convert("RGB"))
+    except Exception:
+        return None
+
+
+def repair_colour_features(
+    settings: Settings,
+    connection: sqlite3.Connection,
+    *,
+    workers: int | None = None,
+) -> int:
+    """Recompute colour vectors for usable images that have none. Returns the count.
+
+    This exists because of a real gap. `save_colour_features` writes the whole
+    block once, at the end of a run, so an ingestion run that is killed part
+    way leaves rows in `images` whose colour vectors were never persisted --
+    the images are *ingested* but have no entry in `colour64.npy`. That happened
+    here: the first Megalith run was stopped to pick up a performance fix, and
+    1,639 of the selected 50,000 were left without a descriptor.
+
+    The symptom was quiet rather than loud: the API found the colour block
+    incomplete and dropped it entirely rather than padding it with zeros, so the
+    neural ranker would simply have had one fewer feature block than intended.
+    `GET /health` said so, which is how it was noticed.
+
+    Repair is cheap because the thumbnails already exist -- no original is
+    re-read and no image is re-downloaded.
+    """
+    have = set()
+    ids_path = settings.features_dir / "colour64_ids.npy"
+    if ids_path.exists():
+        have = set(np.load(ids_path, allow_pickle=False).tolist())
+
+    wanted = repo.image_ids_with_status(connection, "ok")
+    missing = [image_id for image_id in wanted if image_id not in have]
+    if not missing:
+        logger.info("colour features: nothing to repair")
+        return 0
+
+    logger.info("colour features: recomputing %d missing descriptors", len(missing))
+    pool_size = workers if workers is not None else settings.worker_processes
+    paths = [settings.thumb_path(image_id) for image_id in missing]
+
+    recovered: dict[str, np.ndarray] = {}
+    failed = 0
+
+    if pool_size <= 1:
+        _init_worker()
+        vectors = [colour_for_thumb(path) for path in paths]
+    else:
+        with ProcessPoolExecutor(max_workers=pool_size, initializer=_init_worker) as pool:
+            vectors = list(pool.map(colour_for_thumb, paths, chunksize=64))
+
+    for image_id, vector in zip(missing, vectors, strict=True):
+        if vector is None:
+            failed += 1
+            continue
+        recovered[image_id] = vector
+
+    if failed:
+        logger.warning(
+            "colour features: %d thumbnails could not be read; run jobs.ingest "
+            "to rebuild their derivatives",
+            failed,
+        )
+
+    if recovered:
+        save_colour_features(settings, connection, recovered)
+    logger.info("colour features: repaired %d of %d", len(recovered), len(missing))
+    return len(recovered)
+
+
 def manifest_metadata(manifest: Manifest) -> dict[str, dict[str, str | None]]:
     """Index a manifest by `source_id`, keeping only the attribution fields.
 
@@ -651,6 +734,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--skip-dedupe", action="store_true", help="do not run pHash near-duplicate marking"
     )
+    parser.add_argument(
+        "--repair-colour",
+        action="store_true",
+        help="recompute colour descriptors for usable images that have none, "
+        "then exit (see repair_colour_features)",
+    )
     parser.add_argument("--workers", type=int, default=None)
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args(argv)
@@ -662,6 +751,12 @@ def main(argv: list[str] | None = None) -> int:
     connection = repo.init_db(settings.db_path)
     if args.init_only:
         print(f"database ready at {settings.db_path}")
+        connection.close()
+        return 0
+
+    if args.repair_colour:
+        repaired = repair_colour_features(settings, connection, workers=args.workers)
+        print(f"repaired {repaired} colour descriptor(s)")
         connection.close()
         return 0
 

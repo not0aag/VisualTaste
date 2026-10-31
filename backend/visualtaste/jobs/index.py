@@ -174,8 +174,12 @@ def main(argv: list[str] | None = None) -> int:
     if not args.skip_dedupe:
         folded = mark_embedding_duplicates(settings, connection, threshold=args.threshold)
 
-    # Indexes are built *after* deduplication so they do not contain vectors
-    # for images that were just folded away.
+    # The indexes hold a vector for *every* embedded image, including ones
+    # folded away or quarantined. That is deliberate: keeping the row order
+    # identical to `vectors.npy` means the id mapping never drifts, and the
+    # Review page still wants neighbours for a quarantined image. Callers
+    # filter by status instead -- `GET /images/{id}/similar` drops non-`ok`
+    # neighbours, and the feed draws only from `selected = 1 AND status = 'ok'`.
     built = build_indexes(settings)
 
     summary = render_summary(built, folded, connection)

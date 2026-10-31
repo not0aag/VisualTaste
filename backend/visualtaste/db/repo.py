@@ -59,12 +59,35 @@ def connect(db_path: Path, *, read_only: bool = False) -> sqlite3.Connection:
     """
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # `check_same_thread=False` deserves its justification, because the default
+    # exists for a good reason.
+    #
+    # Python's guard raises if a connection is touched from a thread other than
+    # the one that created it. FastAPI runs synchronous endpoints in a thread
+    # pool and -- this is the part that bites -- a generator dependency's setup
+    # and its teardown can land on *different* pool threads. So a connection
+    # opened for a request was being closed from another thread, and swiping
+    # quickly produced intermittent 500s:
+    #
+    #     sqlite3.ProgrammingError: SQLite objects created in a thread can only
+    #     be used in that same thread
+    #
+    # Disabling the check is safe here because the invariant it protects is
+    # still held by construction: one connection per request, never shared
+    # between concurrent requests. The threads touch it one after another, not
+    # at the same time. Concurrent *writes* are handled by WAL plus
+    # `busy_timeout`, which is a different mechanism entirely.
     if read_only:
         connection = sqlite3.connect(
-            f"file:{db_path}?mode=ro", uri=True, timeout=BUSY_TIMEOUT_MS / 1000
+            f"file:{db_path}?mode=ro",
+            uri=True,
+            timeout=BUSY_TIMEOUT_MS / 1000,
+            check_same_thread=False,
         )
     else:
-        connection = sqlite3.connect(db_path, timeout=BUSY_TIMEOUT_MS / 1000)
+        connection = sqlite3.connect(
+            db_path, timeout=BUSY_TIMEOUT_MS / 1000, check_same_thread=False
+        )
 
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")

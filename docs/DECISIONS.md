@@ -212,3 +212,70 @@ images) in exchange for roughly half an hour of wall clock, and display-only
 colour swatches computed from 1,024 sampled pixels instead of 4,096. The
 64-bin colour *descriptor* -- the thing the models actually learn from -- is
 unchanged and still computed from every pixel of the thumbnail.
+
+---
+
+## 10. Near-duplicate grouping uses connected components, not one-group-per-pass
+
+**Date:** 2026-10-31
+**Found by:** running `jobs.index` twice and noticing the second run folded
+more images instead of nothing.
+
+**The bug.** The original algorithm walked the images and, for each one,
+claimed every *unclaimed* image similar to it. That resolves only one layer of
+overlap per pass. Given a chain where A resembles B and B resembles C but A
+does not resemble C, A claims B, and then C is skipped because its only
+partner is already claimed. C survives, and a later run folds it. Successive
+runs folded 48 images, then 12, then more — slowly converging.
+
+Nothing in the database was *wrong*, but "run the job twice and the second run
+is a no-op" is a property the whole resumability contract (§6.2) rests on, and
+this quietly did not have it.
+
+**The fix.** Similarity is now treated as an undirected graph: collect every
+pair above the threshold, then take connected components with union-find, and
+collapse each component to its highest-resolution member. One pass, and a
+second pass finds nothing. Applied to both the pHash and the embedding passes,
+which shared the flaw.
+
+**Effect on the corpus.** The correct algorithm folds *more* in a single pass,
+because it resolves whole components rather than pairs:
+
+| pass | before the fix | after |
+| --- | --- | --- |
+| pHash (Hamming ≤ 6) | 251 | 311 |
+| DINOv2 (cosine ≥ 0.95) | 48 | 733 |
+
+The near-duplicate state was rebuilt from scratch with the fixed algorithm and
+verified stable: re-running both passes folds 0.
+
+**Tests added:** a three-image chain whose endpoints are deliberately *not*
+similar to each other (so the test exercises transitivity rather than a
+clique), plus an idempotency test for each pass.
+
+---
+
+## 11. Database connections are opened with `check_same_thread=False`
+
+**Date:** 2026-10-31
+**Found by:** the Playwright smoke test, via a 500 on `POST /api/events`.
+
+Swiping quickly produced intermittent 500s:
+
+    sqlite3.ProgrammingError: SQLite objects created in a thread can only be
+    used in that same thread
+
+FastAPI runs synchronous endpoints in a thread pool, and — the part that bites
+— a generator dependency's setup and its teardown can land on *different* pool
+threads. So a connection opened for a request was being closed from another
+thread.
+
+**Chosen:** `check_same_thread=False`, with the reasoning written at the call
+site. The invariant Python's guard protects is still held by construction: one
+connection per request, never shared between concurrent requests. The threads
+touch it one after another, not simultaneously. Concurrent *writes* are a
+different mechanism, handled by WAL plus `busy_timeout`.
+
+This is the kind of bug that only appears under real concurrency, which is
+exactly why the brief asks for an end-to-end test rather than trusting unit
+tests.

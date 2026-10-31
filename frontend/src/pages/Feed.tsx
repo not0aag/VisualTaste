@@ -29,34 +29,38 @@ export function Feed() {
   const feed = useFeedQueue()
   const { current } = feed
   const [showExplanation, setShowExplanation] = useState(false)
-  const [busy, setBusy] = useState(false)
 
   const dwell = useDwellTimer(current?.image.image_id ?? null)
 
+  /**
+   * Deliberately *not* gated on an in-flight request.
+   *
+   * An earlier version ignored input while a swipe was being saved, and the
+   * end-to-end test caught what that costs: swiping at speed silently dropped
+   * verdicts, stalling at 10 of 20. For someone labelling a few thousand
+   * images that is a real defect, not a test artefact.
+   *
+   * It is safe to accept the next key immediately because the queue advances
+   * optimistically and synchronously -- `feed.current` is already the next
+   * card by the time this returns, so a fast second keystroke applies to that
+   * card rather than double-rating this one. A failed save rolls its own card
+   * back into the queue.
+   */
   const commit = useCallback(
-    async (action: Action) => {
-      if (!current || busy) return
+    (action: Action) => {
+      if (!current) return
       dwell.noteInteraction()
       const { dwellMs } = dwell.read()
-      setBusy(true)
-      try {
-        await feed.swipe(action, dwellMs)
-      } finally {
-        setBusy(false)
-      }
+      void feed.swipe(action, dwellMs)
     },
-    [current, busy, dwell, feed],
+    [current, dwell, feed],
   )
 
-  const undo = useCallback(async () => {
-    if (busy) return
-    setBusy(true)
-    try {
-      await feed.undo()
-    } finally {
-      setBusy(false)
-    }
-  }, [busy, feed])
+  const undo = useCallback(() => {
+    // `lastSwipe` is cleared on success, so this cannot undo twice.
+    if (!feed.lastSwipe) return
+    void feed.undo()
+  }, [feed])
 
   const openSource = useCallback(() => {
     const url = current?.image.attribution.source_url
@@ -76,29 +80,29 @@ export function Feed() {
         case 'l':
         case 'L':
           event.preventDefault()
-          void commit('like')
+          commit('like')
           break
         case 'ArrowLeft':
         case 'j':
         case 'J':
           event.preventDefault()
-          void commit('dislike')
+          commit('dislike')
           break
         case 'ArrowDown':
         case ' ':
           event.preventDefault()
-          void commit('skip')
+          commit('skip')
           break
         case 's':
         case 'S':
           event.preventDefault()
-          void commit('save')
+          commit('save')
           break
         case 'z':
         case 'Z':
         case 'Backspace':
           event.preventDefault()
-          void undo()
+          undo()
           break
         case 'i':
         case 'I':
@@ -160,9 +164,8 @@ export function Feed() {
       <main className="flex min-h-0 flex-1 items-center justify-center px-2">
         <SwipeCard
           card={current}
-          onCommit={(action) => void commit(action)}
+          onCommit={commit}
           showExplanation={showExplanation}
-          disabled={busy}
         />
       </main>
 
@@ -176,20 +179,20 @@ export function Feed() {
         )}
 
         <div className="flex items-center gap-2">
-          <Button onClick={() => void commit('dislike')} testId="btn-dislike" tone="dislike">
+          <Button onClick={() => commit('dislike')} testId="btn-dislike" tone="dislike">
             Dislike
           </Button>
-          <Button onClick={() => void commit('skip')} testId="btn-skip">
+          <Button onClick={() => commit('skip')} testId="btn-skip">
             Skip
           </Button>
-          <Button onClick={() => void commit('save')} testId="btn-save" tone="save">
+          <Button onClick={() => commit('save')} testId="btn-save" tone="save">
             Save
           </Button>
-          <Button onClick={() => void commit('like')} testId="btn-like" tone="like">
+          <Button onClick={() => commit('like')} testId="btn-like" tone="like">
             Like
           </Button>
           <Button
-            onClick={() => void undo()}
+            onClick={() => undo()}
             testId="btn-undo"
             disabled={!feed.lastSwipe}
           >

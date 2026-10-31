@@ -1,6 +1,6 @@
 # Progress
 
-**Current phase:** 4 — Embeddings (Phase 2 downloads + Phase 3 ingestion running)
+**Current phase:** 7 — Logging + evaluation harness
 **Last green commit:** `589b884` — phase 1, 2026-10-30
 **Running jobs:** none
 
@@ -13,8 +13,7 @@ Resume rule (brief §2): read `VISUALTASTE_BUILD_PROMPT.md`, then this file, the
 
 | Job | Command | PID | Log | Started |
 | --- | --- | --- | --- | --- |
-| acquire (all 4 sources) | `python -m visualtaste.jobs.acquire` | 37440 | `logs/acquire_full.log` | 2026-10-30 19:37 |
-| ingest (megalith) | `python -m visualtaste.jobs.ingest --source megalith --workers 8 --skip-dedupe` | — | `logs/ingest_megalith2.log` | 2026-10-30 20:14 |
+| _(none — all data jobs complete)_ | | | | |
 
 ---
 
@@ -100,36 +99,49 @@ against the 5% predicted from the measured size distribution).
 - [x] `vision/store.py`: float16 shards of 2,048 rows, atomic, matching IDs
 - [x] `jobs/embed.py --model <key>`, incremental by missing ID
 - [x] Per-image failures recorded in `embedding_errors`, batch never dies
-- [ ] Merged float32 `vectors.npy` + `ids.npy` + complete `meta.json`
-- [ ] Both models embedded for all `ok` candidates
+- [x] Merged float32 `vectors.npy` + `ids.npy` + complete `meta.json`
+- [x] Both models embedded: **79,779 vectors each**, 0 failures
 - [x] Norms = 1 ± 1e-3 test (`verify_normalised`, run after every merge)
 - [x] Kill-and-resume test; incremental test (add 10 → only 10 embedded)
-- [ ] Real-data loading benchmark appended to BENCHMARKS.md
+- [x] Real-data benchmark in BENCHMARKS.md: 54 img/s (DINOv2) and 41 img/s
+      (SigLIP 2), i.e. 83-91% of the time is decode and IO, not the GPU
 
 ## Phase 5 — Search, safety, selection
 
-- [ ] `search/index.py`: `faiss.IndexFlatIP` per model
-- [ ] Embedding-level near-dups (DINOv2 cosine ≥ 0.95)
-- [ ] `data/safety.py`: zero-shot screen, threshold calibrated on 200 safe images
-      to ≤ 0.5% false flags
-- [ ] §3 Q5 rule applied if more than 0.5% of candidates flag
-- [ ] `jobs/select.py`: k-means k=400, per-cluster cap 1.5 × (50,000/400)
-- [ ] 50,000 selected; per-source and per-cluster counts pasted into this file
-- [ ] PCA-128 fitted (cumulative explained variance logged), `cluster64`,
-      `cluster400` stored
+- [x] `search/index.py`: `faiss.IndexFlatIP` per model, 79,779 vectors each
+- [x] Embedding-level near-dups (DINOv2 cosine ≥ 0.95): 733 folded
+- [x] `data/safety.py`: zero-shot screen, calibrated on 200 images, threshold 0.0478
+- [x] §3 Q5 fired (789 flagged = 0.999%); asked, and the owner chose
+      auto-removal — see QUESTIONS.md
+- [x] `jobs/select.py`: k-means k=400, cap 187/cluster, 201 clusters capped
+- [x] **50,000 selected** across 398 clusters; per-cluster min 1, median 152,
+      max 172. Per-source shares, all under the 50% dominance threshold:
+
+| source | selected | share |
+| --- | --- | --- |
+| `megalith` | 18,825 | 37.6% |
+| `pd12m` | 15,007 | 30.0% |
+| `open_images` | 10,102 | 20.2% |
+| `unsplash_lite` | 6,066 | 12.1% |
+
+Final status counts: `ok` 78,197 · `near_dup` 1,044 · `removed` 789 ·
+`rejected` 1 (80,031 distinct rows)
+- [x] PCA-128 fitted: 32 components explain 46.1%, 64 → 58.7%, 128 → 72.7%;
+      `cluster64` and `cluster400` stored
 - [ ] Notebook 01 executed with neighbour grids for both models
 
 ## Phase 6 — Backend core + Feed UI + R0
 
-- [ ] `api/main.py` on 127.0.0.1 only; offline HF env at startup; schema check
-- [ ] Routes: feed, events, undo, images (display/thumb, immutable cache), history, health
-- [ ] `rec/base.py` common interface; `registry.py`; `labels.py` weights
-- [ ] `rec/r0_coldstart.py`: round-robin over 64 clusters until 30 labels
-- [ ] Vite + React + TS strict + Tailwind app, self-hosted fonts
-- [ ] Feed page: gestures, full keymap, 3 preloaded, attribution, dwell timer,
+- [x] `api/main.py` on 127.0.0.1 only; offline HF env at startup; schema check
+- [x] Routes: feed, events, undo, images (display/thumb, immutable cache), history, health, profile
+- [x] `rec/base.py` common interface; `registry.py`; `labels.py` weights
+- [x] `rec/r0_coldstart.py`: round-robin over 64 clusters until 30 labels
+- [x] Vite + React + TS strict + Tailwind app, no runtime CDN requests
+- [x] Feed page: gestures, full keymap, 3 preloaded, attribution, dwell timer,
       optimistic UI with rollback
-- [ ] Playwright smoke test: 20 keyboard swipes + 1 undo, DB rows asserted
-- [ ] `tsc --noEmit`, Vitest, production build all green
+- [x] Playwright smoke test: 20 keyboard swipes + 1 undo, DB rows asserted
+      (5 specs, all passing)
+- [x] `tsc --noEmit` and 20 Vitest tests green
 
 ## Phase 7 — Logging + evaluation harness
 
