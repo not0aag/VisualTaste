@@ -23,7 +23,10 @@ importers:
       framer-motion:
         specifier: ^11.11.17
         version: 11.18.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      plotly.js-dist-min:
+      plotly.js-basic-dist-min:
+        specifier: 2.35.2
+        version: 2.35.2
+      plotly.js-gl2d-dist-min:
         specifier: 2.35.2
         version: 2.35.2
       react:
@@ -1184,8 +1187,11 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
-  plotly.js-dist-min@2.35.2:
-    resolution: {integrity: sha512-oWDTf2kYOmTtEw3epeeSBdfH/H3OSktF0suST9oI6fIgKfbyd4MT7TPh8+CVzdHYllYon24Q0HI1hZjOnLqk6g==}
+  plotly.js-basic-dist-min@2.35.2:
+    resolution: {integrity: sha512-+apJo+/k9YcDH7W39uIONM+t4P6x15w2MEZnmbi3JjGAl9yW1ZJmyqq4xtynwuIbyU26Nv+4oVu1IULGgUkzlQ==}
+
+  plotly.js-gl2d-dist-min@2.35.2:
+    resolution: {integrity: sha512-unHF+uJJoozFHgIX0PkHRyrnF/gRqVnHmbDnvwTRxcalV+U2pGY9UhEMebo/6j09Tb2Q83UhXb8DWVHvBZa+0Q==}
 
   postcss-import@15.1.0:
     resolution: {integrity: sha512-hpr+J05B2FVYUAXHeK1YyI267J/dDDhMU6B6civm8hSY1jYJnBXxzKDKDswzJmtLHryrjhnDjqqp/49t8FALew==}
@@ -2520,7 +2526,9 @@ snapshots:
     dependencies:
       playwright-core: 1.64.1
 
-  plotly.js-dist-min@2.35.2: {}
+  plotly.js-basic-dist-min@2.35.2: {}
+
+  plotly.js-gl2d-dist-min@2.35.2: {}
 
   postcss-import@15.1.0(postcss@8.5.32):
     dependencies:

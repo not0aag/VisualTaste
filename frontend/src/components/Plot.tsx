@@ -1,18 +1,29 @@
 /**
  * A thin Plotly wrapper: `Plotly.react` into a div whenever the data changes.
  *
- * Plotly is loaded with a dynamic `import()`, so its ~3 MB bundle is fetched
- * only by the pages that chart something (Model Lab, Embedding Map) and never
- * delays the Feed. Direct use rather than `react-plotly.js`: one effect is all
+ * Plotly is loaded with a dynamic `import()`, so it is fetched only by the
+ * pages that chart something and never delays the Feed. And only the part
+ * each chart needs: the `basic` build (scatter, bar; 1.1 MB) for Model Lab,
+ * the `gl2d` build (adds WebGL scatter; 2.0 MB) for the 50,000-point map.
+ * The full build these replace is 4.6 MB. Direct use rather than `react-plotly.js`: one effect is all
  * the integration this needs, and it saves a dependency.
  */
 
 import { useEffect, useRef } from 'react'
 
 type PlotlyModule = typeof import('plotly.js-dist-min')
+export type PlotlyBundle = 'basic' | 'gl2d'
 
-let plotly: Promise<PlotlyModule> | null = null
-const loadPlotly = () => (plotly ??= import('plotly.js-dist-min'))
+const bundles: Partial<Record<PlotlyBundle, Promise<PlotlyModule>>> = {}
+const loadPlotly = (bundle: PlotlyBundle): Promise<PlotlyModule> =>
+  (bundles[bundle] ??= (
+    bundle === 'gl2d' ? import('plotly.js-gl2d-dist-min') : import('plotly.js-basic-dist-min')
+  ) as Promise<PlotlyModule>)
+
+/** The smallest Plotly build that can draw every trace in `data`. */
+export function bundleFor(data: Plotly.Data[]): PlotlyBundle {
+  return data.some((trace) => (trace as { type?: string }).type === 'scattergl') ? 'gl2d' : 'basic'
+}
 
 export interface PlotProps {
   data: Plotly.Data[]
@@ -57,12 +68,16 @@ function themed(layout: Partial<Plotly.Layout> | undefined): Partial<Plotly.Layo
 
 export function Plot({ data, layout, className, onHover, testId }: PlotProps) {
   const ref = useRef<HTMLDivElement>(null)
+  // The build that drew this chart, so the cleanup purges with the same one.
+  const drawnWith = useRef<PlotlyBundle | null>(null)
 
   useEffect(() => {
     let cancelled = false
     const element = ref.current
-    void loadPlotly().then((Plotly) => {
+    const bundle = bundleFor(data)
+    void loadPlotly(bundle).then((Plotly) => {
       if (cancelled || !element) return
+      drawnWith.current = bundle
       void Plotly.react(element, data, themed(layout), {
         displaylogo: false,
         responsive: true,
@@ -84,7 +99,8 @@ export function Plot({ data, layout, className, onHover, testId }: PlotProps) {
   useEffect(() => {
     const element = ref.current
     return () => {
-      if (element) void loadPlotly().then((Plotly) => Plotly.purge(element))
+      const bundle = drawnWith.current
+      if (element && bundle) void loadPlotly(bundle).then((Plotly) => Plotly.purge(element))
     }
   }, [])
 
