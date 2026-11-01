@@ -1,7 +1,7 @@
 # Data and derived artefacts (regenerable from the originals archive)
-data/
-archive/
-logs/
+/data/
+/archive/
+/logs/
 *.db
 *.db-wal
 *.db-shm
