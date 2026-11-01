@@ -57,7 +57,7 @@ SIMULATED, and nothing a simulation does can touch your real profile.
 - **Read:** `rec/r4_thompson.py` (the Laplace posterior, the Cholesky draw), `rec/rerank.py` (MMR, the exploration quota).
 - **Notebook:** `05_thompson_sampling_and_mmr`. Its section 2 is the finding in DECISIONS #25: at τ = 1, one posterior draw's noise outweighs the signal.
 - **Tests:** `tests/test_thompson.py`. P(B beats A) = 0.37; the sampled covariance equals H⁻¹.
-- **Try:** set `VT_R4_TAU_POST=0.25` in `.env`, restart, and train R4 in Model Lab. On the timeline, compare like rate and coverage before and after. Then start an interleaving experiment between your R3 and R4 versions and watch the sign test.
+- **Try:** the default is `VT_R4_TAU_POST=0.1`, chosen by the sensitivity study (#25). Set it to `1.0` (Part 2's specified value) in `.env`, restart, and train R4 in Model Lab. On the timeline, compare like rate and coverage before and after: the feed turns almost random. Then start an interleaving experiment between your R3 and R4 versions and watch the sign test.
 
 ## M8 · k-means and multiple interests (R5)
 

@@ -70,7 +70,11 @@ BLOCK_SOURCES: dict[str, tuple[str, ...]] = {
 #: The feature files `jobs.select` writes, per block, for standardisation stats.
 STATS_STEMS: dict[str, str] = {"sig": "pca128", "dino": "dinov2_pca128", "col": "colour64"}
 
-DEFAULT_BLOCKS: tuple[str, ...] = ("sig",)
+#: R3's blocks: `sig+dino` by the §5.6 rule applied to phase9_ablation
+#: (DECISIONS #28). `col` helped on S3 but cost 0.014 log loss on S1.
+DEFAULT_BLOCKS: tuple[str, ...] = ("sig", "dino")
+#: Blocks a model drops, with a warning, when the bundle does not have them.
+OPTIONAL_BLOCKS: frozenset[str] = frozenset({"dino", "col"})
 
 #: A column whose std is below this is constant over the pool (an always-empty
 #: colour bin). It is centred but not scaled, so it stays exactly zero rather

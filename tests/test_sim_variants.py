@@ -369,3 +369,15 @@ class TestDefaultRungChoice:
         assert choice == "r4"
         assert mean_rank == {"r4": 1.0, "r3": 2.0, "r1": 3.0}
         assert combined["S1_semantic"]["r4"] > combined["S1_semantic"]["r3"]
+
+
+class TestLearningCurvePoint:
+    def test_a_replay_metric_maps_to_its_seed_result_field(self):
+        # Regression: phase9_h2 passed the replay point's `log_loss` straight
+        # into SeedResult, which names the field `replay_log_loss`.
+        from visualtaste.eval.study import _point_result
+
+        result = _point_result("r3", 1729, 0.61, "replay_log_loss")
+        assert result.metric("replay_log_loss") == pytest.approx(0.61)
+        with pytest.raises(TypeError):
+            _point_result("r3", 1729, 0.61, "log_loss")

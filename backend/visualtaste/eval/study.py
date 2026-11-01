@@ -730,12 +730,14 @@ def learning_curve(
         seeds = sorted(set(a) & set(b))
         if not seeds:
             continue
+        # A replay point's `auc`/`log_loss` is a SeedResult's `replay_auc`/`replay_log_loss`.
+        field_name = f"replay_{metric}"
         fake = {
-            ("curve", first): [_point_result(first, s, a[s], metric) for s in seeds],
-            ("curve", second): [_point_result(second, s, b[s], metric) for s in seeds],
+            ("curve", first): [_point_result(first, s, a[s], field_name) for s in seeds],
+            ("curve", second): [_point_result(second, s, b[s], field_name) for s in seeds],
         }
         comparison = compare(
-            fake, variant="curve", first=first, second=second, metric=metric, expect=expect
+            fake, variant="curve", first=first, second=second, metric=field_name, expect=expect
         )
         out.append(
             CurvePoint(

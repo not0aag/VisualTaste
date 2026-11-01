@@ -240,6 +240,21 @@ class TestRecommender:
         assert scores[liked_side].mean() > scores[~liked_side].mean() + 0.2
         assert np.all((scores > 0) & (scores < 1))
 
+    def test_default_blocks_drop_dino_when_the_bundle_has_none(self):
+        features = toy_bundle()  # SigLIP only
+        model = LogisticRecommender().fit(separable_labels(features), features)
+        assert model.is_fitted
+        assert model.blocks == ("sig",)
+
+    def test_default_blocks_use_dino_when_present(self):
+        base = toy_bundle()
+        rng = np.random.default_rng(5)
+        dino = rng.normal(size=(len(base), 6)).astype(np.float32)
+        features = FeatureBundle(image_ids=base.image_ids, siglip=base.siglip, dinov2=dino)
+        model = LogisticRecommender().fit(separable_labels(features), features)
+        assert model.blocks == ("sig", "dino")
+        assert model.w.shape == (16 + 6,)
+
     def test_too_few_labels_leave_it_unfitted_with_a_reason(self):
         features = toy_bundle()
         model = LogisticRecommender().fit(separable_labels(features, n=20), features)

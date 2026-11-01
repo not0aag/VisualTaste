@@ -83,7 +83,12 @@ from visualtaste.rec.base import (
     UnfittedModelError,
     require_fitted,
 )
-from visualtaste.rec.features import DEFAULT_BLOCKS, design_matrix
+from visualtaste.rec.features import (
+    DEFAULT_BLOCKS,
+    OPTIONAL_BLOCKS,
+    block_available,
+    design_matrix,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -298,6 +303,7 @@ class LogisticRecommender(Recommender):
         keep = np.array([features.position(i) is not None for i in labels.image_ids], dtype=bool)
         y = labels.targets[keep].astype(np.float64)
         s = labels.weights[keep].astype(np.float64)
+        self._drop_unavailable_optional_blocks(features)
         X = design_matrix(features, self.static_blocks)[rows].astype(np.float64)
 
         if self.uses_interests:
@@ -381,6 +387,18 @@ class LogisticRecommender(Recommender):
     @property
     def uses_interests(self) -> bool:
         return INTEREST_BLOCK in self.blocks
+
+    def _drop_unavailable_optional_blocks(self, features: FeatureBundle) -> None:
+        """Fit without `dino`/`col` when the bundle lacks them (a corpus not yet
+        embedded with DINOv2, or a small test bundle); `sig` is never optional."""
+        missing = [
+            b
+            for b in self.static_blocks
+            if b in OPTIONAL_BLOCKS and not block_available(features, b)
+        ]
+        if missing:
+            logger.warning("%s: blocks %s unavailable; fitting without them", self.rung, missing)
+            self.blocks = tuple(b for b in self.blocks if b not in missing)
 
     def _training_interest_features(
         self, features: FeatureBundle, rows: np.ndarray, actions: list[str]

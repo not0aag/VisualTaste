@@ -577,9 +577,9 @@ best because simulated skips carry no taste signal, is tested as stated.
 Each simulated session writes impressions and events through the real feed
 path, so two study processes on one SQLite file would contend for its single
 write lock. Phase 9's studies take about five hours and Phase 10's several
-more. `VT_DB_FILE` overrides the database path, and `scripts/
-run_phase10_studies.ps1` runs against `data/db/sim_studies_b.db`, a
-`sqlite3.backup` copy of the main database. Results are unaffected:
+more. `VT_DB_FILE` overrides the database path, and
+`scripts/run_studies.ps1 -Database <name>` (or `run_final_split.ps1`) runs
+against `data/db/<name>.db`, a `sqlite3.backup` copy of the main database. Results are unaffected:
 - simulated profiles live only in whichever database ran them;
 - every result a study reports is cached as JSON under `data/eval/<study>/`.
 
@@ -671,6 +671,27 @@ Laplace posterior does here, not a bug.
 - Choose the default per Part 2 §6.5 (the H3 criterion) from the extended
   grid, and record it here when the study is in.
 
+**Outcome (2026-11-01, `phase10_sensitivity`, S1, 10 seeds × 1,000 swipes):**
+no grid point meets H3's 70% gain retention. The like-rate gain over R0 that
+each setting keeps, as a share of R3's:
+
+| tau_post | like rate | coverage | all found | gain kept (90% CI) |
+| --- | --- | --- | --- | --- |
+| 0.1 | 0.525 | 0.80 | 1.00 | 0.35 [0.25, 0.43] |
+| 0.25 | 0.481 | 0.90 | 1.00 | 0.08 [0.01, 0.14] |
+| 0.5 | 0.462 | 0.94 | 1.00 | -0.04 [-0.11, 0.03] |
+| 1 (specified) | 0.440 | 0.97 | 1.00 | -0.17 [-0.20, -0.13] |
+| 2 | 0.415 | 0.97 | 1.00 | -0.32 [-0.39, -0.26] |
+
+**Chosen: `VT_R4_TAU_POST = 0.1`.** H3's criterion is to keep the most of R3's
+gain while still finding every interest. Every tau finds all three, so the
+choice is the one that keeps the most gain. lambda_mmr 0.9 beat 0.7 by +0.010,
+an inconclusive margin (CI includes 0), and quota 0 or 10 did no better than 5,
+so both stay as specified. 0.1 is the edge of the grid. A smaller tau moves R4
+towards R3 plus MMR and the quota, and with it back towards R3's coverage
+collapse. 0.80 coverage at 0.1 against R3's 0.34 is the trade being bought.
+H3 is reported as **not supported** at every tau.
+
 ## 26. Dwell: the promotion rule, and why the feature cannot rank
 
 **Date:** 2026-11-01
@@ -705,3 +726,22 @@ dwell number is labelled SIMULATED.
 - **H5 lowers R6's 1,500-label minimum to 0** (`r6:minlabels=0`) so the learning
   curve can show R6 at 500 labels. The minimum stays a rule for real data: the
   CLI job refuses, and the Model Lab warns.
+
+## 28. R3's default feature blocks are `sig+dino`
+
+**Date:** 2026-11-01
+**Evidence:** `phase9_ablation`, 20 seeds x 1,000 swipes, docs/EVALUATION.md.
+
+Part 2 §5.6's rule keeps a block only if it helps on at least one variant and
+costs less than 0.005 log loss on S1:
+
+| block | helps on | S1 replay log loss cost (90% CI) | kept? |
+| --- | --- | --- | --- |
+| `dino` (over `sig`) | S2: like rate +0.034, log loss -0.015 (both supported) | -0.010 [-0.024, +0.001] (it helps) | **yes** |
+| `col` (over `sig+dino`) | S3: like rate +0.029 (supported) | +0.014 [+0.003, +0.027] | no |
+
+`DEFAULT_BLOCKS = ("sig", "dino")` in `rec/features.py`, used by R3, R4 and
+both +R5 rungs. When a bundle has no DINOv2 vectors (a corpus not yet embedded,
+or a small test bundle), the optional block is dropped with a warning instead
+of failing the fit. Studies recorded before this change ran with `sig` alone,
+as their spec column says. `phase14_final` runs with `sig+dino`.

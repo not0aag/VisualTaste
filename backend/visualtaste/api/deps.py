@@ -571,7 +571,10 @@ def load_rung(rung: str, settings: Settings) -> Recommender:
             from visualtaste.rec.r3_logreg import LogisticRecommender as Base
         else:
             from visualtaste.rec.r4_thompson import ThompsonRecommender as Base
-        model = Base(blocks=("sig", "int"))
+        from visualtaste.rec.features import DEFAULT_BLOCKS
+        from visualtaste.rec.r3_logreg import INTEREST_BLOCK
+
+        model = Base(blocks=(*DEFAULT_BLOCKS, INTEREST_BLOCK))
         model.rung = rung
         model.seed_for_interests = settings.seed
         model.concept_labeller = concept_labeller(settings)

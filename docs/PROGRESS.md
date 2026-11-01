@@ -1,8 +1,8 @@
 # Progress
 
-**Current phase:** 8 — R1 Rocchio + R2 kNN + explanations
-**Last green commit:** `589b884` — phase 1, 2026-10-30
-**Running jobs:** none
+**Current phase:** 14 — final evaluation and handover
+**Last green commit:** `c9c28ac` — phases 9-13 checkpoint, 2026-11-01
+**Running jobs:** see "Part 2 status" below
 
 Resume rule (brief §2): read `VISUALTASTE_BUILD_PROMPT.md`, then this file, then
 `DECISIONS.md`, then `QUESTIONS.md`, and restart from the first unchecked box.
@@ -208,22 +208,22 @@ from 100% of clusters to about 40%. That is the argument for R4.
 Code for Phases 9-13 is complete and tested: `c9c28ac`, `check.ps1` green (999 pytest, 35 Vitest, build, 11 Playwright).
 What remains is the studies, their write-ups, and Phase 14's measurements and handover.
 
-**Running jobs.** Each runs on its own DB copy (#22), caches every seed under `data/eval/`, appends its section to EVALUATION.md when done, and resumes if re-run.
+**Running jobs.** Each runs on its own DB copy (#22), caches every seed under `data/eval/`, and resumes if re-run.
+The Phase 9-11 studies, `phase12_logs` and the sensitivity grid all finished overnight (exit 0) and are in EVALUATION.md.
+`phase9_h2` crashed on a metric-name mismatch in `learning_curve` (fixed, regression test added) and is being re-run.
 
 | started | runner | PID | studies | log |
 | --- | --- | --- | --- | --- |
-| 10-31 22:10 | `scripts/run_phase9_studies.ps1` (main DB) | 31280 | `phase9_rungs`, `phase9_h2`, `phase9_skip`, `phase9_ablation` (20 × 1,000) | `logs/phase9_studies_20261031_221022.log.err` |
-| 10-31 22:57 | `scripts/run_phase10_studies.ps1` (`sim_studies_b.db`) | 8652 | `phase10_h3` (20), `phase10_checks` (20), `phase10_sensitivity` (10, already cached by the run below) | `logs/phase10_studies_20261031_225723.log.err` |
-| 10-31 23:3x | `run_studies.ps1 -Database sim_c` | 11336 | `phase11_h4` (20 × 1,000) | `logs/phase11_studies.log.err` |
-| 10-31 23:3x | `run_studies.ps1 -Database sim_d` | 33952 | `phase12_logs` (10 × 5,000, R4 logging) | `logs/phase12_logs.log.err` |
-| 11-01 | `run_studies.ps1 -Database sim_e` | 37140 | `phase10_sensitivity` (10, extended τ grid #25) | `logs/phase10_sensitivity.log.err` |
+| 11-01 08:04 | `scripts/run_final_split.ps1 -Database sim_f1` | 4392 | `phase14_final` S1, S2, S3 (20 × 1,000) | `logs/final_a_20261101_080407.log.err` |
+| 11-01 08:04 | `scripts/run_final_split.ps1 -Database sim_f2` | 38144 | `phase14_final` S4, S5, S6 (20 × 1,000) | `logs/final_b_20261101_080407.log.err` |
+| 11-01 08:05 | `run_studies.ps1 -Database sim_h` | 7940 | `phase9_h2` (20), then `phase12_h5` (10 × 5,000, GPU) | `logs/h2_h5_20261101_080503.log.err` |
+
+Chosen from the finished studies: `VT_R4_TAU_POST = 0.1` (#25) and R3's default blocks `sig+dino` (#28).
 
 **Next, in order:**
-1. When `phase10_sensitivity` is in: choose `VT_R4_TAU_POST` on the H3 criterion and record it in #25.
-2. Start `phase14_final` split across three processes with `--variants` (S1,S2 / S3,S4 / S5,S6), then a final render run.
-3. After `phase12_logs`: run `--study phase12_h5 --seeds 10` (GPU).
-4. When the CPU is idle: `jobs.latency`, the kill-mid-retrain check, and the restore check.
-5. Write up EVALUATION.md, figures, DEFAULT_RUNG, the fresh-clone check, the empty real profile, and the final message.
+1. When both final splits are in: `--study phase14_final` (report and DEFAULT_RUNG rule), then `jobs.figures --study phase14_final`.
+2. When the CPU is idle: `jobs.latency`.
+3. EVALUATION "what we learned", the fresh-clone check, the empty real profile, a backup, and the final message.
 
 ## Phase 9 — R3 + ablations
 
@@ -233,7 +233,8 @@ What remains is the studies, their write-ups, and Phase 14's measurements and ha
 - [x] λ chosen by time-ordered validation over 1e-4 … 1e1, every retrain
 - [x] Online retrain every 20 labels + atomic hot-swap, tested (old model during retrain, failure keeps old, never two in flight)
 - [x] Notebook 03 executed
-- [ ] Studies recorded: `phase9_rungs`, `phase9_h2`, `phase9_skip` (0.25 / 1.0 / exclude, #20), `phase9_ablation`
+- [x] Studies recorded: `phase9_rungs`, `phase9_skip` (0.25 / 1.0 / exclude, #20), `phase9_ablation` (blocks `sig+dino`, #28)
+- [ ] `phase9_h2` recorded (re-running after the fix)
 
 ## Phase 10 — R4 exploration
 
@@ -242,7 +243,7 @@ What remains is the studies, their write-ups, and Phase 14's measurements and ha
 - [x] Monte-Carlo inclusion propensities (200 draws) after the response; clipped at 0.005 and flagged
 - [x] Interleaving: API, feed, Model Lab panel; simulated interleaving runner; IPS check
 - [x] Notebook 05 executed
-- [ ] H3, sensitivity (τ grid extended, #25), interleaving and IPS checks recorded; default τ chosen
+- [x] H3, sensitivity (τ grid extended, #25), interleaving and IPS checks recorded; default τ = 0.1 chosen
 - [ ] `/feed/next` p95 < 50 ms with R4 (`jobs.latency`, once the CPU is idle)
 
 ## Phase 11 — R5 multi-interest
@@ -251,7 +252,7 @@ What remains is the studies, their write-ups, and Phase 14's measurements and ha
 - [x] R3+R5 / R4+R5 time-respecting features; leakage test; snapshot cache
 - [x] Interests persisted; `/profile/taste`; Profile page with Vitest coverage
 - [x] Notebook 06 executed
-- [ ] H4 and S5 drift recovery recorded
+- [x] H4 and S5 drift recovery recorded
 
 ## Phase 12 — R6 neural ranker
 
@@ -277,7 +278,10 @@ What remains is the studies, their write-ups, and Phase 14's measurements and ha
 - [x] ARCHITECTURE.md: Mermaid data flow, `/feed/next` path, table writers, traceability
 - [ ] `phase14_final` study, figures, DEFAULT_RUNG chosen and set in config
 - [ ] Latency table at 0 / 100 / 1,000 / 3,000 labels
-- [ ] Robustness: kill mid-retrain; delete active artefact (tested); restore (tested; run once on real data)
+- [x] Robustness, run 2026-11-01 on a copy of the real DB (`data/db/sim_robust.db`):
+  - **Kill mid-retrain:** a real uvicorn on :8002 was killed right after the 40th event queued a retrain. All 40 events were in the DB. After a restart the startup retrain fitted R3 and the feed served 5 cards. PASS.
+  - **Restore:** snapshot, add a profile (381 → 382), restore. Row counts equal the snapshot's for images, profiles, impressions, events, rec_models and interests. PASS.
+  - **Deleted active artefact:** `tests/test_training.py::test_a_deleted_active_artefact_falls_back_on_restart`. PASS.
 - [ ] Fresh-clone check; final empty real profile; backup; final message
 
 ---
