@@ -54,7 +54,18 @@ export function EmbeddingMap() {
           </label>
         )}
         {hovered && (
-          <img src={api.thumbUrl(hovered)} alt="" className="ml-auto h-16 w-16 rounded-[3px] object-cover shadow-glow ring-1 ring-accent/50" data-testid="hover-thumb" />
+          <img
+            // Keyed so each point gets a fresh element; the online demo bundles
+            // only some thumbnails, and a missing one hides instead of breaking.
+            key={hovered}
+            src={api.thumbUrl(hovered)}
+            alt=""
+            onError={(event) => {
+              event.currentTarget.style.visibility = 'hidden'
+            }}
+            className="ml-auto h-16 w-16 rounded-[3px] object-cover shadow-glow ring-1 ring-accent/50"
+            data-testid="hover-thumb"
+          />
         )}
       </header>
       <div className="grid min-h-0 flex-1 gap-3 px-3 pb-3 lg:grid-cols-2">

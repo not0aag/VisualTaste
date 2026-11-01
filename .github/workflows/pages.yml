@@ -1,0 +1,64 @@
+name: Demo (GitHub Pages)
+
+# Builds the frontend in demo mode (VITE_DEMO=1): every API call is answered
+# in the browser from fixtures captured by scripts/capture_demo.py, which live
+# in the `demo-assets` release so the repository stays small.
+#
+# Manual for now: it needs the `demo-assets` release and Pages set to
+# "GitHub Actions". Once both exist, add `push: branches: [main]` below.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Fetch the demo assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download demo-assets --pattern demo-assets.tar.gz --dir /tmp
+          mkdir -p frontend/public/demo
+          tar -xzf /tmp/demo-assets.tar.gz -C frontend/public/demo
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Build in demo mode
+        working-directory: frontend
+        env:
+          VITE_DEMO: '1'
+          VITE_BASE: /${{ github.event.repository.name }}/
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec vite build
+          # GitHub Pages serves 404.html for unknown paths: send deep links
+          # (/VisualTaste/profile) to the app, whose router takes over.
+          cp dist/index.html dist/404.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

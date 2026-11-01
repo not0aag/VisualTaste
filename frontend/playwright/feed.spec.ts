@@ -18,7 +18,12 @@ import { test, expect, type Page } from '@playwright/test'
 // Absolute paths, resolved from this file: a relative one would be interpreted
 // against whatever directory the runner happens to be in.
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
-const PYTHON = path.join(repoRoot, '.venv', 'Scripts', 'python.exe')
+// The same venv python the config's web server uses; VT_PYTHON overrides it.
+const PYTHON =
+  process.env.VT_PYTHON ??
+  (process.platform === 'win32'
+    ? path.join(repoRoot, '.venv', 'Scripts', 'python.exe')
+    : path.join(repoRoot, '.venv', 'bin', 'python'))
 const DB_PATH = path.join(repoRoot, '.e2e', 'data', 'db', 'visualtaste.db')
 
 /**

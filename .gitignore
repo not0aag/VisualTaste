@@ -44,3 +44,7 @@ frontend/.vitest/
 /VISUALTASTE_BUILD_PROMPT.md
 /VISUALTASTE_PART2_PROMPT.md
 /VisualTaste*Blueprint.md
+
+# Demo assets for the Pages build: downloaded from the demo-assets release
+/frontend/public/demo/
+/demo-assets/
