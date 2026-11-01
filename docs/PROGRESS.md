@@ -218,6 +218,11 @@ The Phase 9-11 studies, `phase12_logs` and the sensitivity grid all finished ove
 | 11-01 08:04 | `scripts/run_final_split.ps1 -Database sim_f2` | 38144 | `phase14_final` S4, S5, S6 (20 × 1,000) | `logs/final_b_20261101_080407.log.err` |
 | 11-01 08:05 | `run_studies.ps1 -Database sim_h` | 7940 | `phase9_h2` (20), then `phase12_h5` (10 × 5,000, GPU) | `logs/h2_h5_20261101_080503.log.err` |
 
+**If the machine restarted:** the three runs above stopped, but every finished seed is cached, so relaunching resumes where they left off:
+`.\scriptsun_final_split.ps1 -Database sim_f1 -Variants "S1_semantic,S2_appearance,S3_colour"`,
+`.\scriptsun_final_split.ps1 -Database sim_f2 -Variants "S4_conjunctive,S5_drift,S6_six_interests"`,
+`.\scriptsun_studies.ps1 -Database sim_h -Studies "phase9_h2:20:1000","phase12_h5:10:5000"`.
+
 Chosen from the finished studies: `VT_R4_TAU_POST = 0.1` (#25) and R3's default blocks `sig+dino` (#28).
 
 **Next, in order:**
