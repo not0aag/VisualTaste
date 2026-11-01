@@ -120,19 +120,22 @@ export function ModelLab() {
   }, [curve])
 
   return (
-    <main className="h-full overflow-y-auto bg-canvas-200 dark:bg-canvas-900" data-testid="model-lab">
+    <main className="page" data-testid="model-lab">
       {simulated && (
-        <div className="sticky top-0 z-10 bg-amber-500 px-4 py-1 text-center text-sm font-semibold text-black" role="status">
+        <div className="sticky top-0 z-10 border-b border-save/60 bg-[repeating-linear-gradient(135deg,rgba(251,191,36,0.9)_0_14px,rgba(251,191,36,0.75)_14px_28px)] px-4 py-1.5 text-center font-mono text-xs font-semibold uppercase tracking-wider text-black" role="status">
           SIMULATED profile {summary?.profile_id}: these are a planted-taste simulator's numbers, not Alen's.
         </div>
       )}
-      <div className="mx-auto flex max-w-6xl flex-col gap-5 p-4 sm:p-6">
+      <div className="page-inner">
         <header className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-lg font-semibold">Model Lab</h1>
-          <label className="text-sm">
+          <div>
+            <p className="eyebrow">Diagnostics</p>
+            <h1 className="page-title mt-1">Model Lab</h1>
+          </div>
+          <label className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-canvas-400">
             Profile{' '}
             <select
-              className="rounded border border-canvas-400 bg-transparent px-2 py-1"
+              className="max-w-[18rem] normal-case tracking-normal"
               value={profileId ?? ''}
               onChange={(e) => setProfileId(e.target.value === '' ? null : Number(e.target.value))}
             >
@@ -146,7 +149,11 @@ export function ModelLab() {
           </label>
         </header>
 
-        {message && <p className="text-xs text-canvas-500" role="log">{message}</p>}
+        {message && (
+          <p className="panel border-accent/30 px-3 py-2 font-mono text-[11px] text-accent/90" role="log">
+            &gt; {message}
+          </p>
+        )}
 
         {summary && (
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-5" aria-label="Counters">
@@ -159,52 +166,54 @@ export function ModelLab() {
         )}
 
         {timeline && (
-          <Plot data={timeline.data} layout={timeline.layout} className="h-80 w-full" testId="timeline" />
+          <div className="panel p-3">
+            <Plot data={timeline.data} layout={timeline.layout} className="h-80 w-full" testId="timeline" />
+          </div>
         )}
 
         {models && (
-          <section aria-label="Versions" className="overflow-x-auto">
-            <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
-              <span className="font-medium">Versions</span>
-              <span className="text-canvas-500">default rung: {models.default_rung}</span>
+          <section aria-label="Versions" className="panel overflow-x-auto p-4">
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-medium text-white">Versions</span>
+              <span className="chip">default <span className="text-accent">{models.default_rung}</span></span>
               {TRAINABLE.map((rung) => (
-                <button key={rung} className="rounded border border-canvas-400 px-2 py-0.5 text-xs"
+                <button key={rung} className="btn btn-sm font-mono"
                   onClick={() => act(`train ${rung}`, () => api.train(rung, false))}>
                   train {rung}
                 </button>
               ))}
-              <span className="text-xs text-canvas-500" title="R6 never trains inside the API.">
+              <span className="font-mono text-[11px] text-canvas-500" title="R6 never trains inside the API.">
                 R6: <code>python -m visualtaste.jobs.train_neural</code>
                 {summary && summary.labels < R6_MIN_LABELS
                   ? ` (needs ${R6_MIN_LABELS} labels; this profile has ${summary.labels})`
                   : ''}
               </span>
             </div>
-            <table className="w-full min-w-[720px] text-left text-xs">
-              <thead className="text-canvas-500">
+            <table className="w-full min-w-[720px] text-left font-mono text-xs">
+              <thead className="text-[10px] uppercase tracking-wider text-canvas-500">
                 <tr>
                   {['version', 'rung', 'labels', 'AUC', 'log loss', 'NDCG@10', 'ECE', 'score p95', 'λ', ''].map((h) => (
-                    <th key={h} className="px-2 py-1 font-normal">{h}</th>
+                    <th key={h} className="border-b border-white/10 px-2 py-2 font-normal">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {models.versions.map(versionRow).map((row) => (
-                  <tr key={row.version} className={row.active ? 'bg-emerald-500/10' : ''}>
-                    <td className="px-2 py-1 font-mono">{row.version}{row.active ? ' ●' : ''}</td>
-                    <td className="px-2 py-1">{row.rung}</td>
-                    <td className="px-2 py-1">{row.labels}</td>
-                    <td className="px-2 py-1">{row.auc}</td>
-                    <td className="px-2 py-1">{row.logLoss}</td>
-                    <td className="px-2 py-1">{row.ndcg}</td>
-                    <td className="px-2 py-1">{row.ece}</td>
-                    <td className="px-2 py-1">{row.p95}</td>
-                    <td className="px-2 py-1">{row.lambda}</td>
-                    <td className="space-x-1 px-2 py-1">
-                      <button className="underline" onClick={() => act(`evaluate ${row.version}`, () => api.evaluate(row.version))}>evaluate</button>
+                  <tr key={row.version} className={`border-b border-white/[0.04] transition-colors hover:bg-white/[0.03] ${row.active ? 'bg-accent/[0.08] text-white shadow-[inset_2px_0_0_#22d3ee]' : 'text-canvas-300'}`}>
+                    <td className="px-2 py-1.5">{row.version}{row.active ? <span className="ml-1 text-accent">●</span> : ''}</td>
+                    <td className="px-2 py-1.5">{row.rung}</td>
+                    <td className="px-2 py-1.5">{row.labels}</td>
+                    <td className="px-2 py-1.5">{row.auc}</td>
+                    <td className="px-2 py-1.5">{row.logLoss}</td>
+                    <td className="px-2 py-1.5">{row.ndcg}</td>
+                    <td className="px-2 py-1.5">{row.ece}</td>
+                    <td className="px-2 py-1.5">{row.p95}</td>
+                    <td className="px-2 py-1.5">{row.lambda}</td>
+                    <td className="space-x-2 px-2 py-1.5">
+                      <button className="link" onClick={() => act(`evaluate ${row.version}`, () => api.evaluate(row.version))}>evaluate</button>
                       {!row.active && (
                         <button
-                          className="underline"
+                          className="link"
                           onClick={() => {
                             if (row.rung === 'r6' && summary && summary.labels < R6_MIN_LABELS) {
                               setMessage(
@@ -228,7 +237,7 @@ export function ModelLab() {
         <section className="grid gap-4 lg:grid-cols-2">
           {scores && (
             <Plot
-              className="h-64 w-full"
+              className="panel h-72 w-full p-2"
               testId="score-distribution"
               data={[
                 { x: binCentres(scores.edges), y: scores.counts, type: 'bar', name: 'unseen images' },
@@ -239,7 +248,7 @@ export function ModelLab() {
           )}
           {diversity && (
             <Plot
-              className="h-64 w-full"
+              className="panel h-72 w-full p-2"
               data={[
                 { y: diversity.batch_diversity, name: 'batch diversity', type: 'scatter', mode: 'lines' },
                 { y: diversity.batch_novelty, name: 'novelty', type: 'scatter', mode: 'lines' },
@@ -249,7 +258,7 @@ export function ModelLab() {
           )}
           {calibration && calibration.samples > 0 && (
             <Plot
-              className="h-64 w-full"
+              className="panel h-72 w-full p-2"
               data={[
                 { x: [0, 1], y: [0, 1], name: 'perfect', type: 'scatter', mode: 'lines', line: { dash: 'dot' } },
                 { x: calibration.bins.map((b) => b.mean_predicted), y: calibration.bins.map((b) => b.observed_rate), text: calibration.bins.map((b) => `n = ${b.count}`), name: 'observed', type: 'scatter', mode: 'lines+markers' },
@@ -258,11 +267,12 @@ export function ModelLab() {
             />
           )}
           {exploration && (
-            <div className="rounded-lg bg-canvas-100 p-3 text-sm dark:bg-canvas-950" aria-label="Exploration yield">
-              <h2 className="mb-1 font-medium">Exploration yield</h2>
-              <p>Probe cards: {intervalText(exploration.explore)}</p>
-              <p>Other cards: {intervalText(exploration.exploit)}</p>
-              <p className="mt-1 text-xs text-canvas-500">
+            <div className="panel p-4 text-sm" aria-label="Exploration yield">
+              <p className="eyebrow mb-1">Bandit</p>
+              <h2 className="mb-3 font-medium text-white">Exploration yield</h2>
+              <p className="font-mono text-xs text-canvas-300">probe cards <span className="text-accent">{intervalText(exploration.explore)}</span></p>
+              <p className="mt-1 font-mono text-xs text-canvas-300">other cards <span className="text-violet">{intervalText(exploration.exploit)}</span></p>
+              <p className="mt-3 text-xs text-canvas-400">
                 {overlaps(exploration.explore, exploration.exploit)
                   ? 'The intervals overlap: no detectable cost to exploring yet.'
                   : 'The intervals do not overlap.'}
@@ -287,9 +297,10 @@ export function ModelLab() {
 
 function Counter({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg bg-canvas-100 p-3 dark:bg-canvas-950">
-      <p className="text-xs text-canvas-500">{label}</p>
-      <p className="truncate text-sm font-medium" title={String(value)}>{value}</p>
+    <div className="panel relative overflow-hidden p-3">
+      <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
+      <p className="eyebrow">{label}</p>
+      <p className="mt-1 truncate font-mono text-lg font-semibold text-white" title={String(value)}>{value}</p>
     </div>
   )
 }
@@ -307,25 +318,26 @@ function InterleavingPanel({
   const [b, setB] = useState('')
   const active = experiments.find((e) => e.active)
   return (
-    <section className="rounded-lg bg-canvas-100 p-3 text-sm dark:bg-canvas-950" aria-label="Interleaving">
-      <h2 className="mb-2 font-medium">Interleaving (team draft)</h2>
+    <section className="panel p-4 text-sm" aria-label="Interleaving">
+      <p className="eyebrow mb-1">A/B</p>
+      <h2 className="mb-3 font-medium text-white">Interleaving (team draft)</h2>
       {active ? (
         <div className="flex flex-wrap items-center gap-2">
           <span>Running: {active.version_a} (a) vs {active.version_b} (b)</span>
-          <button className="rounded bg-red-600 px-2 py-0.5 text-white" onClick={() => onAct('stop experiment', () => api.stopExperiment(active.experiment_id))}>stop</button>
+          <button className="btn btn-sm btn-danger" onClick={() => onAct('stop experiment', () => api.stopExperiment(active.experiment_id))}>stop</button>
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           {[['A', a, setA], ['B', b, setB]].map(([label, value, set]) => (
-            <select key={label as string} className="rounded border border-canvas-400 bg-transparent px-2 py-1 text-xs" value={value as string} onChange={(e) => (set as (v: string) => void)(e.target.value)}>
+            <select key={label as string} value={value as string} onChange={(e) => (set as (v: string) => void)(e.target.value)}>
               <option value="">version {label as string}…</option>
               {versions.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
           ))}
-          <button className="rounded border border-canvas-400 px-2 py-0.5 text-xs" disabled={!a || !b || a === b} onClick={() => onAct('start experiment', () => api.startExperiment(a, b))}>start</button>
+          <button className="btn btn-sm" disabled={!a || !b || a === b} onClick={() => onAct('start experiment', () => api.startExperiment(a, b))}>start</button>
         </div>
       )}
-      <ul className="mt-2 space-y-1 text-xs text-canvas-600 dark:text-canvas-400">
+      <ul className="mt-3 space-y-1 font-mono text-[11px] text-canvas-400">
         {experiments.slice(0, 8).map((e) => (
           <li key={e.experiment_id}>#{e.experiment_id}{e.active ? ' (running)' : ''}: {e.summary}</li>
         ))}
@@ -344,15 +356,16 @@ function StudiesPanel({
   const [study, setStudy] = useState('')
   const [seeds, setSeeds] = useState(20)
   return (
-    <section className="rounded-lg bg-canvas-100 p-3 text-sm dark:bg-canvas-950" aria-label="Studies">
-      <h2 className="mb-2 font-medium">Simulator studies</h2>
+    <section className="panel p-4 text-sm" aria-label="Studies">
+      <p className="eyebrow mb-1">Simulator</p>
+      <h2 className="mb-3 font-medium text-white">Simulator studies</h2>
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <select className="rounded border border-canvas-400 bg-transparent px-2 py-1" value={study} onChange={(e) => setStudy(e.target.value)}>
+        <select value={study} onChange={(e) => setStudy(e.target.value)}>
           <option value="">study…</option>
           {studies.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <label>seeds <input type="number" min={1} max={50} value={seeds} onChange={(e) => setSeeds(Number(e.target.value))} className="w-14 rounded border border-canvas-400 bg-transparent px-1" /></label>
-        <button className="rounded border border-canvas-400 px-2 py-0.5" disabled={!study} onClick={() => onAct(`run ${study}`, () => api.runStudy(study, seeds))}>run in the background</button>
+        <label className="flex items-center gap-1 font-mono text-canvas-400">seeds <input type="number" min={1} max={50} value={seeds} onChange={(e) => setSeeds(Number(e.target.value))} className="w-16" /></label>
+        <button className="btn btn-sm" disabled={!study} onClick={() => onAct(`run ${study}`, () => api.runStudy(study, seeds))}>run in the background</button>
         <span className="text-canvas-500">Results append to docs/EVALUATION.md; every seed is cached and resumable.</span>
       </div>
     </section>

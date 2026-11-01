@@ -50,81 +50,75 @@ export function Profile() {
   }
 
   if (error) {
-    return <p className="p-6 text-sm text-red-600 dark:text-red-400">{error}</p>
+    return <p className="p-6 font-mono text-sm text-dislike">{error}</p>
   }
   if (!profile || !taste) {
-    return <p className="p-6 text-sm text-canvas-500">Loading…</p>
+    return <p className="eyebrow p-6">Loading…</p>
   }
 
   return (
-    <main className="h-full overflow-y-auto bg-canvas-200 dark:bg-canvas-900">
-      <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 sm:p-6">
-        <header className="flex flex-wrap items-baseline justify-between gap-3">
+    <main className="page">
+      <div className="page-inner">
+        <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-lg font-semibold">Your taste</h1>
-            <p className="text-sm text-canvas-500">
-              {taste.likes} likes, {taste.dislikes} dislikes, {profile.labels} labels in all ·
-              serving {profile.active_rung ?? 'r0'}
-              {profile.is_simulated ? ' · SIMULATED profile' : ''}
-            </p>
+            <p className="eyebrow">Profile {profile.is_simulated ? '· simulated' : '· live'}</p>
+            <h1 className="page-title mt-1">Your taste</h1>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Stat label="likes" value={taste.likes} tone="text-like" />
+              <Stat label="dislikes" value={taste.dislikes} tone="text-dislike" />
+              <Stat label="labels" value={profile.labels} tone="text-white" />
+              <Stat label="serving" value={(profile.active_rung ?? 'r0').toUpperCase()} tone="text-accent" />
+              {profile.is_simulated && <span className="chip border-save/50 text-save">SIMULATED profile</span>}
+            </div>
           </div>
           {confirming ? (
-            <div className="flex items-center gap-2 text-sm" role="alertdialog">
-              <span>Start a fresh profile? The current one is archived, not deleted.</span>
-              <button className="rounded bg-red-600 px-3 py-1 text-white" onClick={reset}>
+            <div className="panel flex flex-wrap items-center gap-2 border-dislike/40 px-3 py-2 text-sm" role="alertdialog">
+              <span className="text-canvas-200">Start a fresh profile? The current one is archived, not deleted.</span>
+              <button className="btn btn-sm btn-danger" onClick={reset}>
                 Reset
               </button>
-              <button className="rounded px-3 py-1" onClick={() => setConfirming(false)}>
+              <button className="btn btn-sm" onClick={() => setConfirming(false)}>
                 Cancel
               </button>
             </div>
           ) : (
-            <button
-              className="rounded border border-canvas-400 px-3 py-1 text-sm"
-              onClick={() => setConfirming(true)}
-            >
+            <button className="btn" onClick={() => setConfirming(true)}>
               Reset profile…
             </button>
           )}
         </header>
 
-        {taste.note && <p className="text-sm text-canvas-500">{taste.note}</p>}
+        {taste.note && <p className="panel px-4 py-3 text-sm text-canvas-300">{taste.note}</p>}
 
         <section aria-label="Interests" className="grid gap-4 sm:grid-cols-2">
           {sortInterests(taste.interests).map((card) => {
             const bar = intervalGeometry(card.like_rate)
             return (
-              <article
-                key={card.interest_id}
-                className="rounded-lg bg-canvas-100 p-3 shadow-sm dark:bg-canvas-950"
-              >
-                <h2 className="text-sm font-medium">
-                  #{card.interest_id} · {card.label || 'unnamed interest'}
-                </h2>
-                <p className="text-xs text-canvas-500">{card.n_likes} likes</p>
-                <div className="mt-2 grid grid-cols-6 gap-1">
+              <article key={card.interest_id} className="panel p-4 transition-all hover:border-accent/30 hover:shadow-glow">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h2 className="truncate text-base font-medium text-white">
+                    <span className="mr-2 font-mono text-xs text-accent">#{card.interest_id}</span>
+                    {card.label || 'unnamed interest'}
+                  </h2>
+                  <span className="chip shrink-0">{card.n_likes} likes</span>
+                </div>
+                <div className="mt-3 grid grid-cols-6 gap-1.5">
                   {card.central_image_ids.map((id) => (
-                    <img
-                      key={id}
-                      src={api.thumbUrl(id)}
-                      alt=""
-                      loading="lazy"
-                      className="aspect-square w-full rounded object-cover"
-                    />
+                    <img key={id} src={api.thumbUrl(id)} alt="" loading="lazy" className="thumb hover:scale-105" />
                   ))}
                 </div>
-                <div className="mt-3" title={describeInterval(card.like_rate)}>
-                  <div className="relative h-2 rounded bg-canvas-300 dark:bg-canvas-800">
+                <div className="mt-4" title={describeInterval(card.like_rate)}>
+                  <div className="relative h-1.5 rounded-full bg-canvas-700">
                     <div
-                      className="absolute h-2 rounded bg-emerald-500/60"
+                      className="absolute h-1.5 rounded-full bg-gradient-to-r from-accent to-violet shadow-[0_0_10px_rgba(34,211,238,0.5)]"
                       style={{ left: `${bar.left}%`, width: `${bar.width}%` }}
                     />
                     <div
-                      className="absolute -top-0.5 h-3 w-0.5 bg-emerald-700"
+                      className="absolute -top-1 h-3.5 w-0.5 rounded bg-white shadow-[0_0_6px_white]"
                       style={{ left: `${bar.mean}%` }}
                     />
                   </div>
-                  <p className="mt-1 text-xs text-canvas-500">{describeInterval(card.like_rate)}</p>
+                  <p className="mt-2 font-mono text-[11px] text-canvas-400">{describeInterval(card.like_rate)}</p>
                 </div>
               </article>
             )
@@ -132,19 +126,23 @@ export function Profile() {
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2">
-          <WordList title="What you like, in words" words={taste.likes_in_words} />
-          <WordList title="What you dislike, in words" words={taste.dislikes_in_words} />
+          <WordList title="What you like, in words" words={taste.likes_in_words} tone="like" />
+          <WordList title="What you dislike, in words" words={taste.dislikes_in_words} tone="dislike" />
         </section>
 
         {taste.history.length > 0 && (
-          <section>
-            <h2 className="mb-1 text-sm font-medium">How the interests have changed</h2>
-            <ol className="list-inside list-decimal text-sm text-canvas-600 dark:text-canvas-400">
+          <section className="panel p-4">
+            <p className="eyebrow mb-2">Timeline</p>
+            <h2 className="mb-3 text-sm font-medium text-white">How the interests have changed</h2>
+            <ol className="space-y-1.5 border-l border-accent/30 pl-4 text-sm text-canvas-300">
               {describeHistory(taste.history).map((line) => (
-                <li key={line}>{line}</li>
+                <li key={line} className="relative">
+                  <span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-accent shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                  {line}
+                </li>
               ))}
             </ol>
-            <p className="mt-1 text-xs text-canvas-500">
+            <p className="mt-3 font-mono text-[11px] text-canvas-500">
               Ids stay stable across reclusters (Hungarian matching); source: {taste.source}.
             </p>
           </section>
@@ -154,18 +152,39 @@ export function Profile() {
   )
 }
 
-function WordList({ title, words }: { title: string; words: TasteResponse['likes_in_words'] }) {
+function Stat({ label, value, tone }: { label: string; value: string | number; tone: string }) {
   return (
-    <div className="rounded-lg bg-canvas-100 p-3 dark:bg-canvas-950">
-      <h2 className="mb-1 text-sm font-medium">{title}</h2>
+    <span className="chip">
+      <span className={`font-semibold ${tone}`}>{value}</span>
+      <span className="text-canvas-500">{label}</span>
+    </span>
+  )
+}
+
+function WordList({
+  title,
+  words,
+  tone,
+}: {
+  title: string
+  words: TasteResponse['likes_in_words']
+  tone: 'like' | 'dislike'
+}) {
+  const chipTone =
+    tone === 'like'
+      ? 'border-like/30 bg-like/10 text-like'
+      : 'border-dislike/30 bg-dislike/10 text-dislike'
+  return (
+    <div className="panel p-4">
+      <h2 className="mb-3 text-sm font-medium text-white">{title}</h2>
       {words.length === 0 ? (
-        <p className="text-xs text-canvas-500">Not enough ratings yet.</p>
+        <p className="font-mono text-xs text-canvas-500">Not enough ratings yet.</p>
       ) : (
-        <ul className="flex flex-wrap gap-1">
+        <ul className="flex flex-wrap gap-1.5">
           {words.map((word) => (
             <li
               key={word.concept}
-              className="rounded bg-canvas-200 px-2 py-0.5 text-xs dark:bg-canvas-800"
+              className={`rounded-full border px-2.5 py-0.5 font-mono text-[11px] ${chipTone}`}
               title={`z = ${word.z_score.toFixed(2)} against the vocabulary's mean similarity`}
             >
               {word.concept}

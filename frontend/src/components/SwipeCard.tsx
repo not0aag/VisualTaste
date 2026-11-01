@@ -1,5 +1,5 @@
 /**
- * One photograph, draggable, on neutral grey.
+ * One photograph, draggable, framed like a HUD target.
  *
  * The gesture rules come from brief section 7.9: right is like, left is
  * dislike, up is save, and a gesture commits at 30% of the viewport width or
@@ -16,7 +16,7 @@
  * cropping to fill would hide part of what is being judged.
  */
 
-import { animate, motion, useMotionValue, useTransform } from 'framer-motion'
+import { animate, motion, useMotionValue, useTransform, type MotionValue } from 'framer-motion'
 import { useDrag } from '@use-gesture/react'
 import { useEffect } from 'react'
 
@@ -112,42 +112,84 @@ export function SwipeCard({ card, onCommit, showExplanation, disabled }: SwipeCa
         data-image-id={image.image_id}
         className="relative max-h-full max-w-full cursor-grab touch-none select-none active:cursor-grabbing"
       >
-      <motion.div className="relative" style={{ x, y, rotate }}>
-        <img
-          src={image.display_url}
-          alt={image.attribution.title ?? 'An image to rate'}
-          draggable={false}
-          className="max-h-[78vh] max-w-full rounded-sm object-contain shadow-2xl"
-        />
+        <motion.div className="relative p-3" style={{ x, y, rotate }}>
+          {/* HUD corner brackets around the frame. */}
+          <Corner className="left-0 top-0 border-l-2 border-t-2" />
+          <Corner className="right-0 top-0 border-r-2 border-t-2" />
+          <Corner className="bottom-0 left-0 border-b-2 border-l-2" />
+          <Corner className="bottom-0 right-0 border-b-2 border-r-2" />
 
-        {/* Verdict tints. `pointer-events-none` so they never eat the drag. */}
-        <motion.div
-          style={{ opacity: likeOpacity }}
-          className="pointer-events-none absolute inset-0 rounded-sm bg-like/30"
-        />
-        <motion.div
-          style={{ opacity: dislikeOpacity }}
-          className="pointer-events-none absolute inset-0 rounded-sm bg-dislike/30"
-        />
-        <motion.div
-          style={{ opacity: saveOpacity }}
-          className="pointer-events-none absolute inset-0 rounded-sm bg-save/30"
-        />
-      </motion.div>
+          <motion.img
+            key={image.image_id}
+            src={image.display_url}
+            alt={image.attribution.title ?? 'An image to rate'}
+            draggable={false}
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="max-h-[70vh] max-w-full rounded-lg object-contain shadow-card ring-1 ring-white/10"
+          />
+
+          {/* Verdict tints and stamps. `pointer-events-none` so they never eat the drag. */}
+          <Verdict opacity={likeOpacity} tint="from-like/40" text="Like" textClass="right-6 top-6 rotate-6 border-like text-like" />
+          <Verdict opacity={dislikeOpacity} tint="from-dislike/40" text="Nope" textClass="left-6 top-6 -rotate-6 border-dislike text-dislike" />
+          <Verdict opacity={saveOpacity} tint="from-save/40" text="Save" textClass="bottom-8 left-1/2 -translate-x-1/2 border-save text-save" />
+        </motion.div>
       </div>
 
       {showExplanation && (
-        <div
-          data-testid="explanation-panel"
-          className="absolute bottom-4 left-1/2 max-w-lg -translate-x-1/2 rounded-md bg-canvas-900/90 px-4 py-3 text-sm text-canvas-100 shadow-lg"
-        >
-          <p className="font-medium">{card.sentence}</p>
-          <p className="mt-1 text-xs text-canvas-400">
-            reason <span className="font-mono">{card.reason}</span> · score{' '}
-            <span className="font-mono">{card.score.toFixed(3)}</span>
-          </p>
+        // Centred by a flex wrapper, not a transform: the fade-in animation
+        // sets `transform` and would undo a translate-based centring.
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-4">
+          <div
+            data-testid="explanation-panel"
+            className="panel pointer-events-auto w-full max-w-lg animate-fade-up border-accent/30 px-4 py-3 text-sm shadow-glow"
+          >
+            <p className="eyebrow mb-1">Why this image</p>
+            <p className="font-medium text-white">{card.sentence}</p>
+            <p className="mt-2 flex flex-wrap gap-2 text-xs">
+              <span className="chip">
+                reason <span className="text-accent">{card.reason}</span>
+              </span>
+              <span className="chip">
+                score <span className="text-accent">{card.score.toFixed(3)}</span>
+              </span>
+            </p>
+          </div>
         </div>
       )}
     </div>
+  )
+}
+
+function Corner({ className }: { className: string }) {
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute h-6 w-6 border-accent/70 drop-shadow-[0_0_6px_rgba(34,211,238,0.8)] ${className}`}
+    />
+  )
+}
+
+function Verdict({
+  opacity,
+  tint,
+  text,
+  textClass,
+}: {
+  opacity: MotionValue<number>
+  tint: string
+  text: string
+  textClass: string
+}) {
+  return (
+    <motion.div style={{ opacity }} className="pointer-events-none absolute inset-3 overflow-hidden rounded-lg">
+      <div className={`absolute inset-0 bg-gradient-to-t ${tint} to-transparent`} />
+      <span
+        className={`absolute rounded-md border-2 bg-canvas-950/60 px-3 py-1 font-mono text-2xl font-bold uppercase tracking-[0.25em] backdrop-blur-sm ${textClass}`}
+      >
+        {text}
+      </span>
+    </motion.div>
   )
 }

@@ -23,13 +23,36 @@ export interface PlotProps {
   testId?: string
 }
 
+const AXIS: Partial<Plotly.LayoutAxis> = {
+  gridcolor: 'rgba(148,163,184,0.10)',
+  zerolinecolor: 'rgba(148,163,184,0.25)',
+  linecolor: 'rgba(148,163,184,0.25)',
+  tickfont: { color: '#8494ad' },
+}
+
+/** Dark HUD theme: transparent paper, faint grid, neon series colours. */
 const DEFAULT_LAYOUT: Partial<Plotly.Layout> = {
-  margin: { l: 44, r: 12, t: 28, b: 36 },
+  margin: { l: 44, r: 12, t: 36, b: 56 },
   paper_bgcolor: 'rgba(0,0,0,0)',
   plot_bgcolor: 'rgba(0,0,0,0)',
-  font: { size: 11 },
+  font: { size: 11, color: '#aab6c8', family: '"JetBrains Mono Variable", ui-monospace, monospace' },
+  colorway: ['#22d3ee', '#a78bfa', '#34d399', '#fbbf24', '#fb7185', '#60a5fa'],
+  hoverlabel: { bgcolor: '#0a0e17', bordercolor: '#22d3ee', font: { color: '#e6ecf5' } },
   showlegend: true,
-  legend: { orientation: 'h', y: -0.2 },
+  legend: { orientation: 'h', y: -0.22, yanchor: 'top', font: { color: '#8494ad' } },
+}
+
+/** The page's layout over the theme; axes are merged so the grid styling survives. */
+function themed(layout: Partial<Plotly.Layout> | undefined): Partial<Plotly.Layout> {
+  const merged: Record<string, unknown> = { ...DEFAULT_LAYOUT, ...layout }
+  for (const axis of ['xaxis', 'yaxis', 'yaxis2'] as const) {
+    const own = layout?.[axis] as Record<string, unknown> | undefined
+    if (axis === 'yaxis2' && !own) continue
+    merged[axis] = { ...AXIS, ...own }
+  }
+  // A right-hand axis needs room for its ticks and title.
+  if (layout?.yaxis2 && !layout.margin) merged.margin = { ...DEFAULT_LAYOUT.margin, r: 56 }
+  return merged as Partial<Plotly.Layout>
 }
 
 export function Plot({ data, layout, className, onHover, testId }: PlotProps) {
@@ -40,7 +63,7 @@ export function Plot({ data, layout, className, onHover, testId }: PlotProps) {
     const element = ref.current
     void loadPlotly().then((Plotly) => {
       if (cancelled || !element) return
-      void Plotly.react(element, data, { ...DEFAULT_LAYOUT, ...layout }, {
+      void Plotly.react(element, data, themed(layout), {
         displaylogo: false,
         responsive: true,
       })

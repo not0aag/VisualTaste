@@ -32,29 +32,32 @@ export function EmbeddingMap() {
   const [maxStep, setMaxStep] = useState(0)
 
   return (
-    <main className="flex h-full flex-col bg-canvas-200 dark:bg-canvas-900" data-testid="embedding-map">
-      <header className="flex flex-wrap items-center gap-4 px-4 py-2 text-sm">
-        <h1 className="font-semibold">Embedding Map</h1>
-        <label>
+    <main className="flex h-full flex-col" data-testid="embedding-map">
+      <header className="flex flex-wrap items-center gap-4 px-4 py-3 text-sm sm:px-6">
+        <div>
+          <p className="eyebrow">Latent space · UMAP</p>
+          <h1 className="text-lg font-semibold text-white">Embedding Map</h1>
+        </div>
+        <label className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-canvas-400">
           Colour by{' '}
-          <select className="rounded border border-canvas-400 bg-transparent px-2 py-1" value={colour} onChange={(e) => setColour(e.target.value as ColourMode)}>
+          <select value={colour} onChange={(e) => setColour(e.target.value as ColourMode)}>
             <option value="cluster">cluster</option>
             <option value="source">source</option>
             <option value="score">current model score</option>
           </select>
         </label>
         {maxStep > 0 && (
-          <label className="flex items-center gap-2">
+          <label className="panel flex items-center gap-3 px-3 py-1.5 font-mono text-xs text-canvas-300">
             Taste over time
             <input type="range" min={1} max={maxStep} value={Math.min(step, maxStep)} onChange={(e) => setStep(Number(e.target.value))} />
-            <span className="text-xs text-canvas-500">{Math.min(step, maxStep)} of {maxStep} checkpoints</span>
+            <span className="text-accent">{Math.min(step, maxStep)}/{maxStep}</span>
           </label>
         )}
         {hovered && (
-          <img src={api.thumbUrl(hovered)} alt="" className="ml-auto h-16 w-16 rounded object-cover" data-testid="hover-thumb" />
+          <img src={api.thumbUrl(hovered)} alt="" className="ml-auto h-16 w-16 rounded-lg object-cover shadow-glow ring-1 ring-accent/50" data-testid="hover-thumb" />
         )}
       </header>
-      <div className="grid min-h-0 flex-1 gap-2 px-2 pb-2 lg:grid-cols-2">
+      <div className="grid min-h-0 flex-1 gap-3 px-3 pb-3 lg:grid-cols-2">
         {MODELS.map((m) => (
           <ModelMap key={m.key} model={m.key} title={m.label} colour={colour} step={step} onSteps={setMaxStep} onHover={setHovered} />
         ))}
@@ -98,7 +101,7 @@ function ModelMap({
       return {
         x: rows.map((i) => projection.x[i] ?? 0), y: rows.map((i) => projection.y[i] ?? 0),
         type: 'scattergl', mode: 'markers', name, hoverinfo: 'skip',
-        marker: { size: 6, color, symbol, line: { width: 1, color: '#000' } },
+        marker: { size: 6, color, symbol, line: { width: 1, color: '#05070c' } },
       }
     }
     const sources = [...new Set(projection.source)]
@@ -114,22 +117,22 @@ function ModelMap({
         hoverinfo: 'none',
         marker: { size: 2, color: values, colorscale: colour === 'score' ? 'Viridis' : 'Portland', opacity: 0.6, showscale: colour === 'score' },
       },
-      overlay(projection.liked, 'liked', '#10b981', 'circle'),
-      overlay(projection.disliked, 'disliked', '#ef4444', 'x'),
-      overlay(projection.saved, 'saved', '#f59e0b', 'star'),
+      overlay(projection.liked, 'liked', '#34d399', 'circle'),
+      overlay(projection.disliked, 'disliked', '#fb7185', 'x'),
+      overlay(projection.saved, 'saved', '#fbbf24', 'star'),
     ]
     if (taste && taste.path.length) {
       const shown = taste.path.slice(0, Math.min(step, taste.path.length))
       traces.push({
         x: shown.map((p) => p.x), y: shown.map((p) => p.y), text: shown.map((p) => `${p.labels} labels`),
-        type: 'scatter', mode: 'lines+markers', name: 'taste over time', line: { color: '#111', width: 2 },
+        type: 'scatter', mode: 'lines+markers', name: 'taste over time', line: { color: '#e6ecf5', width: 2 },
       })
     }
     if (taste && taste.interests.length) {
       traces.push({
         x: taste.interests.map((p) => p.x), y: taste.interests.map((p) => p.y),
         text: taste.interests.map((p) => `interest #${p.labels}`),
-        type: 'scatter', mode: 'markers', name: 'interests', marker: { size: 14, symbol: 'diamond', color: '#7c3aed' },
+        type: 'scatter', mode: 'markers', name: 'interests', marker: { size: 14, symbol: 'diamond', color: '#a78bfa', line: { width: 1, color: '#fff' } },
       })
     }
     return traces
@@ -148,7 +151,7 @@ function ModelMap({
     [title],
   )
 
-  if (error) return <p className="p-4 text-sm text-canvas-500">{error}</p>
-  if (!projection) return <p className="p-4 text-sm text-canvas-500">Loading {title}…</p>
-  return <Plot data={data} layout={layout} onHover={hover} className="h-full min-h-[360px] w-full" testId={`map-${model}`} />
+  if (error) return <p className="panel p-4 font-mono text-sm text-canvas-400">{error}</p>
+  if (!projection) return <p className="panel flex items-center justify-center p-4 font-mono text-xs uppercase tracking-wider text-canvas-400">Loading {title}…</p>
+  return <Plot data={data} layout={layout} onHover={hover} className="panel h-full min-h-[360px] w-full p-1" testId={`map-${model}`} />
 }

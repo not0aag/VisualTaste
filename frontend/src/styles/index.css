@@ -2,10 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Dark mode follows the system, per brief section 7.9. No toggle: the app is
-   one person's, on one machine, and their OS already knows the answer. */
+/* Dark only, by design: a HUD look on near-black. Fonts are bundled through
+   @fontsource (src/main.tsx), so there are still no external requests. */
 
 @layer base {
+  :root {
+    color-scheme: dark;
+  }
+
   html,
   body,
   #root {
@@ -13,13 +17,116 @@
   }
 
   body {
-    @apply font-sans antialiased text-canvas-900 dark:text-canvas-100;
-    /* No external font requests at runtime; the system stack is the fallback. */
+    @apply bg-canvas-950 font-sans text-canvas-100 antialiased;
+    /* Two soft glows and a faint grid, fixed behind every page. */
+    background-image:
+      radial-gradient(60rem 40rem at 10% -10%, rgba(34, 211, 238, 0.10), transparent 60%),
+      radial-gradient(50rem 40rem at 110% 110%, rgba(167, 139, 250, 0.10), transparent 60%),
+      linear-gradient(rgba(148, 163, 184, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.045) 1px, transparent 1px);
+    background-size: auto, auto, 44px 44px, 44px 44px;
+    background-attachment: fixed;
   }
 
-  /* A visible focus ring, because the whole app is usable from the keyboard
-     and an invisible focus would make that unusable. */
+  ::selection {
+    @apply bg-accent/30 text-white;
+  }
+
+  /* A visible focus ring: the whole app is usable from the keyboard. */
   :focus-visible {
-    @apply outline-none ring-2 ring-canvas-500 ring-offset-2 ring-offset-canvas-100 dark:ring-offset-canvas-950;
+    @apply outline-none ring-2 ring-accent/70 ring-offset-2 ring-offset-canvas-950;
+  }
+
+  select,
+  input[type='date'],
+  input[type='number'] {
+    @apply rounded-md border border-white/10 bg-canvas-900/80 px-2 py-1 font-mono text-xs text-canvas-100 outline-none transition-colors hover:border-accent/40 focus:border-accent/60;
+  }
+
+  option {
+    @apply bg-canvas-900 text-canvas-100;
+  }
+
+  input[type='range'] {
+    @apply h-1 cursor-pointer appearance-none rounded-full bg-canvas-700 accent-accent;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(132, 148, 173, 0.35) transparent;
+  }
+}
+
+@layer components {
+  /* Glass panel: the one container used on every page. */
+  .panel {
+    @apply rounded-xl border border-white/[0.07] bg-canvas-900/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-md;
+  }
+
+  .page {
+    @apply h-full overflow-y-auto;
+  }
+
+  .page-inner {
+    @apply mx-auto flex max-w-6xl animate-fade-up flex-col gap-5 p-4 sm:p-6;
+  }
+
+  /* Small uppercase monospace label: the HUD's voice. */
+  .eyebrow {
+    @apply font-mono text-[10px] uppercase tracking-[0.22em] text-accent/80;
+  }
+
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight text-white;
+  }
+
+  .muted {
+    @apply text-canvas-400;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-canvas-200 transition-all hover:border-accent/50 hover:bg-accent/10 hover:text-white active:scale-[0.97] disabled:pointer-events-none disabled:opacity-35;
+  }
+
+  .btn-sm {
+    @apply px-2 py-1 text-xs;
+  }
+
+  .btn-danger {
+    @apply border-dislike/50 bg-dislike/15 text-dislike hover:border-dislike hover:bg-dislike/25 hover:text-white;
+  }
+
+  .link {
+    @apply text-accent/90 underline-offset-4 transition-colors hover:text-white hover:underline;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 font-mono text-[11px] text-canvas-200;
+  }
+
+  .kbd {
+    @apply inline-flex min-w-[1.4rem] items-center justify-center rounded border border-white/15 bg-white/[0.06] px-1 font-mono text-[10px] leading-5 text-canvas-200 shadow-[inset_0_-1px_0_rgba(255,255,255,0.08)];
+  }
+
+  .status-dot {
+    @apply inline-block h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent shadow-[0_0_8px_2px_rgba(34,211,238,0.6)];
+  }
+
+  .thumb {
+    @apply aspect-square w-full rounded-lg object-cover ring-1 ring-white/10 transition duration-300;
+  }
+
+  .tile {
+    @apply panel p-2 text-xs transition-all hover:border-accent/30 hover:shadow-glow;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

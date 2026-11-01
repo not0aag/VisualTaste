@@ -37,22 +37,25 @@ export function Review() {
   }
 
   return (
-    <main className="h-full overflow-y-auto bg-canvas-200 dark:bg-canvas-900" data-testid="review">
-      <div className="mx-auto max-w-6xl p-4 sm:p-6">
-        <h1 className="mb-1 text-lg font-semibold">Review</h1>
-        <p className="mb-4 text-sm text-canvas-500">
+    <main className="page" data-testid="review">
+      <div className="page-inner">
+        <div>
+          <p className="eyebrow">Safety screen</p>
+          <h1 className="page-title mt-1">Review</h1>
+        </div>
+        <p className="max-w-3xl text-sm text-canvas-400">
           Quarantined by the automated safety screen. Keep returns an image to the corpus; remove records it in
           the removals table. Nothing is deleted.
         </p>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {items && items.length === 0 && <p className="text-sm text-canvas-500">Nothing waiting for review.</p>}
+        {error && <p className="font-mono text-sm text-dislike">{error}</p>}
+        {items && items.length === 0 && <p className="panel px-4 py-8 text-center font-mono text-sm text-canvas-500">Nothing waiting for review.</p>}
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
           {items?.map((item) => (
-            <li key={item.image.image_id} className="rounded-lg bg-canvas-100 p-2 text-xs dark:bg-canvas-950">
-              <img src={item.image.thumb_url} alt="" loading="lazy" className="aspect-square w-full rounded object-cover blur-sm hover:blur-none" />
-              <div className="mt-1 flex justify-between">
-                <button className="underline" onClick={() => decide(item.image.image_id, 'keep')}>keep</button>
-                <button className="text-red-600 underline" onClick={() => decide(item.image.image_id, 'remove')}>remove</button>
+            <li key={item.image.image_id} className="tile group">
+              <img src={item.image.thumb_url} alt="" loading="lazy" className="thumb blur-md hover:blur-none" />
+              <div className="mt-2 flex justify-between gap-1">
+                <button className="btn btn-sm flex-1" onClick={() => decide(item.image.image_id, 'keep')}>keep</button>
+                <button className="btn btn-sm btn-danger flex-1" onClick={() => decide(item.image.image_id, 'remove')}>remove</button>
               </div>
             </li>
           ))}

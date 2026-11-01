@@ -42,7 +42,7 @@ export function AttributionLine({ attribution }: { attribution: Attribution }) {
   return (
     <p
       data-testid="attribution"
-      className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-canvas-500 dark:text-canvas-400"
+      className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[11px] text-canvas-400"
     >
       {attribution.author && (
         <span>
@@ -51,7 +51,7 @@ export function AttributionLine({ attribution }: { attribution: Attribution }) {
               href={attribution.author_url}
               target="_blank"
               rel="noreferrer noopener"
-              className="hover:text-canvas-700 hover:underline dark:hover:text-canvas-200"
+              className="transition-colors hover:text-accent"
             >
               {attribution.author}
             </a>
@@ -61,25 +61,25 @@ export function AttributionLine({ attribution }: { attribution: Attribution }) {
         </span>
       )}
 
-      {attribution.author && <span aria-hidden>·</span>}
+      {attribution.author && <span aria-hidden className="text-canvas-600">{'//'}</span>}
 
       <a
         href={attribution.license_url}
         target="_blank"
         rel="noreferrer noopener"
-        className="hover:text-canvas-700 hover:underline dark:hover:text-canvas-200"
+        className="transition-colors hover:text-accent"
       >
         {licenceName(attribution.license_url)}
       </a>
 
-      <span aria-hidden>·</span>
+      <span aria-hidden className="text-canvas-600">{'//'}</span>
 
       {attribution.source_url ? (
         <a
           href={attribution.source_url}
           target="_blank"
           rel="noreferrer noopener"
-          className="hover:text-canvas-700 hover:underline dark:hover:text-canvas-200"
+          className="transition-colors hover:text-accent"
           title="Open the original page (O)"
         >
           {sourceLabel}
