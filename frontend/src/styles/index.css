@@ -2,12 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Dark only, by design: a HUD look on near-black. Fonts are bundled through
-   @fontsource (src/main.tsx), so there are still no external requests. */
+/* Dark only, by design: a viewfinder is a dark instrument around one lit
+   image. Fonts are bundled through @fontsource (src/main.tsx), so there are
+   still no external requests at runtime. */
 
 @layer base {
   :root {
     color-scheme: dark;
+    /* The instrument's own light. The Feed adds the photograph's on top. */
+    --ambient-a: rgba(63, 216, 240, 0.1);
+    --ambient-b: rgba(165, 148, 249, 0.1);
   }
 
   html,
@@ -17,15 +21,33 @@
   }
 
   body {
-    @apply bg-canvas-950 font-sans text-canvas-100 antialiased;
-    /* Two soft glows and a faint grid, fixed behind every page. */
+    @apply bg-canvas-950 font-sans text-[15px] text-canvas-100 antialiased;
+    font-feature-settings: 'ss01', 'cv11';
     background-image:
-      radial-gradient(60rem 40rem at 10% -10%, rgba(34, 211, 238, 0.10), transparent 60%),
-      radial-gradient(50rem 40rem at 110% 110%, rgba(167, 139, 250, 0.10), transparent 60%),
-      linear-gradient(rgba(148, 163, 184, 0.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(148, 163, 184, 0.045) 1px, transparent 1px);
-    background-size: auto, auto, 44px 44px, 44px 44px;
+      radial-gradient(60rem 42rem at 8% -12%, var(--ambient-a), transparent 62%),
+      radial-gradient(52rem 42rem at 108% 112%, var(--ambient-b), transparent 62%),
+      linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+    background-size: auto, auto, 48px 48px, 48px 48px;
     background-attachment: fixed;
+  }
+
+  /* Film grain over everything: the faint texture of a photographic print.
+     Fixed and click-through, so it never affects layout or input. */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.06;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  h1,
+  h2 {
+    text-wrap: balance;
   }
 
   ::selection {
@@ -40,7 +62,7 @@
   select,
   input[type='date'],
   input[type='number'] {
-    @apply rounded-md border border-white/10 bg-canvas-900/80 px-2 py-1 font-mono text-xs text-canvas-100 outline-none transition-colors hover:border-accent/40 focus:border-accent/60;
+    @apply rounded-plate border border-white/10 bg-canvas-900/80 px-2 py-1 font-mono text-xs text-canvas-100 outline-none transition-colors hover:border-accent/40 focus:border-accent/60;
   }
 
   option {
@@ -53,14 +75,41 @@
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(132, 148, 173, 0.35) transparent;
+    scrollbar-color: rgba(123, 140, 165, 0.35) transparent;
   }
 }
 
 @layer components {
-  /* Glass panel: the one container used on every page. */
+  /* Glass panel: a quiet container for grouped content. */
   .panel {
-    @apply rounded-xl border border-white/[0.07] bg-canvas-900/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-md;
+    @apply rounded-plate border border-white/[0.07] bg-canvas-900/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-md;
+  }
+
+  /* Instrument plate: a panel with registration ticks at two corners, used
+     only where an element should read as a separate instrument. */
+  .plate {
+    @apply panel relative;
+  }
+  .plate::before,
+  .plate::after {
+    content: '';
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    pointer-events: none;
+    border-color: rgba(63, 216, 240, 0.55);
+  }
+  .plate::before {
+    top: -1px;
+    left: -1px;
+    border-top-width: 1px;
+    border-left-width: 1px;
+  }
+  .plate::after {
+    right: -1px;
+    bottom: -1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
   }
 
   .page {
@@ -68,16 +117,16 @@
   }
 
   .page-inner {
-    @apply mx-auto flex max-w-6xl animate-fade-up flex-col gap-5 p-4 sm:p-6;
+    @apply mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8;
   }
 
-  /* Small uppercase monospace label: the HUD's voice. */
+  /* Small uppercase monospace label: the instrument's engraved legend. */
   .eyebrow {
-    @apply font-mono text-[10px] uppercase tracking-[0.22em] text-accent/80;
+    @apply font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-accent/80;
   }
 
   .page-title {
-    @apply text-2xl font-semibold tracking-tight text-white;
+    @apply font-display text-[1.9rem] font-semibold uppercase leading-none tracking-[0.04em] text-white;
   }
 
   .muted {
@@ -85,7 +134,7 @@
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-canvas-200 transition-all hover:border-accent/50 hover:bg-accent/10 hover:text-white active:scale-[0.97] disabled:pointer-events-none disabled:opacity-35;
+    @apply inline-flex items-center justify-center gap-2 rounded-plate border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-canvas-200 transition-all duration-150 hover:border-accent/50 hover:bg-accent/10 hover:text-white active:scale-[0.97] disabled:pointer-events-none disabled:opacity-35;
   }
 
   .btn-sm {
@@ -101,23 +150,28 @@
   }
 
   .chip {
-    @apply inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 font-mono text-[11px] text-canvas-200;
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 font-mono text-[11px] text-canvas-200;
   }
 
   .kbd {
-    @apply inline-flex min-w-[1.4rem] items-center justify-center rounded border border-white/15 bg-white/[0.06] px-1 font-mono text-[10px] leading-5 text-canvas-200 shadow-[inset_0_-1px_0_rgba(255,255,255,0.08)];
+    @apply inline-flex min-w-[1.35rem] items-center justify-center rounded-[3px] border border-white/15 bg-white/[0.06] px-1 font-mono text-[10px] leading-5 text-canvas-200 shadow-[inset_0_-1px_0_rgba(255,255,255,0.08)];
   }
 
   .status-dot {
-    @apply inline-block h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent shadow-[0_0_8px_2px_rgba(34,211,238,0.6)];
+    @apply inline-block h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent shadow-[0_0_8px_2px_rgba(63,216,240,0.6)];
   }
 
   .thumb {
-    @apply aspect-square w-full rounded-lg object-cover ring-1 ring-white/10 transition duration-300;
+    @apply aspect-square w-full rounded-[3px] object-cover ring-1 ring-white/10 transition duration-300;
   }
 
   .tile {
     @apply panel p-2 text-xs transition-all hover:border-accent/30 hover:shadow-glow;
+  }
+
+  /* Viewfinder readout text, set on the photo's frame. */
+  .readout {
+    @apply font-mono text-[10px] uppercase tracking-[0.14em] text-canvas-300 tabular-nums;
   }
 }
 

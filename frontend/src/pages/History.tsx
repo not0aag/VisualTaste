@@ -22,6 +22,14 @@ const VERDICT_TONE: Record<Action, string> = {
   skip: 'text-canvas-400',
 }
 
+/** The tile's top edge carries the verdict, readable across a whole grid at a glance. */
+const VERDICT_EDGE: Record<Action, string> = {
+  like: 'border-t-like/80',
+  save: 'border-t-save/80',
+  dislike: 'border-t-dislike/70',
+  skip: 'border-t-canvas-500/60',
+}
+
 export function History() {
   const [filter, setFilter] = useState<Action | 'all'>('all')
   const [since, setSince] = useState('')
@@ -62,7 +70,7 @@ export function History() {
         <header className="panel flex flex-wrap items-center gap-2 p-2 text-sm">
           {FILTERS.map((f) => (
             <button key={f} onClick={() => { setFilter(f); setOffset(0) }}
-              className={`rounded-md px-3 py-1 font-mono text-xs uppercase tracking-wider transition-colors ${filter === f ? 'bg-accent/15 text-white shadow-[inset_0_0_0_1px_rgba(34,211,238,0.4)]' : 'text-canvas-400 hover:bg-white/[0.04] hover:text-white'}`}>
+              className={`rounded-plate px-3 py-1 font-mono text-xs uppercase tracking-wider transition-colors ${filter === f ? 'bg-accent/15 text-white shadow-[inset_0_0_0_1px_rgba(34,211,238,0.4)]' : 'text-canvas-400 hover:bg-white/[0.04] hover:text-white'}`}>
               {f}
             </button>
           ))}
@@ -74,7 +82,7 @@ export function History() {
 
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
           {page?.items.map((item) => (
-            <li key={item.event_id} className="tile group animate-fade-up">
+            <li key={item.event_id} className={`tile group animate-fade-up border-t-2 ${VERDICT_EDGE[item.action]}`}>
               <img src={item.image.thumb_url} alt={item.image.attribution.title ?? ''} loading="lazy" className="thumb group-hover:brightness-110" />
               <div className="mt-2 flex items-center justify-between gap-1">
                 <select aria-label="verdict" value={item.action} onChange={(e) => change(item.image.image_id, e.target.value as Action)} className={`!px-1 !py-0.5 ${VERDICT_TONE[item.action]}`}>
@@ -102,7 +110,7 @@ export function History() {
             <ul className="flex gap-3 overflow-x-auto pb-1">
               {similar.neighbours.map((n) => (
                 <li key={n.image.image_id} className="shrink-0 text-center text-xs">
-                  <img src={n.image.thumb_url} alt="" className="h-24 w-24 rounded-lg object-cover ring-1 ring-white/10" />
+                  <img src={n.image.thumb_url} alt="" className="h-24 w-24 rounded-[3px] object-cover ring-1 ring-white/10" />
                   <span className="mt-1 block font-mono text-[10px] text-accent">{n.similarity.toFixed(2)}</span>
                 </li>
               ))}

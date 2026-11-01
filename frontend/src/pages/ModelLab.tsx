@@ -297,10 +297,9 @@ export function ModelLab() {
 
 function Counter({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="panel relative overflow-hidden p-3">
-      <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
+    <div className="plate p-3">
       <p className="eyebrow">{label}</p>
-      <p className="mt-1 truncate font-mono text-lg font-semibold text-white" title={String(value)}>{value}</p>
+      <p className="mt-1.5 truncate font-display text-xl font-semibold tabular-nums text-white" title={String(value)}>{value}</p>
     </div>
   )
 }

@@ -54,7 +54,7 @@ export function EmbeddingMap() {
           </label>
         )}
         {hovered && (
-          <img src={api.thumbUrl(hovered)} alt="" className="ml-auto h-16 w-16 rounded-lg object-cover shadow-glow ring-1 ring-accent/50" data-testid="hover-thumb" />
+          <img src={api.thumbUrl(hovered)} alt="" className="ml-auto h-16 w-16 rounded-[3px] object-cover shadow-glow ring-1 ring-accent/50" data-testid="hover-thumb" />
         )}
       </header>
       <div className="grid min-h-0 flex-1 gap-3 px-3 pb-3 lg:grid-cols-2">
@@ -117,9 +117,9 @@ function ModelMap({
         hoverinfo: 'none',
         marker: { size: 2, color: values, colorscale: colour === 'score' ? 'Viridis' : 'Portland', opacity: 0.6, showscale: colour === 'score' },
       },
-      overlay(projection.liked, 'liked', '#34d399', 'circle'),
-      overlay(projection.disliked, 'disliked', '#fb7185', 'x'),
-      overlay(projection.saved, 'saved', '#fbbf24', 'star'),
+      overlay(projection.liked, 'liked', '#3ddc97', 'circle'),
+      overlay(projection.disliked, 'disliked', '#ff6b81', 'x'),
+      overlay(projection.saved, 'saved', '#ffc145', 'star'),
     ]
     if (taste && taste.path.length) {
       const shown = taste.path.slice(0, Math.min(step, taste.path.length))
@@ -132,7 +132,7 @@ function ModelMap({
       traces.push({
         x: taste.interests.map((p) => p.x), y: taste.interests.map((p) => p.y),
         text: taste.interests.map((p) => `interest #${p.labels}`),
-        type: 'scatter', mode: 'markers', name: 'interests', marker: { size: 14, symbol: 'diamond', color: '#a78bfa', line: { width: 1, color: '#fff' } },
+        type: 'scatter', mode: 'markers', name: 'interests', marker: { size: 14, symbol: 'diamond', color: '#a594f9', line: { width: 1, color: '#fff' } },
       })
     }
     return traces

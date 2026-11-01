@@ -35,9 +35,9 @@ const DEFAULT_LAYOUT: Partial<Plotly.Layout> = {
   margin: { l: 44, r: 12, t: 36, b: 56 },
   paper_bgcolor: 'rgba(0,0,0,0)',
   plot_bgcolor: 'rgba(0,0,0,0)',
-  font: { size: 11, color: '#aab6c8', family: '"JetBrains Mono Variable", ui-monospace, monospace' },
-  colorway: ['#22d3ee', '#a78bfa', '#34d399', '#fbbf24', '#fb7185', '#60a5fa'],
-  hoverlabel: { bgcolor: '#0a0e17', bordercolor: '#22d3ee', font: { color: '#e6ecf5' } },
+  font: { size: 11, color: '#aab6c8', family: '"Geist Mono Variable", ui-monospace, monospace' },
+  colorway: ['#3fd8f0', '#a594f9', '#3ddc97', '#ffc145', '#ff6b81', '#60a5fa'],
+  hoverlabel: { bgcolor: '#0a0e17', bordercolor: '#3fd8f0', font: { color: '#e6ecf5' } },
   showlegend: true,
   legend: { orientation: 'h', y: -0.22, yanchor: 'top', font: { color: '#8494ad' } },
 }

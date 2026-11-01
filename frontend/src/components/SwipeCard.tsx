@@ -96,6 +96,8 @@ export function SwipeCard({ card, onCommit, showExplanation, disabled }: SwipeCa
   )
 
   const { image } = card
+  const aspect = aspectName(image.width, image.height)
+  const meter = Math.max(0, Math.min(1, card.score))
 
   return (
     <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
@@ -112,28 +114,71 @@ export function SwipeCard({ card, onCommit, showExplanation, disabled }: SwipeCa
         data-image-id={image.image_id}
         className="relative max-h-full max-w-full cursor-grab touch-none select-none active:cursor-grabbing"
       >
-        <motion.div className="relative p-3" style={{ x, y, rotate }}>
-          {/* HUD corner brackets around the frame. */}
+        <motion.div className="relative flex flex-col gap-2 px-4 py-3" style={{ x, y, rotate }}>
+          {/* Viewfinder corner brackets around the frame. */}
           <Corner className="left-0 top-0 border-l-2 border-t-2" />
           <Corner className="right-0 top-0 border-r-2 border-t-2" />
           <Corner className="bottom-0 left-0 border-b-2 border-l-2" />
           <Corner className="bottom-0 right-0 border-b-2 border-r-2" />
 
-          <motion.img
-            key={image.image_id}
-            src={image.display_url}
-            alt={image.attribution.title ?? 'An image to rate'}
-            draggable={false}
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="max-h-[70vh] max-w-full rounded-lg object-contain shadow-card ring-1 ring-white/10"
-          />
+          {/* Top readout: what the frame holds, and what the model expects. */}
+          <div className="readout flex items-center justify-between gap-4 px-1">
+            <span title="Pixel size and aspect ratio of the original">
+              {image.width && image.height ? (
+                <>
+                  {image.width.toLocaleString()} × {image.height.toLocaleString()}
+                  {aspect && <span className="ml-2 text-accent">{aspect}</span>}
+                </>
+              ) : (
+                'size unknown'
+              )}
+            </span>
+            <span className="flex items-center gap-2" title={`Model score ${card.score.toFixed(3)}`}>
+              score
+              <span className="relative h-1 w-14 overflow-hidden rounded-full bg-white/10">
+                <span
+                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-violet to-accent"
+                  style={{ width: `${meter * 100}%` }}
+                />
+              </span>
+              <span className="text-canvas-100">{card.score.toFixed(3)}</span>
+            </span>
+          </div>
 
-          {/* Verdict tints and stamps. `pointer-events-none` so they never eat the drag. */}
-          <Verdict opacity={likeOpacity} tint="from-like/40" text="Like" textClass="right-6 top-6 rotate-6 border-like text-like" />
-          <Verdict opacity={dislikeOpacity} tint="from-dislike/40" text="Nope" textClass="left-6 top-6 -rotate-6 border-dislike text-dislike" />
-          <Verdict opacity={saveOpacity} tint="from-save/40" text="Save" textClass="bottom-8 left-1/2 -translate-x-1/2 border-save text-save" />
+          <div className="relative">
+            <motion.img
+              key={image.image_id}
+              src={image.display_url}
+              alt={image.attribution.title ?? 'An image to rate'}
+              draggable={false}
+              initial={{ opacity: 0, scale: 0.985, filter: 'blur(6px)' }}
+              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="block max-h-[62vh] max-w-full rounded-[3px] object-contain shadow-photo ring-1 ring-white/10"
+            />
+
+            {/* Verdict tints and stamps. `pointer-events-none` so they never eat the drag. */}
+            <Verdict opacity={likeOpacity} tint="from-like/40" text="Like" textClass="right-4 top-4 rotate-6 border-like text-like" />
+            <Verdict opacity={dislikeOpacity} tint="from-dislike/40" text="Nope" textClass="left-4 top-4 -rotate-6 border-dislike text-dislike" />
+            <Verdict opacity={saveOpacity} tint="from-save/40" text="Save" textClass="bottom-6 left-1/2 -translate-x-1/2 border-save text-save" />
+          </div>
+
+          {/* Bottom readout: the photograph's own palette, and why it is here. */}
+          <div className="readout flex items-center justify-between gap-4 px-1">
+            <span className="flex items-center gap-1" aria-label="Dominant colours">
+              {image.dominant_colours.slice(0, 5).map((hex) => (
+                <span
+                  key={hex}
+                  title={hex}
+                  className="h-3 w-3 rounded-[2px] ring-1 ring-white/15"
+                  style={{ backgroundColor: hex }}
+                />
+              ))}
+            </span>
+            <span className="truncate" title="Why the model chose this image (press I)">
+              {card.reason.replace(/_/g, ' ')}
+            </span>
+          </div>
         </motion.div>
       </div>
 
@@ -143,7 +188,7 @@ export function SwipeCard({ card, onCommit, showExplanation, disabled }: SwipeCa
         <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-4">
           <div
             data-testid="explanation-panel"
-            className="panel pointer-events-auto w-full max-w-lg animate-fade-up border-accent/30 px-4 py-3 text-sm shadow-glow"
+            className="plate pointer-events-auto w-full max-w-lg animate-fade-up border-accent/30 px-4 py-3 text-sm shadow-glow"
           >
             <p className="eyebrow mb-1">Why this image</p>
             <p className="font-medium text-white">{card.sentence}</p>
@@ -162,11 +207,29 @@ export function SwipeCard({ card, onCommit, showExplanation, disabled }: SwipeCa
   )
 }
 
+/** The common name of an aspect ratio, when it is close to one. */
+const RATIOS: Array<[number, string]> = [
+  [1, '1:1'], [5 / 4, '5:4'], [4 / 3, '4:3'], [3 / 2, '3:2'], [16 / 10, '16:10'],
+  [16 / 9, '16:9'], [2, '2:1'], [3, '3:1'],
+]
+
+export function aspectName(width: number | null, height: number | null): string | null {
+  if (!width || !height) return null
+  const ratio = Math.max(width, height) / Math.min(width, height)
+  const [value, name] = RATIOS.reduce((best, entry) =>
+    Math.abs(entry[0] - ratio) < Math.abs(best[0] - ratio) ? entry : best,
+  )
+  if (Math.abs(value - ratio) / value > 0.03) return null
+  if (name === '1:1') return name
+  const [a, b] = name.split(':')
+  return width >= height ? name : `${b}:${a}`
+}
+
 function Corner({ className }: { className: string }) {
   return (
     <span
       aria-hidden
-      className={`pointer-events-none absolute h-6 w-6 border-accent/70 drop-shadow-[0_0_6px_rgba(34,211,238,0.8)] ${className}`}
+      className={`pointer-events-none absolute h-6 w-6 border-accent/70 drop-shadow-[0_0_6px_rgba(63,216,240,0.8)] ${className}`}
     />
   )
 }
@@ -183,10 +246,10 @@ function Verdict({
   textClass: string
 }) {
   return (
-    <motion.div style={{ opacity }} className="pointer-events-none absolute inset-3 overflow-hidden rounded-lg">
+    <motion.div style={{ opacity }} className="pointer-events-none absolute inset-0 overflow-hidden rounded-[3px]">
       <div className={`absolute inset-0 bg-gradient-to-t ${tint} to-transparent`} />
       <span
-        className={`absolute rounded-md border-2 bg-canvas-950/60 px-3 py-1 font-mono text-2xl font-bold uppercase tracking-[0.25em] backdrop-blur-sm ${textClass}`}
+        className={`absolute rounded-[3px] border-2 bg-canvas-950/60 px-3 py-1 font-display text-2xl font-semibold uppercase tracking-[0.25em] backdrop-blur-sm ${textClass}`}
       >
         {text}
       </span>

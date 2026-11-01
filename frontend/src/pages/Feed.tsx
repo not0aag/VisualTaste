@@ -17,18 +17,42 @@
  * the quality of the labels depends on each one being an actual judgement.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { AttributionLine } from '../components/AttributionLine'
+import {
+  AmbientLight,
+  AnimatedNumber,
+  Centred,
+  EdgeFlash,
+  LearningRing,
+  Spinner,
+  VerdictButton,
+} from '../components/FeedParts'
 import { SwipeCard } from '../components/SwipeCard'
 import { useDwellTimer } from '../hooks/useDwellTimer'
 import { useFeedQueue } from '../hooks/useFeedQueue'
 import type { Action } from '../api/types'
 
+/** Labels between online retrains (backend `VT_RETRAIN_EVERY`, config.py). */
+const RETRAIN_EVERY = 20
+
+
 export function Feed() {
   const feed = useFeedQueue()
   const { current } = feed
   const [showExplanation, setShowExplanation] = useState(false)
+  // The on-screen key that echoes a keystroke, and the edge flash per verdict.
+  const [pressed, setPressed] = useState<Action | 'undo' | null>(null)
+  const [flash, setFlash] = useState<{ action: Action; n: number } | null>(null)
+  const pressTimer = useRef<number>()
+
+  const echo = useCallback((key: Action | 'undo') => {
+    setPressed(key)
+    window.clearTimeout(pressTimer.current)
+    pressTimer.current = window.setTimeout(() => setPressed(null), 170)
+  }, [])
+  useEffect(() => () => window.clearTimeout(pressTimer.current), [])
 
   const dwell = useDwellTimer(current?.image.image_id ?? null)
 
@@ -51,16 +75,19 @@ export function Feed() {
       if (!current) return
       dwell.noteInteraction()
       const { dwellMs } = dwell.read()
+      echo(action)
+      setFlash((previous) => ({ action, n: (previous?.n ?? 0) + 1 }))
       void feed.swipe(action, dwellMs)
     },
-    [current, dwell, feed],
+    [current, dwell, feed, echo],
   )
 
   const undo = useCallback(() => {
     // `lastSwipe` is cleared on success, so this cannot undo twice.
     if (!feed.lastSwipe) return
+    echo('undo')
     void feed.undo()
-  }, [feed])
+  }, [feed, echo])
 
   const openSource = useCallback(() => {
     const url = current?.image.attribution.source_url
@@ -136,7 +163,9 @@ export function Feed() {
     return (
       <Centred>
         <p className="eyebrow">Standby</p>
-        <p className="mt-2 text-lg font-medium text-white">The collection is still being built.</p>
+        <p className="mt-2 font-display text-xl font-semibold uppercase tracking-wide text-white">
+          The collection is still being built
+        </p>
         <p className="mt-2 max-w-md text-sm text-canvas-400">{feed.error}</p>
       </Centred>
     )
@@ -146,7 +175,9 @@ export function Feed() {
     return (
       <Centred>
         <p className="eyebrow">Complete</p>
-        <p className="mt-2 text-lg font-medium text-white">That is every image in the collection.</p>
+        <p className="mt-2 font-display text-xl font-semibold uppercase tracking-wide text-white">
+          That is every image in the collection
+        </p>
         <p className="mt-2 text-sm text-canvas-400">
           {feed.labels.toLocaleString()} rated. Nothing left to show.
         </p>
@@ -154,23 +185,42 @@ export function Feed() {
     )
   }
 
+  const untilUpdate = RETRAIN_EVERY - (feed.labels % RETRAIN_EVERY)
+
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex items-center justify-between px-4 pt-3 sm:px-6">
+    <div className="relative isolate flex h-full flex-col overflow-hidden">
+      <AmbientLight colours={current.image.dominant_colours} imageId={current.image.image_id} />
+      <EdgeFlash flash={flash} />
+
+      <header className="flex items-center justify-between gap-4 px-4 pt-4 sm:px-6">
         <span className="flex items-baseline gap-2" data-testid="label-count">
-          <span className="font-mono text-xl font-semibold tabular-nums text-white">
-            {feed.labels.toLocaleString()}
-          </span>
+          <AnimatedNumber
+            value={feed.labels}
+            className="font-display text-3xl font-semibold leading-none tabular-nums text-white"
+          />
           <span className="eyebrow">rated</span>
         </span>
-        <span className="chip" title={`model version ${feed.modelVersion}`}>
-          <span className="status-dot" aria-hidden />
-          <span className="uppercase">{feed.rung}</span>
-          {feed.retrainQueued && (
-            <span className="ml-1 text-accent" data-testid="retraining">
-              updating…
-            </span>
-          )}
+
+        <span className="flex items-center gap-3">
+          <LearningRing
+            done={RETRAIN_EVERY - untilUpdate}
+            total={RETRAIN_EVERY}
+            label={
+              feed.retrainQueued
+                ? 'Model updating with your latest ratings'
+                : `Model update in ${untilUpdate} rating${untilUpdate === 1 ? '' : 's'}`
+            }
+            busy={feed.retrainQueued}
+          />
+          <span className="chip" title={`model version ${feed.modelVersion}`}>
+            <span className="status-dot" aria-hidden />
+            <span className="uppercase">{feed.rung}</span>
+            {feed.retrainQueued && (
+              <span className="ml-1 text-accent" data-testid="retraining">
+                updating…
+              </span>
+            )}
+          </span>
         </span>
       </header>
 
@@ -188,25 +238,31 @@ export function Feed() {
         )}
 
         <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-          <Button onClick={() => commit('dislike')} testId="btn-dislike" tone="dislike" keyHint="←">
+          <VerdictButton onClick={() => commit('dislike')} testId="btn-dislike" tone="dislike" keyHint="←" pressed={pressed === 'dislike'}>
             Dislike
-          </Button>
-          <Button onClick={() => commit('skip')} testId="btn-skip" keyHint="↓">
+          </VerdictButton>
+          <VerdictButton onClick={() => commit('skip')} testId="btn-skip" keyHint="↓" pressed={pressed === 'skip'}>
             Skip
-          </Button>
-          <Button onClick={() => commit('save')} testId="btn-save" tone="save" keyHint="S">
+          </VerdictButton>
+          <VerdictButton onClick={() => commit('save')} testId="btn-save" tone="save" keyHint="S" pressed={pressed === 'save'}>
             Save
-          </Button>
-          <Button onClick={() => commit('like')} testId="btn-like" tone="like" keyHint="→">
+          </VerdictButton>
+          <VerdictButton onClick={() => commit('like')} testId="btn-like" tone="like" keyHint="→" pressed={pressed === 'like'}>
             Like
-          </Button>
+          </VerdictButton>
           <span className="mx-1 hidden h-6 w-px bg-white/10 sm:block" aria-hidden />
-          <Button onClick={() => undo()} testId="btn-undo" disabled={!feed.lastSwipe} keyHint="Z">
+          <VerdictButton
+            onClick={() => undo()}
+            testId="btn-undo"
+            disabled={!feed.lastSwipe}
+            keyHint="Z"
+            pressed={pressed === 'undo'}
+          >
             Undo
-          </Button>
+          </VerdictButton>
         </div>
 
-        <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-canvas-500">
+        <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-canvas-500">
           <span>
             <span className="kbd">I</span> why this image
           </span>
@@ -216,66 +272,9 @@ export function Feed() {
           <span>
             <span className="kbd">Space</span> skip
           </span>
-          <span className="hidden sm:inline">drag the card: → like · ← dislike · ↑ save</span>
+          <span className="hidden sm:inline">or drag the photo: right likes, left dislikes, up saves</span>
         </p>
       </footer>
     </div>
-  )
-}
-
-function Centred({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-      <div className="panel flex animate-fade-up flex-col items-center px-10 py-8">{children}</div>
-    </div>
-  )
-}
-
-function Spinner() {
-  return (
-    <span className="relative inline-flex h-10 w-10" aria-hidden>
-      <span className="absolute inset-0 rounded-full border border-white/10" />
-      <span className="absolute inset-0 animate-spin-slow rounded-full border-2 border-transparent border-t-accent shadow-[0_0_14px_-2px_rgba(34,211,238,0.7)]" />
-    </span>
-  )
-}
-
-const TONES = {
-  like: 'border-like/40 text-like hover:bg-like/15 hover:shadow-glow-like',
-  dislike: 'border-dislike/40 text-dislike hover:bg-dislike/15 hover:shadow-glow-dislike',
-  save: 'border-save/40 text-save hover:bg-save/15 hover:shadow-glow-save',
-  plain: 'border-white/10 text-canvas-300 hover:border-accent/40 hover:bg-accent/10 hover:text-white',
-}
-
-function Button({
-  children,
-  onClick,
-  testId,
-  tone,
-  disabled,
-  keyHint,
-}: {
-  children: React.ReactNode
-  onClick: () => void
-  testId: string
-  tone?: 'like' | 'dislike' | 'save'
-  disabled?: boolean
-  keyHint?: string
-}) {
-  return (
-    <button
-      type="button"
-      data-testid={testId}
-      onClick={onClick}
-      disabled={disabled}
-      className={`group inline-flex items-center gap-2 rounded-xl border bg-canvas-900/70 px-4 py-2 text-sm font-medium backdrop-blur transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none ${TONES[tone ?? 'plain']}`}
-    >
-      {keyHint && (
-        <span className="kbd opacity-70 group-hover:opacity-100" aria-hidden>
-          {keyHint}
-        </span>
-      )}
-      {children}
-    </button>
   )
 }

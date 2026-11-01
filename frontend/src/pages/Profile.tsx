@@ -94,7 +94,7 @@ export function Profile() {
           {sortInterests(taste.interests).map((card) => {
             const bar = intervalGeometry(card.like_rate)
             return (
-              <article key={card.interest_id} className="panel p-4 transition-all hover:border-accent/30 hover:shadow-glow">
+              <article key={card.interest_id} className="plate p-4 transition-all hover:border-accent/30 hover:shadow-glow">
                 <div className="flex items-baseline justify-between gap-2">
                   <h2 className="truncate text-base font-medium text-white">
                     <span className="mr-2 font-mono text-xs text-accent">#{card.interest_id}</span>
