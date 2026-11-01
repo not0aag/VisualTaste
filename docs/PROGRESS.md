@@ -226,7 +226,8 @@ The machine rebooted at 08:27 on 11-01; these were relaunched at 08:30 and resum
 **If the machine restarted:** the three runs above stopped, but every finished seed is cached, so relaunching resumes where they left off:
 `.\scripts\run_final_split.ps1 -Database sim_f1 -Variants "S1_semantic,S2_appearance,S3_colour"`,
 `.\scripts\run_final_split.ps1 -Database sim_f2 -Variants "S4_conjunctive,S5_drift,S6_six_interests"`,
-`.\scripts\run_studies.ps1 -Database sim_h -Studies "phase12_h5:10:5000"`.
+`.\scripts\run_studies.ps1 -Database sim_x -Studies "phase15_explore:20:1000"`,
+`.\scripts\run_studies.ps1 -Database sim_y -Studies "phase15_hybrid:20:1000","phase15_drift:20:1000"`.
 
 Chosen from the finished studies: `VT_R4_TAU_POST = 0.1` (#25) and R3's default blocks `sig+dino` (#28).
 
