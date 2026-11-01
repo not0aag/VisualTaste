@@ -1,0 +1,16 @@
+name: Idea or improvement
+description: A new rung, a simulator scenario, a UI improvement, or anything else.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What should change, and what problem it solves.
+    validations:
+      required: true
+  - type: textarea
+    id: measure
+    attributes:
+      label: How would we know it worked?
+      description: For model changes, which study and metric would show it (see docs/EVALUATION.md).

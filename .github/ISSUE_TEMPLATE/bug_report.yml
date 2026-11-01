@@ -1,0 +1,38 @@
+name: Bug report
+description: Something does not work as the README says it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and full output
+      description: The exact command, and the full error or traceback.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "Windows 11 / Ubuntu 24.04 / macOS 15"
+    validations:
+      required: true
+  - type: dropdown
+    id: cuda
+    attributes:
+      label: Is CUDA available?
+      options: ["yes", "no", "not sure"]
+    validations:
+      required: true
+  - type: dropdown
+    id: data
+    attributes:
+      label: Which data?
+      options: ["full collection (built locally)", "demo pack", "online demo", "none (tests only)"]

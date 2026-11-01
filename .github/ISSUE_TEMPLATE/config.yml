@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How it works
+    url: https://github.com/not0aag/VisualTaste/blob/main/docs/LEARNING_PATH.md
+    about: The learning path walks through every model, with the code and notebooks for each.

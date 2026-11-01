@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use VisualTaste or its evaluation method, please cite it as below."
+title: "VisualTaste: a local image recommender that learns visual taste from swipes"
+type: software
+authors:
+  - alias: not0aag
+repository-code: "https://github.com/not0aag/VisualTaste"
+license: MIT
+version: 1.0.0
+date-released: 2026-11-01
+keywords:
+  - recommender systems
+  - Thompson sampling
+  - contextual bandits
+  - image embeddings
+  - SigLIP 2
+  - DINOv2
+  - offline evaluation
+abstract: >-
+  A single-user, fully local image recommender built as a ladder of seven
+  rungs, from cold start, Rocchio and kNN to logistic regression, Thompson
+  sampling with diversity reranking, multi-interest modelling and a neural
+  ranker, over SigLIP 2 and DINOv2 embeddings of 50,000 openly licensed
+  photographs. Each rung is evaluated against the one below it with a
+  planted-taste simulator, paired seeds, bootstrap intervals and sign tests.
