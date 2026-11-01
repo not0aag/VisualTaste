@@ -34,7 +34,7 @@ The brief's §7.7 names five, to be reported honestly whether or not they hold:
 | H2 | R3 (logistic regression) beats R2 after roughly 150 labels | **not supported for ranking** (replay, 20 seeds, 2026-11-01): R3 has lower log loss at every cut from 400 labels (significant at 9 of 11), but R2 has higher AUC at every cut from 150 on (significant at 9 of 16) |
 | H3 | R4 (Thompson sampling) finds all 3 planted interests faster than R3 | **supported for discovery, not for like rate** (20 seeds × 1,000 swipes per scenario, 2026-11-01): R4 finds all interests in more seeds (+0.25 S1, +0.55 S5, +0.85 S6) and sooner (−288, −266 and −773 swipes), with +50 to +58 points of coverage; but it keeps −0.21, −0.31 and −0.34 of R3's like-rate gain over R0, against a 70% bar |
 | H4 | R3+R5 (multi-interest features) beats R3 | **inconclusive with exploration** (R4+R5 vs R4, 20 seeds on S1, S5, S6, 2026-11-01): no metric differs; the plain R3+R5 vs R3 comparison is part of `phase14_final` |
-| H5 | R6 (neural ranker) beats R3 only once labels are plentiful | not yet run |
+| H5 | R6 (neural ranker) beats R3 only once labels are plentiful | **not supported** (replay, 10 seeds × 5,000 swipes on S1 and S4, BCE and BCE+BPR, 2026-11-01): no AUC win at any of 500 / 1,500 / 3,000 / 4,900 labels (worse at 3,000 in both scenarios); one log-loss win (S4, BCE, 4,900 labels, −0.008). A neural ranker did not earn its cost at this scale |
 
 ---
 
@@ -782,3 +782,97 @@ H2 is **not supported** in the form it was stated. The two metrics split:
 - **Both are weak here.** All AUCs are between 0.51 and 0.61. The replay histories were logged by R0, so most test images sit far from any planted interest, and the next 100 events hold few positives to rank. This is a hard, low-signal test, not the on-policy one in the R0-R3 study above.
 
 So the "after about 150 labels" crossover did not appear. R3's advantage is that it gives usable probabilities (needed by R4's posterior and by calibration plots), not that it ranks better than kNN on this replay.
+
+---
+
+## H5: R6 vs R3+R5 by label count, and the dwell study (SIMULATED, 2026-11-01 13:31 UTC)
+
+```
+python -m visualtaste.jobs.evaluate --study phase12_h5 --seeds 10
+```
+
+Histories: 10 seeds x 5,000 swipes per variant, logged by R4 (the default chain), so the training data carries the selection bias real data will. At each label count both models are fitted on the first N events and scored on the next 100; paired by seed. R6 is the 5-member ensemble, trained on the GPU.
+
+### S1_semantic: `r6:minlabels=0` vs `r3+r5`, replay log_loss
+
+| labels | `r6:minlabels=0` log_loss | `r3+r5` log_loss | diff | 90% CI | W-L | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 500 | 0.6866 | 0.6831 | +0.0035 | [-0.0096, +0.0198] | 6-4 | inconclusive |
+| 1500 | 0.6611 | 0.6562 | +0.0049 | [-0.0061, +0.0173] | 4-6 | inconclusive |
+| 3000 | 0.6486 | 0.6444 | +0.0041 | [-0.0048, +0.0135] | 5-5 | inconclusive |
+| 4900 | 0.6718 | 0.6737 | -0.0019 | [-0.0056, +0.0021] | 7-3 | inconclusive |
+
+### S1_semantic: `r6:minlabels=0` vs `r3+r5`, replay auc
+
+| labels | `r6:minlabels=0` auc | `r3+r5` auc | diff | 90% CI | W-L | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 500 | 0.5911 | 0.6056 | -0.0144 | [-0.0283, +0.0002] | 2-7 | inconclusive |
+| 1500 | 0.6266 | 0.6329 | -0.0063 | [-0.0224, +0.0101] | 4-6 | inconclusive |
+| 3000 | 0.6319 | 0.6453 | -0.0134 | [-0.0275, -0.0005] | 2-7 | not supported |
+| 4900 | 0.6166 | 0.6113 | +0.0053 | [-0.0028, +0.0136] | 6-4 | inconclusive |
+
+### S1_semantic: `r6:minlabels=0,loss=bpr` vs `r3+r5`, replay log_loss
+
+| labels | `r6:minlabels=0,loss=bpr` log_loss | `r3+r5` log_loss | diff | 90% CI | W-L | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 500 | 0.6882 | 0.6831 | +0.0051 | [-0.0041, +0.0162] | 5-5 | inconclusive |
+| 1500 | 0.6633 | 0.6562 | +0.0071 | [+0.0004, +0.0140] | 5-5 | not supported |
+| 3000 | 0.6464 | 0.6444 | +0.0020 | [-0.0119, +0.0176] | 6-4 | inconclusive |
+| 4900 | 0.6797 | 0.6737 | +0.0060 | [-0.0034, +0.0169] | 4-6 | inconclusive |
+
+### S1_semantic: `r6:minlabels=0,loss=bpr` vs `r3+r5`, replay auc
+
+| labels | `r6:minlabels=0,loss=bpr` auc | `r3+r5` auc | diff | 90% CI | W-L | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 500 | 0.5928 | 0.6056 | -0.0128 | [-0.0257, +0.0003] | 3-7 | inconclusive |
+| 1500 | 0.6284 | 0.6329 | -0.0045 | [-0.0220, +0.0130] | 6-4 | inconclusive |
+| 3000 | 0.6316 | 0.6453 | -0.0137 | [-0.0318, +0.0022] | 4-6 | inconclusive |
+| 4900 | 0.6181 | 0.6113 | +0.0067 | [-0.0007, +0.0141] | 7-3 | inconclusive |
+
+### S4_conjunctive: `r6:minlabels=0` vs `r3+r5`, replay log_loss
+
+| labels | `r6:minlabels=0` log_loss | `r3+r5` log_loss | diff | 90% CI | W-L | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 500 | 0.6861 | 0.6830 | +0.0030 | [-0.0000, +0.0067] | 3-7 | inconclusive |
+| 1500 | 0.6911 | 0.6904 | +0.0007 | [-0.0071, +0.0083] | 4-6 | inconclusive |
+| 3000 | 0.6934 | 0.6872 | +0.0062 | [-0.0026, +0.0157] | 4-6 | inconclusive |
+| 4900 | 0.6804 | 0.6887 | -0.0083 | [-0.0140, -0.0027] | 8-2 | supported |
+
+### S4_conjunctive: `r6:minlabels=0` vs `r3+r5`, replay auc
+
+| labels | `r6:minlabels=0` auc | `r3+r5` auc | diff | 90% CI | W-L | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 500 | 0.5418 | 0.5547 | -0.0129 | [-0.0363, +0.0089] | 4-6 | inconclusive |
+| 1500 | 0.5587 | 0.5656 | -0.0069 | [-0.0285, +0.0148] | 4-6 | inconclusive |
+| 3000 | 0.5583 | 0.5832 | -0.0249 | [-0.0488, -0.0018] | 4-6 | not supported |
+| 4900 | 0.6017 | 0.5960 | +0.0057 | [-0.0158, +0.0265] | 6-4 | inconclusive |
+
+### S4_conjunctive: `r6:minlabels=0,loss=bpr` vs `r3+r5`, replay log_loss
+
+| labels | `r6:minlabels=0,loss=bpr` log_loss | `r3+r5` log_loss | diff | 90% CI | W-L | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 500 | 0.6864 | 0.6830 | +0.0034 | [-0.0006, +0.0085] | 4-6 | inconclusive |
+| 1500 | 0.6925 | 0.6904 | +0.0021 | [-0.0068, +0.0113] | 4-6 | inconclusive |
+| 3000 | 0.7006 | 0.6872 | +0.0134 | [+0.0058, +0.0218] | 2-8 | not supported |
+| 4900 | 0.6915 | 0.6887 | +0.0028 | [-0.0098, +0.0148] | 4-6 | inconclusive |
+
+### S4_conjunctive: `r6:minlabels=0,loss=bpr` vs `r3+r5`, replay auc
+
+| labels | `r6:minlabels=0,loss=bpr` auc | `r3+r5` auc | diff | 90% CI | W-L | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 500 | 0.5494 | 0.5547 | -0.0053 | [-0.0301, +0.0187] | 5-5 | inconclusive |
+| 1500 | 0.5554 | 0.5656 | -0.0102 | [-0.0337, +0.0128] | 4-6 | inconclusive |
+| 3000 | 0.5608 | 0.5832 | -0.0224 | [-0.0522, +0.0041] | 4-6 | inconclusive |
+| 4900 | 0.5887 | 0.5960 | -0.0072 | [-0.0321, +0.0189] | 4-6 | inconclusive |
+
+### Dwell (SIMULATED)
+
+Simulated dwell is `exp(N(ln 2500 + 0.3 (p - 0.5) + 0.4 novelty, 0.5))` (`eval/sim.simulated_dwell`): weakly tied to liking, more to novelty.
+
+| variant | AUC of dwell alone | R3 replay log loss without | with log-dwell | diff | 90% CI | W-L | promote? |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| S1_semantic | 0.518 ± 0.010 | 0.6627 | 0.6627 | -0.0000 | [-0.0002, +0.0002] | 3-7 (p = 0.344) | no |
+| S4_conjunctive | 0.512 ± 0.009 | 0.6898 | 0.6899 | +0.0001 | [-0.0000, +0.0002] | 4-6 (p = 0.754) | no |
+
+Rule (DECISIONS #26): dwell becomes a feature only if it lowers log loss with a CI excluding 0, and even then stays off for real data until there are 1,000 real labels.
+
