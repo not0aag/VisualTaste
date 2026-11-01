@@ -210,18 +210,20 @@ What remains is the studies, their write-ups, and Phase 14's measurements and ha
 
 **Running jobs.** Each runs on its own DB copy (#22), caches every seed under `data/eval/`, and resumes if re-run.
 The Phase 9-11 studies, `phase12_logs` and the sensitivity grid all finished overnight (exit 0) and are in EVALUATION.md.
-`phase9_h2` crashed on a metric-name mismatch in `learning_curve` (fixed, regression test added) and is being re-run.
+`phase9_h2` crashed on a metric-name mismatch in `learning_curve` (fixed, regression test added); the re-run finished 11-01 08:26, exit 0.
 
 | started | runner | PID | studies | log |
 | --- | --- | --- | --- | --- |
-| 11-01 08:04 | `scripts/run_final_split.ps1 -Database sim_f1` | 4392 | `phase14_final` S1, S2, S3 (20 × 1,000) | `logs/final_a_20261101_080407.log.err` |
-| 11-01 08:04 | `scripts/run_final_split.ps1 -Database sim_f2` | 38144 | `phase14_final` S4, S5, S6 (20 × 1,000) | `logs/final_b_20261101_080407.log.err` |
-| 11-01 08:05 | `run_studies.ps1 -Database sim_h` | 7940 | `phase9_h2` (20), then `phase12_h5` (10 × 5,000, GPU) | `logs/h2_h5_20261101_080503.log.err` |
+| 11-01 08:30 | `scripts/run_final_split.ps1 -Database sim_f1` | 23648 | `phase14_final` S1, S2, S3 (20 × 1,000) | `logs/final_a_20261101_083026.log.err` |
+| 11-01 08:30 | `scripts/run_final_split.ps1 -Database sim_f2` | 9760 | `phase14_final` S4, S5, S6 (20 × 1,000) | `logs/final_b_20261101_083026.log.err` |
+| 11-01 08:30 | `scripts/run_studies.ps1 -Database sim_h` | 10576 | `phase12_h5` (10 × 5,000, GPU) | `logs/h5_20261101_083026.log.err` |
+
+The machine rebooted at 08:27 on 11-01; these were relaunched at 08:30 and resume from their caches.
 
 **If the machine restarted:** the three runs above stopped, but every finished seed is cached, so relaunching resumes where they left off:
-`.\scriptsun_final_split.ps1 -Database sim_f1 -Variants "S1_semantic,S2_appearance,S3_colour"`,
-`.\scriptsun_final_split.ps1 -Database sim_f2 -Variants "S4_conjunctive,S5_drift,S6_six_interests"`,
-`.\scriptsun_studies.ps1 -Database sim_h -Studies "phase9_h2:20:1000","phase12_h5:10:5000"`.
+`.\scripts\run_final_split.ps1 -Database sim_f1 -Variants "S1_semantic,S2_appearance,S3_colour"`,
+`.\scripts\run_final_split.ps1 -Database sim_f2 -Variants "S4_conjunctive,S5_drift,S6_six_interests"`,
+`.\scripts\run_studies.ps1 -Database sim_h -Studies "phase12_h5:10:5000"`.
 
 Chosen from the finished studies: `VT_R4_TAU_POST = 0.1` (#25) and R3's default blocks `sig+dino` (#28).
 
@@ -239,7 +241,7 @@ Chosen from the finished studies: `VT_R4_TAU_POST = 0.1` (#25) and R3's default 
 - [x] Online retrain every 20 labels + atomic hot-swap, tested (old model during retrain, failure keeps old, never two in flight)
 - [x] Notebook 03 executed
 - [x] Studies recorded: `phase9_rungs`, `phase9_skip` (0.25 / 1.0 / exclude, #20), `phase9_ablation` (blocks `sig+dino`, #28)
-- [ ] `phase9_h2` recorded (re-running after the fix)
+- [ ] `phase9_h2` recorded (run finished 11-01 08:26, exit 0; write-up in EVALUATION.md to do)
 
 ## Phase 10 — R4 exploration
 
