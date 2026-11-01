@@ -15,3 +15,4 @@
 
 # Executed notebooks carry output blobs; keep diffs out of code review.
 *.ipynb -diff
+*.gif binary

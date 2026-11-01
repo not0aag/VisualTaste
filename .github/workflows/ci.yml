@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The tests never load a model, so CPU torch is enough and far smaller.
+  TORCH_INDEX: https://download.pytorch.org/whl/cpu
+  PY_DEPS: >-
+    open_clip_torch timm transformers huggingface_hub faiss-cpu
+    numpy scipy pandas pyarrow pillow imagehash scikit-learn umap-learn
+    fastapi uvicorn pydantic pydantic-settings httpx boto3 tqdm typer
+    pytest pytest-asyncio ruff matplotlib
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uvx ruff@0.17.3 check .
+      - run: uvx ruff@0.17.3 format --check .
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+      - name: Python 3.12 environment
+        run: |
+          uv venv --python 3.12
+          uv pip install torch torchvision --index-url "$TORCH_INDEX"
+          uv pip install $PY_DEPS
+          uv pip install -e . --no-deps
+      - name: pytest
+        run: .venv/bin/python -m pytest -q -m "not gpu" -p no:cacheprovider
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+      - name: Python 3.12 environment
+        run: |
+          uv venv --python 3.12
+          uv pip install torch torchvision --index-url "$TORCH_INDEX"
+          uv pip install $PY_DEPS
+          uv pip install -e . --no-deps
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+      - name: Playwright (synthetic corpus, no models)
+        working-directory: frontend
+        env:
+          VT_PYTHON: ${{ github.workspace }}/.venv/bin/python
+        run: pnpm e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/test-results
+          retention-days: 7
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: pip-audit (known vulnerabilities in pinned Python packages)
+        # Report-only: the lock pins torch's CUDA build (+cu128), which PyPI
+        # cannot resolve, so a failure here is shown as a warning, not hidden.
+        continue-on-error: true
+        run: uvx pip-audit --requirement requirements.lock --progress-spinner off --disable-pip --no-deps
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - name: pnpm audit (production dependencies)
+        working-directory: frontend
+        run: pnpm audit --prod --audit-level high

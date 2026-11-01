@@ -149,8 +149,17 @@ def _load_metadata(settings: Settings) -> pd.DataFrame:
         frames.append(
             pd.read_parquet(
                 path,
-                columns=["id", "url", "caption", "width", "height", "mime_type", "hash",
-                         "license", "source"],
+                columns=[
+                    "id",
+                    "url",
+                    "caption",
+                    "width",
+                    "height",
+                    "mime_type",
+                    "hash",
+                    "license",
+                    "source",
+                ],
             )
         )
     return pd.concat(frames, ignore_index=True)
@@ -166,10 +175,7 @@ def _apply_gates(frame: pd.DataFrame) -> pd.DataFrame:
 
     frame = frame[frame["mime_type"].isin(WANTED_MIME_TYPES)]
     frame = frame[
-        [
-            dimensions_acceptable(w, h)
-            for w, h in zip(frame["width"], frame["height"], strict=True)
-        ]
+        [dimensions_acceptable(w, h) for w, h in zip(frame["width"], frame["height"], strict=True)]
     ]
 
     # The same picture can appear under two institutions; keep one row per URL.
@@ -184,9 +190,7 @@ def _apply_gates(frame: pd.DataFrame) -> pd.DataFrame:
     return frame.reset_index(drop=True)
 
 
-def _round_robin_by_institution(
-    frame: pd.DataFrame, *, target: int, seed: int
-) -> pd.DataFrame:
+def _round_robin_by_institution(frame: pd.DataFrame, *, target: int, seed: int) -> pd.DataFrame:
     """Take images one institution at a time, so no single archive dominates.
 
     The surplus factor is deliberate: we plan about 1.3x the target so that
@@ -248,6 +252,4 @@ async def fetch(
         logger.info("pd12m: added %d new candidates to the manifest", added)
         manifest.flush(force=True)
 
-    return await download_http_candidates(
-        settings, client, manifest, source=SOURCE, target=target
-    )
+    return await download_http_candidates(settings, client, manifest, source=SOURCE, target=target)

@@ -1,7 +1,7 @@
 # Progress
 
 **Current phase:** 14 — final evaluation and handover
-**Last green commit:** `c9c28ac` — phases 9-13 checkpoint, 2026-11-01
+**Last green commit:** `bb791cc` — phases 9-13 checkpoint, 2026-11-01
 **Running jobs:** see "Part 2 status" below
 
 Resume rule (brief §2): read the specification, then this file, then
@@ -80,7 +80,7 @@ against the 5% predicted from the measured size distribution).
 - [x] `db/migrations/*.sql` + `init_db()` applying them in order
 - [x] §7.4 schema exactly, WAL mode, foreign keys on
 - [x] `db/repo.py` query layer
-- [ ] `db/backup.py` (snapshot + monthly JSONL) — Phase 7, where it is tested
+- [x] Backups (snapshot + monthly JSONL): built as `jobs/backup.py` in Phase 14 and tested by `tests/test_restore.py`
 - [x] `data/validate.py` (verify + full load, short side ≥ 256, AR ≤ 4:1, EXIF
       transpose, animated → first frame)
 - [x] `data/derivatives.py` (display 1024/q82, thumb 256/q80; pool of
@@ -205,7 +205,7 @@ from 100% of clusters to about 40%. That is the argument for R4.
 
 ## Part 2 status (2026-11-01)
 
-Code for Phases 9-13 is complete and tested: `c9c28ac`, `check.ps1` green (999 pytest, 35 Vitest, build, 11 Playwright).
+Code for Phases 9-13 is complete and tested: `bb791cc`, `check.ps1` green (999 pytest, 35 Vitest, build, 11 Playwright).
 What remains is the studies, their write-ups, and Phase 14's measurements and handover.
 
 **Running jobs.** Each runs on its own DB copy (#22), caches every seed under `data/eval/`, and resumes if re-run.

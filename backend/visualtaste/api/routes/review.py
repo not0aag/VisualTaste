@@ -22,7 +22,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from visualtaste.api.deps import get_db
-from visualtaste.api.routes.images import summary_from_row
+from visualtaste.api.routes.images import ImageId, summary_from_row
 from visualtaste.api.schemas import ReviewDecision, ReviewItem
 from visualtaste.db import repo
 
@@ -44,7 +44,7 @@ def list_review(
 
 @router.post("/review/{image_id}", response_model=ReviewItem)
 def decide(
-    image_id: str,
+    image_id: ImageId,
     payload: ReviewDecision,
     connection: Annotated[sqlite3.Connection, Depends(get_db)],
 ) -> ReviewItem:

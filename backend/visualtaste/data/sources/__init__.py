@@ -162,9 +162,7 @@ async def download_http_candidates(
             manifest.mark_resolved()
 
         if stats.requested % LOG_EVERY < BATCH_SIZE:
-            logger.info(
-                "%s: %d/%d stored (%s)", source, stored, target, stats.summary()
-            )
+            logger.info("%s: %d/%d stored (%s)", source, stored, target, stats.summary())
 
     manifest.flush(force=True)
     logger.info("%s: finished. %s", source, stats.summary())

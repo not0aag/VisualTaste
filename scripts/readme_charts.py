@@ -46,15 +46,31 @@ def font(*names: str) -> str:
 SANS = font("Segoe UI", "Helvetica Neue", "Arial")
 MONO = font("Consolas", "Menlo", "DejaVu Sans Mono")
 
-plt.rcParams.update({
-    "figure.facecolor": SURFACE, "axes.facecolor": SURFACE, "savefig.facecolor": SURFACE,
-    "font.family": SANS, "font.size": 10.5, "text.color": TEXT,
-    "axes.edgecolor": GRID, "axes.labelcolor": TEXT_2, "axes.linewidth": 1,
-    "xtick.color": MUTED, "ytick.color": MUTED, "xtick.labelsize": 9, "ytick.labelsize": 9,
-    "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.8,
-    "axes.spines.top": False, "axes.spines.right": False,
-    "legend.frameon": False, "legend.labelcolor": TEXT_2, "legend.fontsize": 9.5,
-})
+plt.rcParams.update(
+    {
+        "figure.facecolor": SURFACE,
+        "axes.facecolor": SURFACE,
+        "savefig.facecolor": SURFACE,
+        "font.family": SANS,
+        "font.size": 10.5,
+        "text.color": TEXT,
+        "axes.edgecolor": GRID,
+        "axes.labelcolor": TEXT_2,
+        "axes.linewidth": 1,
+        "xtick.color": MUTED,
+        "ytick.color": MUTED,
+        "xtick.labelsize": 9,
+        "ytick.labelsize": 9,
+        "axes.grid": True,
+        "grid.color": GRID,
+        "grid.linewidth": 0.8,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "legend.frameon": False,
+        "legend.labelcolor": TEXT_2,
+        "legend.fontsize": 9.5,
+    }
+)
 
 
 def sessions(study: str, variant: str, rung: str) -> list[dict]:
@@ -74,11 +90,20 @@ def footer(fig, text: str) -> None:
 def end_label(ax, x, y, rung: str, dy: float = 0.0) -> None:
     """Direct label at a line's end: a coloured dot beside text in text ink."""
     ax.plot([x], [y], "o", ms=6, color=SERIES[rung], mec=SURFACE, mew=2, zorder=5, clip_on=False)
-    ax.annotate(NAMES[rung].split(" · ")[0], (x, y), xytext=(9, dy), textcoords="offset points",
-                va="center", fontsize=10, fontweight="bold", color=TEXT)
+    ax.annotate(
+        NAMES[rung].split(" · ")[0],
+        (x, y),
+        xytext=(9, dy),
+        textcoords="offset points",
+        va="center",
+        fontsize=10,
+        fontweight="bold",
+        color=TEXT,
+    )
 
 
 # --- 1. Interests found over a session (S6, six planted interests) ----------
+
 
 def chart_discovery() -> None:
     swipes = np.arange(0, 1001)
@@ -86,13 +111,24 @@ def chart_discovery() -> None:
     labels = []
     for rung in ORDER:
         runs = sessions("phase10_h3", "S6_six_interests", rung)
-        found = np.array([
-            [sum(1 for t in s["discovery"].values() if t is not None and t <= x) for x in swipes]
-            for s in runs
-        ])
+        found = np.array(
+            [
+                [
+                    sum(1 for t in s["discovery"].values() if t is not None and t <= x)
+                    for x in swipes
+                ]
+                for s in runs
+            ]
+        )
         mean = found.mean(axis=0)
-        ax.plot(swipes, mean, color=SERIES[rung], lw=2, label=f"{NAMES[rung]}  (n = {len(runs)} seeds)",
-                drawstyle="steps-post")
+        ax.plot(
+            swipes,
+            mean,
+            color=SERIES[rung],
+            lw=2,
+            label=f"{NAMES[rung]}  (n = {len(runs)} seeds)",
+            drawstyle="steps-post",
+        )
         labels.append((rung, mean[-1]))
     for rung, y in labels:
         end_label(ax, 1000, y, rung, dy={"r4": 8, "r0": -8}.get(rung, 0))
@@ -101,8 +137,13 @@ def chart_discovery() -> None:
     ax.set_yticks(range(7))
     ax.set_xlabel("swipes")
     ax.set_ylabel("planted interests found (of 6)")
-    title(fig, ax, "Greedy learning stops finding interests. Exploration doesn't.",
-          "Simulated users with six hidden interests. R0 shows everything evenly; R4 keeps that reach while learning.")
+    title(
+        fig,
+        ax,
+        "Greedy learning stops finding interests. Exploration doesn't.",
+        "Simulated users with six hidden interests. R0 shows everything evenly; "
+        "R4 keeps that reach while learning.",
+    )
     ax.legend(loc="lower right", bbox_to_anchor=(0.86, 0.02))
     footer(fig, "SIMULATED · phase10_h3 · S6_six_interests · 20 seeds × 1,000 swipes")
     fig.subplots_adjust(left=0.07, right=0.9, top=0.84, bottom=0.17)
@@ -112,38 +153,66 @@ def chart_discovery() -> None:
 
 # --- 2. The trade-off: like rate against coverage, every session -------------
 
+
 def chart_tradeoff() -> None:
     fig, ax = plt.subplots(figsize=(9, 4.8), dpi=200)
     centres = {}
     for rung in ORDER[::-1]:
-        runs = [s for v in ("S1_semantic", "S5_drift", "S6_six_interests")
-                for s in sessions("phase10_h3", v, rung)]
+        runs = [
+            s
+            for v in ("S1_semantic", "S5_drift", "S6_six_interests")
+            for s in sessions("phase10_h3", v, rung)
+        ]
         x = np.array([s["like_rate"] for s in runs])
         y = np.array([s["coverage_last_500"] for s in runs])
-        ax.scatter(x, y, s=46, color=SERIES[rung], edgecolors=SURFACE, linewidths=1.6, alpha=0.95,
-                   label=f"{NAMES[rung]}  (n = {len(runs)})", zorder=3)
+        ax.scatter(
+            x,
+            y,
+            s=46,
+            color=SERIES[rung],
+            edgecolors=SURFACE,
+            linewidths=1.6,
+            alpha=0.95,
+            label=f"{NAMES[rung]}  (n = {len(runs)})",
+            zorder=3,
+        )
         centres[rung] = (x.mean(), y.mean())
     offsets = {"r4": (-20, 26), "r3": (60, 95), "r0": (26, 24)}
     for rung, (cx, cy) in centres.items():
-        ax.annotate(NAMES[rung].split(" · ")[0], (cx, cy), xytext=offsets[rung], textcoords="offset points",
-                    fontsize=10.5, fontweight="bold", color=TEXT,
-                    arrowprops={"arrowstyle": "-", "color": MUTED, "lw": 0.8})
+        ax.annotate(
+            NAMES[rung].split(" · ")[0],
+            (cx, cy),
+            xytext=offsets[rung],
+            textcoords="offset points",
+            fontsize=10.5,
+            fontweight="bold",
+            color=TEXT,
+            arrowprops={"arrowstyle": "-", "color": MUTED, "lw": 0.8},
+        )
     ax.set_xlabel("like rate over the session")
     ax.set_ylabel("coverage of the last 500 cards")
     ax.set_ylim(0, 1.14)
     ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
     ax.xaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1, decimals=0))
     ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1, decimals=0))
-    title(fig, ax, "The exploration trade-off, session by session",
-          "Each dot is one simulated session. R3 maximises likes by narrowing; R4 keeps the collection open.")
+    title(
+        fig,
+        ax,
+        "The exploration trade-off, session by session",
+        "Each dot is one simulated session. R3 maximises likes by narrowing; "
+        "R4 keeps the collection open.",
+    )
     ax.legend(loc="lower left")
-    footer(fig, "SIMULATED · phase10_h3 · S1_semantic + S5_drift + S6_six_interests · 20 seeds each")
+    footer(
+        fig, "SIMULATED · phase10_h3 · S1_semantic + S5_drift + S6_six_interests · 20 seeds each"
+    )
     fig.subplots_adjust(left=0.08, right=0.97, top=0.84, bottom=0.17)
     fig.savefig(OUT / "chart-tradeoff.png")
     plt.close(fig)
 
 
 # --- 3. Like rate as the model learns (S1) -----------------------------------
+
 
 def chart_learning() -> None:
     window = 100
@@ -167,8 +236,13 @@ def chart_learning() -> None:
     ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1, decimals=0))
     ax.set_xlabel("swipes")
     ax.set_ylabel(f"like rate (rolling {window})")
-    title(fig, ax, "Learning lifts the like rate; exploring spends some of it",
-          "Like rate of simulated users as each model learns. Mean across seeds; band = middle 50% of seeds.")
+    title(
+        fig,
+        ax,
+        "Learning lifts the like rate; exploring spends some of it",
+        "Like rate of simulated users as each model learns. "
+        "Mean across seeds; band = middle 50% of seeds.",
+    )
     ax.legend(loc="upper left", ncol=3)
     footer(fig, "SIMULATED · phase10_h3 · S1_semantic · 20 seeds × 1,000 swipes")
     fig.subplots_adjust(left=0.08, right=0.9, top=0.84, bottom=0.17)

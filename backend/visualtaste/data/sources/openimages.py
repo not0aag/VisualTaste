@@ -228,9 +228,7 @@ async def fetch(
     import asyncio
 
     from visualtaste.config import check_disk_headroom
-    from visualtaste.data.sources import LOG_EVERY
-
-    from visualtaste.data.sources import needs_planning
+    from visualtaste.data.sources import LOG_EVERY, needs_planning
 
     if needs_planning(manifest, target):
         added = manifest.add_all(await plan(settings, target, client=client))

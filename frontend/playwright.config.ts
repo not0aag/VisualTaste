@@ -23,7 +23,12 @@ const repoRoot = path.resolve(here, '..')
 // Built rather than hard-coded: a bare `python` resolves to whatever is first
 // on PATH (a system 3.13 here, with none of the project's dependencies), and a
 // hand-written relative path has to survive cmd.exe's own view of slashes.
-const python = path.join(repoRoot, '.venv', 'Scripts', 'python.exe')
+// The venv layout differs by platform; VT_PYTHON overrides both (CI sets it).
+const python =
+  process.env.VT_PYTHON ??
+  (process.platform === 'win32'
+    ? path.join(repoRoot, '.venv', 'Scripts', 'python.exe')
+    : path.join(repoRoot, '.venv', 'bin', 'python'))
 
 export default defineConfig({
   testDir: './playwright',

@@ -296,6 +296,12 @@ class HealthResponse(BaseModel):
     embeddings: dict[str, int]
     active_model_version: str | None = None
     notes: list[str] = Field(default_factory=list)
+    #: Free space where the data lives, against the guard the jobs respect.
+    #: Below the guard, downloads and ingestion refuse to run; the feed is
+    #: unaffected, so this does not change `status`.
+    disk_free_gb: float | None = None
+    disk_min_free_gb: int | None = None
+    disk_ok: bool | None = None
 
 
 # --- Analytics (Phase 13): every number on a dashboard comes from one of these.

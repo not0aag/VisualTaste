@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import Path as PathParam
 from fastapi.responses import FileResponse
 
 from visualtaste.api.deps import AppState, get_db, get_state
@@ -37,6 +38,14 @@ from visualtaste.db import repo
 from visualtaste.vision.encoders import DINOV2_KEY, SIGLIP2_KEY
 
 router = APIRouter(tags=["images"])
+
+#: Every image id is the first 16 hex digits of the original's SHA-256
+#: (`data/http.image_id_for`). Rejecting anything else before a file path is
+#: built means no request can reach outside the derivatives folders.
+IMAGE_ID_PATTERN = r"^[0-9a-f]{16}$"
+ImageId = Annotated[
+    str, PathParam(pattern=IMAGE_ID_PATTERN, description="16 lowercase hex characters")
+]
 
 IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 
@@ -96,7 +105,7 @@ def fetch_row(connection: sqlite3.Connection, image_id: str) -> sqlite3.Row:
 
 @router.get("/images/{image_id}", response_model=ImageDetail)
 def get_image(
-    image_id: str, connection: Annotated[sqlite3.Connection, Depends(get_db)]
+    image_id: ImageId, connection: Annotated[sqlite3.Connection, Depends(get_db)]
 ) -> ImageDetail:
     return detail_from_row(fetch_row(connection, image_id))
 
@@ -118,20 +127,20 @@ def _serve(path: Path, image_id: str, kind: str) -> FileResponse:
 
 
 @router.get("/images/{image_id}/display")
-def get_display(image_id: str, state: Annotated[AppState, Depends(get_state)]) -> FileResponse:
+def get_display(image_id: ImageId, state: Annotated[AppState, Depends(get_state)]) -> FileResponse:
     """The 1024 px rendition the Feed shows."""
     return _serve(state.settings.display_path(image_id), image_id, "display")
 
 
 @router.get("/images/{image_id}/thumb")
-def get_thumb(image_id: str, state: Annotated[AppState, Depends(get_state)]) -> FileResponse:
+def get_thumb(image_id: ImageId, state: Annotated[AppState, Depends(get_state)]) -> FileResponse:
     """The 256 px rendition for grids and hover previews."""
     return _serve(state.settings.thumb_path(image_id), image_id, "thumb")
 
 
 @router.get("/images/{image_id}/similar", response_model=SimilarResponse)
 def get_similar(
-    image_id: str,
+    image_id: ImageId,
     connection: Annotated[sqlite3.Connection, Depends(get_db)],
     state: Annotated[AppState, Depends(get_state)],
     model: Annotated[str, Query(pattern=f"^({SIGLIP2_KEY}|{DINOV2_KEY})$")] = SIGLIP2_KEY,

@@ -54,10 +54,24 @@ MAX_ASPECT_RATIO = 4.0
 # would mean more to go wrong for a handful of files we do not need.
 REJECTED_SUFFIXES = frozenset(
     {
-        ".svg", ".svgz",
-        ".heic", ".heif", ".avif",
-        ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2", ".raf", ".pef",
-        ".psd", ".ai", ".eps", ".pdf",
+        ".svg",
+        ".svgz",
+        ".heic",
+        ".heif",
+        ".avif",
+        ".cr2",
+        ".cr3",
+        ".nef",
+        ".arw",
+        ".dng",
+        ".orf",
+        ".rw2",
+        ".raf",
+        ".pef",
+        ".psd",
+        ".ai",
+        ".eps",
+        ".pdf",
     }
 )
 

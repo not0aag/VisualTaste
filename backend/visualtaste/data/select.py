@@ -251,8 +251,7 @@ def fit_pca(
     cumulative = np.cumsum(model.explained_variance_ratio_)
 
     logger.info(
-        "PCA to %d components explains %.1f%% of the variance "
-        "(32 components: %.1f%%, 64: %.1f%%)",
+        "PCA to %d components explains %.1f%% of the variance (32 components: %.1f%%, 64: %.1f%%)",
         components,
         100 * cumulative[-1],
         100 * cumulative[min(31, len(cumulative) - 1)],

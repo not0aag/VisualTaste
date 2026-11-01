@@ -182,6 +182,4 @@ async def fetch(
         logger.info("unsplash_lite: added %d new candidates to the manifest", added)
         manifest.flush(force=True)
 
-    return await download_http_candidates(
-        settings, client, manifest, source=SOURCE, target=target
-    )
+    return await download_http_candidates(settings, client, manifest, source=SOURCE, target=target)

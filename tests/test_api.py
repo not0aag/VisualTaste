@@ -141,6 +141,19 @@ class TestHealth:
     def test_reports_the_schema_version(self, client):
         assert client.get("/api/health").json()["schema_version"] == 1
 
+    def test_reports_disk_space_against_the_guard(self, client, monkeypatch):
+        # Below the guard, downloads refuse to run; the feed still serves, so
+        # low disk shows in its own fields rather than as `degraded`.
+        import visualtaste.config as config
+
+        monkeypatch.setattr(config, "free_gb", lambda path: 3.0)
+        body = client.get("/api/health").json()
+
+        assert body["disk_free_gb"] == 3.0
+        assert body["disk_min_free_gb"] >= 0
+        assert body["disk_ok"] is (body["disk_min_free_gb"] <= 3.0)
+        assert body["status"] == "ok"
+
     def test_reports_degraded_with_a_reason_when_embeddings_are_missing(self, tmp_path):
         # During the build this is the normal state, and "degraded plus a note"
         # is the difference between "not finished yet" and "broken".
@@ -459,6 +472,47 @@ class TestImages:
 
     def test_an_unknown_image_is_a_404(self, client):
         assert client.get("/api/images/ffffffffffffffff").status_code == 404
+
+    @pytest.mark.parametrize(
+        "bad_id",
+        [
+            "..",  # parent directory
+            "..%2f..%2fdb",  # encoded traversal
+            "FFFFFFFFFFFFFFFF",  # upper case: ids are lower-case hex
+            "ffffffffffffffff0",  # 17 characters
+            "fffffffffffffff",  # 15 characters
+            "gggggggggggggggg",  # not hex
+            "ffffffff%00ffffff",  # embedded NUL
+        ],
+    )
+    @pytest.mark.parametrize("suffix", ["", "/display", "/thumb", "/similar"])
+    def test_a_malformed_id_is_rejected_before_any_path_is_built(self, client, bad_id, suffix):
+        response = client.get(f"/api/images/{bad_id}{suffix}")
+        assert response.status_code in (404, 422)
+        assert response.headers.get("content-type", "").startswith("application/json")
+
+    def test_a_malformed_id_cannot_be_reviewed(self, client):
+        response = client.post("/api/review/..", json={"decision": "keep"})
+        assert response.status_code in (404, 422)
+
+
+class TestCors:
+    """The browser may call the API only from the dev server's own origins."""
+
+    def test_the_dev_origin_is_allowed(self, client):
+        response = client.get("/api/health", headers={"Origin": "http://127.0.0.1:5173"})
+        assert response.headers.get("access-control-allow-origin") == "http://127.0.0.1:5173"
+
+    def test_any_other_origin_is_not(self, client):
+        response = client.get("/api/health", headers={"Origin": "https://evil.example"})
+        assert "access-control-allow-origin" not in response.headers
+
+    def test_a_preflight_from_another_origin_is_refused(self, client):
+        response = client.options(
+            "/api/events",
+            headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "POST"},
+        )
+        assert response.headers.get("access-control-allow-origin") is None
 
     def test_the_display_file_is_served_as_webp(self, client):
         card = client.get("/api/feed/next").json()["cards"][0]

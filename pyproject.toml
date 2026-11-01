@@ -71,6 +71,8 @@ ignore = [
 known-first-party = ["visualtaste"]
 
 [tool.ruff.lint.per-file-ignores]
+# README figure scripts print typographic × and – into chart text on purpose.
+"scripts/readme_*.py" = ["RUF001"]
 # Tests assert hand-worked numbers; magic values are the point.
 "tests/*" = ["E501"]
 
@@ -80,3 +82,10 @@ pythonpath = ["backend"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = ["error::DeprecationWarning:visualtaste.*"]
+# Keep only failed runs' temp folders, and only the latest one. The default
+# kept three full runs, which once grew to 25 GB of database copies.
+tmp_path_retention_policy = "failed"
+tmp_path_retention_count = 1
+markers = [
+    "gpu: needs a CUDA device; skipped in CI and on machines without one",
+]

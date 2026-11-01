@@ -203,8 +203,7 @@ def calibrate(
     flagged = int((margins > threshold).sum())
 
     logger.info(
-        "safety screen calibrated on %d reference images: threshold %.4f "
-        "flags %d of them (%.2f%%)",
+        "safety screen calibrated on %d reference images: threshold %.4f flags %d of them (%.2f%%)",
         len(margins),
         threshold,
         flagged,

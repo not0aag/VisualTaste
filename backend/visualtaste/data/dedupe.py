@@ -229,9 +229,7 @@ def _bucket_key(phash: str) -> str:
     return phash[: _BUCKET_BITS // 4]
 
 
-def _bucket_neighbours(
-    buckets: dict[str, list[HashedImage]], phash: str
-) -> Iterable[HashedImage]:
+def _bucket_neighbours(buckets: dict[str, list[HashedImage]], phash: str) -> Iterable[HashedImage]:
     """Every image in this hash's bucket, plus buckets one bit away from it.
 
     Checking single-bit variations of the prefix recovers most of the pairs a
@@ -279,9 +277,7 @@ def find_embedding_duplicate_groups(
 
     vectors = np.asarray(vectors, dtype=np.float32)
     if len(image_ids) != len(vectors):
-        raise ValueError(
-            f"{len(image_ids)} ids but {len(vectors)} vectors; they must align"
-        )
+        raise ValueError(f"{len(image_ids)} ids but {len(vectors)} vectors; they must align")
 
     sizes = pixels or {}
 

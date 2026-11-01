@@ -203,6 +203,10 @@ def health(
     notes = list(state.notes)
     status = "ok" if state.features is not None and not notes else "degraded"
 
+    from visualtaste.config import free_gb
+
+    disk_free = round(free_gb(state.settings.data), 1)
+
     return HealthResponse(
         status=status,
         schema_version=repo.schema_version(connection),
@@ -211,6 +215,9 @@ def health(
         embeddings=embeddings,
         active_model_version=state.model_version,
         notes=notes,
+        disk_free_gb=disk_free,
+        disk_min_free_gb=state.settings.min_free_gb,
+        disk_ok=disk_free >= state.settings.min_free_gb,
     )
 
 

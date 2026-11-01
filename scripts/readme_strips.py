@@ -74,16 +74,25 @@ def spaced(draw: ImageDraw.ImageDraw, xy, text: str, fnt, fill, spacing: float) 
         x += draw.textlength(ch, font=fnt) + spacing
 
 
+def liked_pct(actions: list[str]) -> int:
+    """Share of these verdicts that were likes or saves, as a whole percent."""
+    return round(100 * sum(a in ("like", "save") for a in actions) / max(1, len(actions)))
+
+
 def learning_strip() -> None:
     session = json.loads(SESSION.read_text(encoding="utf-8"))
     ids, actions, rungs = session["image_ids"], session["actions"], session["served_rungs"]
     n = len(ids)
     rows = [
         (range(0, 12), "SWIPES 1–12", "Cold start: a deliberate spread across the collection"),
-        (range(n - 12, n), f"SWIPES {n - 11:,}–{n:,}", f"After learning: served by {rungs[-1].upper()}"),
+        (
+            range(n - 12, n),
+            f"SWIPES {n - 11:,}–{n:,}",
+            f"After learning: served by {rungs[-1].upper()}",
+        ),
     ]
 
-    size, gap, pad, label_w = 112, 10, 40, 0
+    size, gap, pad = 112, 10, 40
     width = pad * 2 + 12 * size + 11 * gap
     row_h = 30 + size + 34
     height = pad + 54 + len(rows) * (row_h + 26) + 44
@@ -91,8 +100,10 @@ def learning_strip() -> None:
     draw = ImageDraw.Draw(canvas)
 
     draw.text((pad, pad - 6), "Watch it learn", font=SANS_B(30), fill=TEXT)
-    sub = (f"One recorded session of a simulated user. Liked: {sum(a in ('like', 'save') for a in actions[:100])}% "
-           f"of the first 100 cards, {sum(a in ('like', 'save') for a in actions[-100:])}% of the last 100.")
+    sub = (
+        f"One recorded session of a simulated user. Liked: {liked_pct(actions[:100])}% "
+        f"of the first 100 cards, {liked_pct(actions[-100:])}% of the last 100."
+    )
     draw.text((pad, pad + 34), sub, font=SANS(17), fill=TEXT_2)
 
     y = pad + 80
@@ -103,7 +114,12 @@ def learning_strip() -> None:
         lw = draw.textlength(label, font=MONO(15)) + 2.4 * len(label)
         draw.text((pad + lw + 16, y - 3), caption, font=SANS(17), fill=TEXT_2)
         tally = f"{liked} of 12 liked"
-        draw.text((width - pad - draw.textlength(tally, font=SANS_B(17)), y - 3), tally, font=SANS_B(17), fill=TEXT)
+        draw.text(
+            (width - pad - draw.textlength(tally, font=SANS_B(17)), y - 3),
+            tally,
+            font=SANS_B(17),
+            fill=TEXT,
+        )
         top = y + 30
         for k, i in enumerate(chosen):
             x = pad + k * (size + gap)
@@ -125,7 +141,8 @@ def learning_strip() -> None:
 def collection_mosaic() -> None:
     db = sqlite3.connect(f"file:{ROOT / 'data' / 'db' / 'visualtaste.db'}?mode=ro", uri=True)
     rows = db.execute(
-        "SELECT image_id, cluster64 FROM images WHERE selected = 1 AND status = 'ok' AND cluster64 IS NOT NULL"
+        "SELECT image_id, cluster64 FROM images "
+        "WHERE selected = 1 AND status = 'ok' AND cluster64 IS NOT NULL"
     ).fetchall()
     db.close()
     by_cluster: dict[int, list[str]] = {}

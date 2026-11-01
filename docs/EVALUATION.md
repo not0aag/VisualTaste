@@ -32,8 +32,8 @@ The brief's §7.7 names five, to be reported honestly whether or not they hold:
 | --- | --- | --- |
 | H1 | R1 (Rocchio) and R2 (kNN) beat R0 (cold start) | **supported** (+0.138 and +0.161 like rate, 5 seeds x 1,000 swipes, 2026-10-31) — but both find only 2 of 3 planted interests |
 | H2 | R3 (logistic regression) beats R2 after roughly 150 labels | **not supported for ranking** (replay, 20 seeds, 2026-11-01): R3 has lower log loss at every cut from 400 labels (significant at 9 of 11), but R2 has higher AUC at every cut from 150 on (significant at 9 of 16) |
-| H3 | R4 (Thompson sampling) finds all 3 planted interests faster than R3 | not yet run |
-| H4 | R3+R5 (multi-interest features) beats R3 | not yet run |
+| H3 | R4 (Thompson sampling) finds all 3 planted interests faster than R3 | **supported for discovery, not for like rate** (20 seeds × 1,000 swipes per scenario, 2026-11-01): R4 finds all interests in more seeds (+0.25 S1, +0.55 S5, +0.85 S6) and sooner (−288, −266 and −773 swipes), with +50 to +58 points of coverage; but it keeps −0.21, −0.31 and −0.34 of R3's like-rate gain over R0, against a 70% bar |
+| H4 | R3+R5 (multi-interest features) beats R3 | **inconclusive with exploration** (R4+R5 vs R4, 20 seeds on S1, S5, S6, 2026-11-01): no metric differs; the plain R3+R5 vs R3 comparison is part of `phase14_final` |
 | H5 | R6 (neural ranker) beats R3 only once labels are plentiful | not yet run |
 
 ---

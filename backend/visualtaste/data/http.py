@@ -33,6 +33,7 @@ import logging
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
+
 import httpx
 
 from visualtaste.config import Settings, check_disk_headroom
@@ -265,9 +266,7 @@ class PoliteClient:
             )
         raise last_error
 
-    async def _get_once(
-        self, url: str, max_bytes: int | None, expected_md5: str | None
-    ) -> bytes:
+    async def _get_once(self, url: str, max_bytes: int | None, expected_md5: str | None) -> bytes:
         """One attempt: stream the response, checking the size before the body."""
         async with self._client.stream("GET", url) as response:
             response.raise_for_status()
@@ -276,9 +275,7 @@ class PoliteClient:
             # an oversized museum scan costs a header exchange, not 20 MB.
             declared = response.headers.get("content-length")
             if max_bytes is not None and declared and int(declared) > max_bytes:
-                raise DownloadRejected(
-                    "too_large", f"{int(declared) / 1024**2:.1f}MB declared"
-                )
+                raise DownloadRejected("too_large", f"{int(declared) / 1024**2:.1f}MB declared")
 
             chunks: list[bytes] = []
             total = 0
@@ -287,9 +284,7 @@ class PoliteClient:
                 # Servers lie, or omit Content-Length entirely for chunked
                 # responses, so enforce the cap on the real byte count too.
                 if max_bytes is not None and total > max_bytes:
-                    raise DownloadRejected(
-                        "too_large", f"{total / 1024**2:.1f}MB streamed"
-                    )
+                    raise DownloadRejected("too_large", f"{total / 1024**2:.1f}MB streamed")
                 chunks.append(chunk)
 
         data = b"".join(chunks)

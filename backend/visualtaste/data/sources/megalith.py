@@ -115,12 +115,8 @@ async def fetch(
         logger.info("megalith: shard %05d -- fetching metadata", shard)
         metadata = _load_shard_metadata(shard)
 
-        logger.info(
-            "megalith: shard %05d -- fetching tar (~1.8 GB, resumable)", shard
-        )
-        tar_path = hf_hub_download(
-            MIRROR_REPO, f"{shard:05d}.tar", repo_type="dataset"
-        )
+        logger.info("megalith: shard %05d -- fetching tar (~1.8 GB, resumable)", shard)
+        tar_path = hf_hub_download(MIRROR_REPO, f"{shard:05d}.tar", repo_type="dataset")
 
         extracted = _extract_shard(
             settings,
@@ -163,12 +159,8 @@ def _load_shard_metadata(shard: int) -> dict[str, dict[str, object]]:
     """
     from huggingface_hub import hf_hub_download
 
-    path = hf_hub_download(
-        MIRROR_REPO, f"{shard:05d}.parquet", repo_type="dataset"
-    )
-    frame = pd.read_parquet(
-        path, columns=["key", "url", "caption", "status", "width", "height"]
-    )
+    path = hf_hub_download(MIRROR_REPO, f"{shard:05d}.parquet", repo_type="dataset")
+    frame = pd.read_parquet(path, columns=["key", "url", "caption", "status", "width", "height"])
     frame = frame[frame["status"] == "success"]
     return {str(row["key"]): row for row in frame.to_dict("records")}
 
@@ -224,9 +216,7 @@ def _extract_shard(
             stats.requested += 1
             candidate.attempts += 1
 
-            if not dimensions_acceptable(
-                candidate.declared_width, candidate.declared_height
-            ):
+            if not dimensions_acceptable(candidate.declared_width, candidate.declared_height):
                 candidate.reject("bad_dimensions")
                 stats.reject("bad_dimensions")
                 continue
@@ -331,9 +321,7 @@ async def fetch_from_flickr(
         "megalith: using the Flickr fallback path -- %d individual requests",
         len(manifest.pending()),
     )
-    return await download_http_candidates(
-        settings, client, manifest, source=SOURCE, target=target
-    )
+    return await download_http_candidates(settings, client, manifest, source=SOURCE, target=target)
 
 
 def _plan_from_original_repo(settings: Settings, target: int) -> list[Candidate]:
