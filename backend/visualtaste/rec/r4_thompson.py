@@ -138,6 +138,8 @@ class ThompsonRecommender(LogisticRecommender):
         mmr_lambda: float = MMR_LAMBDA,
         explore_every: int | None = EXPLORE_EVERY,
         seed: int = 1729,
+        tau_halflife: float | None = None,
+        mmr_shortlist: int = SHORTLIST,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -145,6 +147,12 @@ class ThompsonRecommender(LogisticRecommender):
         self.mmr_lambda = mmr_lambda
         self.explore_every = explore_every
         self.seed = seed
+        #: Labels at which the temperature has halved (None: constant). The
+        #: Thompson noise is the main like-rate cost of exploring (DECISIONS
+        #: #25), so this lets it fade as the posterior sharpens.
+        self.tau_halflife = tau_halflife
+        #: How many top sampled scores MMR diversifies over.
+        self.mmr_shortlist = mmr_shortlist
 
         self.L: np.ndarray | None = None  # Cholesky factor of H, lower-triangular
         #: cluster -> (likes, dislikes) at fit time, for the exploration quota.
@@ -172,6 +180,18 @@ class ThompsonRecommender(LogisticRecommender):
 
         self.cluster_ratings = cluster_ratings_from(labels, features)
         self.labels_at_fit = len(labels)
+
+    def effective_tau(self) -> float:
+        """The posterior temperature for the next draw.
+
+        `tau_post` unless `tau_halflife` is set, in which case
+        tau_post / (1 + labels / tau_halflife): exploration noise shrinks as
+        evidence accumulates. Used by both the batch and the propensity
+        estimate, which must replay the same draw distribution.
+        """
+        if self.tau_halflife is None:
+            return self.tau_post
+        return self.tau_post / (1.0 + self.labels_at_fit / self.tau_halflife)
 
     # --- The batch -------------------------------------------------------------
 
@@ -202,6 +222,7 @@ class ThompsonRecommender(LogisticRecommender):
             rng,
             cluster_ratings=self.cluster_ratings,
             mmr_lambda=self.mmr_lambda,
+            shortlist=self.mmr_shortlist,
         )
 
     def rerank(
@@ -212,7 +233,7 @@ class ThompsonRecommender(LogisticRecommender):
         assert self.w is not None and self.L is not None
         rng = self._batch_rng()
 
-        w_tilde = sample_weights(self.w, self.L, rng, tau=self.tau_post)
+        w_tilde = sample_weights(self.w, self.L, rng, tau=self.effective_tau())
         sampled = self.sampled_probabilities(features, w_tilde)[:, 0][candidates]
 
         n_explore = explore_slots(
@@ -268,7 +289,7 @@ class ThompsonRecommender(LogisticRecommender):
         require_fitted(self)
         assert self.w is not None and self.L is not None
         rng = np.random.default_rng((self.seed, seed, 1))
-        W = sample_weights(self.w, self.L, rng, draws=draws, tau=self.tau_post)
+        W = sample_weights(self.w, self.L, rng, draws=draws, tau=self.effective_tau())
         sampled = self.sampled_probabilities(features, W)[candidates]
 
         shown = [int(s) for s in shown]
@@ -289,7 +310,8 @@ class ThompsonRecommender(LogisticRecommender):
             "tau_post": self.tau_post,
             "mmr_lambda": self.mmr_lambda,
             "explore_every": self.explore_every,
-            "shortlist": SHORTLIST,
+            "shortlist": self.mmr_shortlist,
+            "tau_halflife": self.tau_halflife,
             "seed": self.seed,
         }
 

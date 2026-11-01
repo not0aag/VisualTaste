@@ -195,3 +195,52 @@ class TestBatch:
         restored = ThompsonRecommender().load(tmp_path / "v")
         np.testing.assert_array_equal(restored.L, model.L)
         assert restored.cluster_ratings == model.cluster_ratings
+
+
+class TestPhase15Options:
+    """ROADMAP D1: a fading temperature and a narrower MMR shortlist.
+
+    Both default to the original behaviour exactly, so every cached study is
+    unaffected; only specs that name them change.
+    """
+
+    def test_without_a_half_life_the_temperature_is_tau_post_itself(self):
+        model = ThompsonRecommender(tau_post=0.1)
+        model.labels_at_fit = 5_000
+        assert model.effective_tau() == 0.1
+
+    def test_the_temperature_halves_at_the_half_life(self):
+        model = ThompsonRecommender(tau_post=0.1, tau_halflife=200)
+        model.labels_at_fit = 0
+        assert model.effective_tau() == pytest.approx(0.1)
+        model.labels_at_fit = 200
+        assert model.effective_tau() == pytest.approx(0.05)
+        model.labels_at_fit = 600
+        assert model.effective_tau() == pytest.approx(0.025)
+
+    def test_the_default_shortlist_is_the_original_constant(self):
+        assert ThompsonRecommender().mmr_shortlist == rerank.SHORTLIST
+
+    def test_a_short_list_keeps_mmr_among_the_top_scores(self):
+        features = clustered_bundle()
+        candidates = np.arange(len(features))
+        relevance = np.linspace(1.0, 0.0, len(candidates))  # row 0 is best
+        rng = np.random.default_rng(0)
+
+        picks, explore = rerank.explore_batch(
+            features, candidates, relevance, 5, 0, rng, cluster_ratings={}, shortlist=8
+        )
+
+        assert explore == []
+        assert len(picks) == 5
+        assert max(picks) < 8  # every pick from the top eight
+
+    def test_the_options_parse_onto_the_model(self):
+        from visualtaste.config import Settings
+        from visualtaste.eval.study import RungSpec
+
+        spec = RungSpec.parse("r4:tau_halflife=200,mmr_top=50")
+        model = spec.build(Settings(), seed=1729)
+
+        assert model.tau_halflife == 200.0
+        assert model.mmr_shortlist == 50

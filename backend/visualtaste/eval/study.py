@@ -93,6 +93,9 @@ class RungSpec:
         "tau": ("tau_post", float),
         "mmr": ("mmr_lambda", float),
         "quota": ("explore_every", lambda v: None if int(v) == 0 else int(v)),
+        # Phase 15 (ROADMAP D1): fade the temperature, narrow MMR's shortlist.
+        "tau_halflife": ("tau_halflife", float),
+        "mmr_top": ("mmr_shortlist", int),
         "loss": ("loss", str),
         "minlabels": ("min_labels", int),
         "epochs": ("max_epochs", int),

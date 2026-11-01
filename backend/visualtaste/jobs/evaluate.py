@@ -477,6 +477,31 @@ PRESETS[FINAL_STUDY] = Preset(
 )
 
 
+#: ROADMAP D1: can R4 keep more of R3's like-rate gain without losing its
+#: reach? The sensitivity study (phase10_sensitivity) found the Thompson noise,
+#: not the probe quota, to be the main cost; these variants fade that noise as
+#: labels accumulate, narrow MMR's shortlist, and lower the temperature again.
+EXPLORE_STUDY = "phase15_explore"
+_EXPLORE_VARIANTS = (
+    "r4:tau=0.05",
+    "r4:tau_halflife=200",
+    "r4:mmr_top=50",
+    "r4:mmr=0.9",
+    "r4:tau_halflife=200,mmr_top=50,mmr=0.9",
+)
+PRESETS[EXPLORE_STUDY] = Preset(
+    title="Phase 15: closing R4's like-rate gap (S1, S6)",
+    variants=(_S1, _S6),
+    specs=("r0", "r3", "r4", *_EXPLORE_VARIANTS),
+    comparisons=tuple(
+        (variant, other, "r4", metric, expect)
+        for variant in (_S1, _S6)
+        for other in _EXPLORE_VARIANTS
+        for metric, expect in (("like_rate", "higher"), ("all_found", "higher"))
+    ),
+)
+
+
 def default_rung_choice(
     results: dict[tuple[str, str], list],
     *,

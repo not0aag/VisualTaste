@@ -149,6 +149,7 @@ def explore_batch(
     *,
     cluster_ratings: dict[int, tuple[int, int]],
     mmr_lambda: float = MMR_LAMBDA,
+    shortlist: int = SHORTLIST,
 ) -> tuple[list[int], list[int]]:
     """One exploring batch from one set of (sampled) relevance scores.
 
@@ -172,7 +173,7 @@ def explore_batch(
     relevance = np.array(relevance, dtype=np.float64)
     if explore:
         relevance[explore] = -np.inf
-    take = min(SHORTLIST, len(relevance))
+    take = min(shortlist, len(relevance))
     shortlist = np.argpartition(-relevance, take - 1)[:take]
     shortlist = shortlist[np.isfinite(relevance[shortlist])]
     picks = mmr_select(
