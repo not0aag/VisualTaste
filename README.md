@@ -22,6 +22,19 @@
   explains every pick, and measures itself honestly. Nothing leaves your machine.
 </p>
 
+> [!TIP]
+> **The findings at a glance** (simulated users, 20 paired seeds per comparison, every number reproducible from one command):
+>
+> | | |
+> | --- | --- |
+> | 🎯 **Default recommender** | R4+R5 (Thompson sampling + interest tracking) finds **every** planted interest in **100% of seeds** across all six scenarios; the best pure-accuracy model (R3) manages 15% when there are six interests |
+> | 📈 **Learning** | logistic regression lifts the like rate from **0.47 to 0.64–0.71** within 1,000 swipes |
+> | 🧠 **Neural ranker** | did **not** beat the linear model at up to 4,900 labels, and the README says so |
+> | 💬 **Describe your taste** | typing a few words raises the cold-start like rate by **+0.05**, with no interest lost at the chosen 20% share |
+> | ⚡ **Speed** | feed p95 **39 ms**; every speed-up verified **bit-identical** against a golden set |
+>
+> The full story, including what failed: [**docs/WRITEUP.md**](docs/WRITEUP.md)
+
 <p align="center">
   <img src="docs/images/demo.gif" alt="Dragging a photo in the Feed: the LIKE and NOPE stamps fade in with the drag, and the I key opens the explanation panel" width="880">
 </p>
