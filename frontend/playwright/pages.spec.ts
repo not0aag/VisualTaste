@@ -12,6 +12,7 @@ import { test, expect, type ConsoleMessage, type Page } from '@playwright/test'
 const PAGES = [
   { path: '/feed', testId: 'swipe-card' },
   { path: '/history', testId: 'history' },
+  { path: '/saves', testId: 'saves' },
   { path: '/profile', heading: 'Your taste' },
   { path: '/lab', testId: 'model-lab' },
   { path: '/map', testId: 'embedding-map' },

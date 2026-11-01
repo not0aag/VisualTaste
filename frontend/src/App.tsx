@@ -12,11 +12,14 @@ import { History } from './pages/History'
 import { ModelLab } from './pages/ModelLab'
 import { Profile } from './pages/Profile'
 import { Review } from './pages/Review'
+import { Saves } from './pages/Saves'
 
 /** 16px line icons, drawn on a 24-unit grid with one stroke weight. */
 const ICONS: Record<string, JSX.Element> = {
   // A viewfinder: the one photograph being judged.
   feed: <><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" /><circle cx="12" cy="12" r="3" /></>,
+  // A bookmark: the images kept.
+  saves: <><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z" /></>,
   // A contact sheet.
   history: <><rect x="4" y="4" width="7" height="7" rx="1" /><rect x="13" y="4" width="7" height="7" rx="1" /><rect x="4" y="13" width="7" height="7" rx="1" /><rect x="13" y="13" width="7" height="7" rx="1" /></>,
   // Interests as overlapping clusters.
@@ -32,6 +35,7 @@ const ICONS: Record<string, JSX.Element> = {
 const PAGES = [
   { path: '/feed', label: 'Feed', icon: 'feed' },
   { path: '/history', label: 'History', icon: 'history' },
+  { path: '/saves', label: 'Saves', icon: 'saves' },
   { path: '/profile', label: 'Profile', icon: 'profile' },
   { path: '/lab', label: 'Model Lab', icon: 'lab' },
   { path: '/map', label: 'Embedding Map', icon: 'map' },
@@ -122,6 +126,7 @@ function Shell() {
               <Route path="/" element={<Navigate to="/feed" replace />} />
               <Route path="/feed" element={<Feed />} />
               <Route path="/history" element={<History />} />
+              <Route path="/saves" element={<Saves />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/lab" element={<ModelLab />} />
               <Route path="/map" element={<EmbeddingMap />} />
