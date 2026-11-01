@@ -157,3 +157,31 @@ PCA-50 then UMAP (cosine, n_neighbors 30, min_dist 0.1, seeded, so single-thread
 | --- | --- | --- |
 | `siglip2_b16_224` | 50,000 | 366 s |
 | `dinov2_b14` | 50,000 | 153 s |
+
+## Memory-mapping the feature matrices (ROADMAP E4): not done
+
+**Date:** 2026-11-01. **Decision:** keep loading into private memory.
+
+The idea was to open the vector files with `np.load(..., mmap_mode="r")` so the
+API, the studies and the tests share one copy of the pages instead of each
+holding its own. Measured on the real data:
+
+| file | rows | size on disk |
+| --- | --- | --- |
+| `embeddings/siglip2_b16_224/vectors.npy` | 79,779 | 245 MB |
+| `embeddings/dinov2_b14/vectors.npy` | 79,779 | 245 MB |
+| derived features (PCA-128 x 2, colour-64, UMAP x 2) | 50,000 | 72 MB |
+
+The archive holds every embedded image (79,779), but the recommender works on
+the 50,000 selected ones. `AppState` therefore picks the selected rows out of
+each archive file in pool order (`api/deps.py`, `_align`), and that gather
+makes a private copy (about 153 MB per model) whether or not the file was
+memory-mapped. A memory map would only share the 245 MB archive pages, which
+are read once at startup and then never touched again.
+
+Sharing pages would need a second, pool-ordered copy of each matrix on disk
+(about 300 MB more), written by `jobs/select` and kept in step with it. For a single-user app
+that runs one API process, the saving is about 300 MB of RAM and only while a
+study runs alongside. That does not pay for a second source of truth. Each
+study process holds 330–460 MB in total (measured with three studies running),
+which 16 GB of RAM covers.

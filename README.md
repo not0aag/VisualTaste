@@ -226,7 +226,7 @@ That reach has a price, and the simulator measures it without flattery. R4's lik
 
 Making R4 keep more of R3's gain without losing its reach is the open problem: the exploration quota and the posterior temperature are the levers. The [sensitivity study](docs/EVALUATION.md) maps them.
 
-Every number above, with per-seed tables, confidence intervals and the commands to reproduce it, is in [`docs/EVALUATION.md`](docs/EVALUATION.md). The 28 design decisions and their reasons are in [`docs/DECISIONS.md`](docs/DECISIONS.md).
+Every number above, with per-seed tables, confidence intervals and the commands to reproduce it, is in [`docs/EVALUATION.md`](docs/EVALUATION.md). The 30 design decisions and their reasons are in [`docs/DECISIONS.md`](docs/DECISIONS.md). For the story in one read, what held, what did not and why, see [`docs/WRITEUP.md`](docs/WRITEUP.md).
 
 ---
 
