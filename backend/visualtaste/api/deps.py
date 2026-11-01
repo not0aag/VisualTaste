@@ -30,9 +30,11 @@ clear error is better than an API that intermittently stalls on a download.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sqlite3
+import threading
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -83,6 +85,30 @@ class AppState:
     #: fresh instance every request would restart at cluster 0 and show the
     #: same corner of the collection forever.
     bootstrap: Recommender | None = None
+
+    #: Held for the whole of an online retrain, acquired without blocking, so
+    #: two retrains can never be in flight at once (api/training.py).
+    retrain_lock: threading.Lock = field(default_factory=threading.Lock)
+    #: Guards the `(model, model_version)` pair, which must change together.
+    _serving_lock: threading.Lock = field(default_factory=threading.Lock)
+
+    # --- The serving model ---------------------------------------------------
+
+    def serving(self) -> tuple[Recommender, str]:
+        """The model and its version name, read together.
+
+        Read as a pair under the lock because a retrain may swap both between
+        two separate attribute reads, and an impression filed under the new
+        version but scored by the old model would be a silent attribution error.
+        """
+        with self._serving_lock:
+            return self.require_model(), self.model_version
+
+    def swap(self, model: Recommender, version: str) -> None:
+        """Replace the serving model atomically (Part 2 §5.5)."""
+        with self._serving_lock:
+            self.model = model
+            self.model_version = version
 
     # --- Per-request database access ----------------------------------------
 
@@ -202,6 +228,13 @@ class AppState:
         )
         colour = self._aligned_feature_file(image_ids, "colour64", "colour")
         pca = self._aligned_feature_file(image_ids, "pca128", "pca128")
+        # Optional: only R3's feature ablation uses it, so its absence is not a
+        # degraded state worth a note on /health.
+        dinov2_pca = (
+            self._aligned_feature_file(image_ids, "dinov2_pca128", "dinov2_pca128")
+            if (self.settings.features_dir / "dinov2_pca128.npy").exists()
+            else None
+        )
 
         clusters = self._cluster_array(connection, image_ids)
 
@@ -212,7 +245,10 @@ class AppState:
             colour=colour,
             pca=pca,
             cluster64=clusters,
+            # The `dino` feature block for R3's ablation (rec/features.py).
+            extra={} if dinov2_pca is None else {"dinov2_pca": dinov2_pca},
         )
+        self._warm_design_matrices()
         logger.info(
             "loaded features for %d images (dinov2=%s colour=%s pca=%s)",
             len(image_ids),
@@ -220,6 +256,20 @@ class AppState:
             colour is not None,
             pca is not None,
         )
+
+    def _warm_design_matrices(self) -> None:
+        """Standardise the feature blocks now, so no request pays for it.
+
+        The first `/feed/next` served by R3 would otherwise build the
+        standardised matrix itself -- tens of milliseconds, the whole budget,
+        on exactly one unlucky request.
+        """
+        from visualtaste.rec.features import block_available, standardised_block
+
+        assert self.features is not None
+        for block in ("sig", "dino", "col"):
+            if block_available(self.features, block):
+                standardised_block(self.features, block, features_dir=self.settings.features_dir)
 
     def _selected_pool(self, connection: sqlite3.Connection) -> set[str]:
         """The image ids the feed may draw from: selected and still usable."""
@@ -294,18 +344,27 @@ class AppState:
             logger.info("loaded %s index (%d vectors)", model_key, len(ids))
 
     def _load_model(self, connection: sqlite3.Connection) -> None:
-        """Load the active model, or fall back to cold start.
+        """Load the active model, or start the default rung unfitted.
 
-        Falling back rather than failing: a fresh install has no trained model
-        and must still serve a feed -- that is exactly what R0 is for.
+        With no active version, the configured `default_rung` is loaded empty:
+        the feed's bootstrap serves R0 on its behalf until the first online
+        retrain fits it (Part 2 §4.4). A rung that cannot be constructed or
+        loaded falls back to cold start rather than failing startup.
         """
         from visualtaste.rec import registry
 
         active = registry.active_version(connection)
         if active is None:
-            self.model = ColdStartRecommender(seed=self.settings.seed)
+            try:
+                self.model = load_rung(self.settings.default_rung, self.settings)
+            except KeyError:
+                self.notes.append(f"unknown default rung {self.settings.default_rung!r}")
+                self.model = ColdStartRecommender(seed=self.settings.seed)
             self.model_version = "r0_bootstrap"
-            logger.info("no active model; serving cold start")
+            logger.info(
+                "no active model; %s will take over from cold start once it can be fitted",
+                self.model.rung,
+            )
             return
 
         try:
@@ -316,7 +375,7 @@ class AppState:
             self.model.load(artifacts)
             self.model_version = active.version
             logger.info("loaded active model %s (%s)", active.version, active.rung)
-        except (OSError, KeyError, ValueError) as exc:
+        except (OSError, KeyError, ValueError, json.JSONDecodeError) as exc:
             self.notes.append(
                 f"could not load active model {active.version}: {exc}; serving cold start instead"
             )
@@ -402,6 +461,10 @@ def load_rung(rung: str, settings: Settings) -> Recommender:
         from visualtaste.rec.r2_knn import KnnRecommender
 
         return KnnRecommender()
+    if rung == "r3":
+        from visualtaste.rec.r3_logreg import LogisticRecommender
+
+        return LogisticRecommender()
     raise KeyError(f"unknown rung {rung!r}; it may be from a later phase than this build")
 
 

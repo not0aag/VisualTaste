@@ -205,6 +205,25 @@ from 100% of clusters to about 40%. That is the argument for R4.
 
 ## Phase 9 — R3 + ablations
 
+**Resume here (2026-10-31, session paused at a usage limit; uncommitted, tests green):**
+- Done, untested by new tests yet:
+  - `config.py`: `default_rung`, `serve_min_labels`, `serve_min_per_class`, `skip_weight`
+  - `rec/base.py`: `InsufficientSignal` and `unfit_reason`
+  - `rec/features.py`: standardised `sig`/`dino`/`col` blocks
+  - `rec/logreg_numpy.py`
+  - `rec/r3_logreg.py`: C = 1/(λS), λ tuned by time-ordered validation
+  - `rec/feed.py`: the fallback is recorded in `explanation_json`, and a scoring failure falls back too
+  - `load_rung("r3")`
+  - DINOv2 PCA-128 and the stats files, via `jobs.select --features-only` (already run)
+- Fixed: 3 unused `noqa` comments in `scripts/build_e2e_corpus.py`. This turned `check.ps1` red at pre-flight.
+- Next:
+  - tests (M5, agreement, C-mapping, λ ties, fallback chain)
+  - DECISIONS #16 (noqa fix, standardisation) and #17 (sklearn 1.9 `l1_ratio`)
+  - retrain background task and model swap, plus `/models` routes
+  - simulator variants S1–S6, the evaluate cache and the §4.1 stats
+  - studies, notebook 03, commit
+- Plan: `C:\Users\alena\.claude\plans\synthetic-jumping-jellyfish.md`, still to be copied into PLAN.md as "Part 2 plan".
+
 - [ ] `rec/logreg_numpy.py` hand-written weighted GD with L2; M5 example asserted
 - [ ] `rec/r3_logreg.py` scikit-learn production path
 - [ ] NumPy vs scikit-learn agreement test (coefficients within 1e-3)

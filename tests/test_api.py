@@ -29,6 +29,12 @@ def hex_id(n: int) -> str:
 @pytest.fixture
 def corpus(tmp_path):
     """A small, complete corpus: rows, derivatives, embeddings and clusters."""
+    return build_corpus(tmp_path, IMAGE_COUNT)
+
+
+def build_corpus(tmp_path, image_count: int) -> Settings:
+    """The `corpus` fixture's body, reusable at other sizes (tests/test_training.py)."""
+    IMAGE_COUNT = image_count
     settings = Settings(
         project_root=tmp_path,
         data_root=tmp_path / "data",

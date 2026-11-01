@@ -179,6 +179,42 @@ class ResetResponse(BaseModel):
     archived_labels: int
 
 
+class ModelVersionOut(BaseModel):
+    """One row of `rec_models`, for the Model Lab's version table."""
+
+    version: str
+    rung: str
+    embedding_key: str | None = None
+    params: dict[str, Any] = Field(default_factory=dict)
+    trained_on_events: int
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    is_active: bool
+    created_at: str
+
+
+class ModelsResponse(BaseModel):
+    versions: list[ModelVersionOut]
+    #: What is actually serving right now, which may be `r0_bootstrap` even
+    #: when a version is active (it may not have enough labels yet).
+    serving_version: str
+    serving_rung: str
+    default_rung: str
+
+
+class TrainRequest(BaseModel):
+    #: None trains the rung the online retrain would pick (api/training.py).
+    rung: str | None = None
+    activate: bool = True
+
+
+class TrainResponse(BaseModel):
+    status: str
+    rung: str | None = None
+    version: str | None = None
+    detail: str = ""
+    metrics: dict[str, Any] | None = None
+
+
 class HealthResponse(BaseModel):
     status: Literal["ok", "degraded"]
     schema_version: int

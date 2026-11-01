@@ -165,6 +165,9 @@ class Recommender(ABC):
     def __init__(self) -> None:
         self.trained_on_events: int = 0
         self.is_fitted: bool = False
+        #: Why the last `fit` left this model unusable, in words the feed can
+        #: put into `explanation_json` when it falls back. None when fitted.
+        self.unfit_reason: str | None = "never fitted"
 
     # --- Fitting -------------------------------------------------------------
 
@@ -174,27 +177,42 @@ class Recommender(ABC):
         A rung is `is_fitted` only if it had enough labels to be meaningful,
         which is what lets the feed fall back cleanly rather than serving
         confident nonsense from four examples.
+
+        Two ways to be not-yet-usable, both recorded in `unfit_reason`: too few
+        labels (checked here, against `min_labels`), or labels that cannot
+        train this rung -- thirty likes and no dislikes cannot fit a classifier
+        -- which `_fit` signals by raising `InsufficientSignal`. Neither is an
+        error. Both are ordinary states of a young profile, and the feed's
+        handover chain (Part 2 §4.4) serves the rung below until they pass.
         """
         self.trained_on_events = len(labels)
 
         if len(labels) < self.min_labels:
-            logger.info(
-                "%s: %d labels is below the %d it needs; not fitted",
-                self.rung,
-                len(labels),
-                self.min_labels,
-            )
+            self.unfit_reason = f"{len(labels)} labels; {self.rung} needs {self.min_labels}"
+            logger.info("%s: %s; not fitted", self.rung, self.unfit_reason)
             self.is_fitted = False
             return self
 
-        self._fit(labels, features)
+        try:
+            self._fit(labels, features)
+        except InsufficientSignal as exc:
+            self.unfit_reason = str(exc)
+            logger.info("%s: %s; not fitted", self.rung, self.unfit_reason)
+            self.is_fitted = False
+            return self
+
         self.is_fitted = True
+        self.unfit_reason = None
         logger.info("%s: fitted on %d labels", self.rung, len(labels))
         return self
 
     @abstractmethod
     def _fit(self, labels: LabelSet, features: FeatureBundle) -> None:
-        """Rung-specific fitting. Called only when `min_labels` is satisfied."""
+        """Rung-specific fitting. Called only when `min_labels` is satisfied.
+
+        Raise `InsufficientSignal` when the labels exist but cannot train this
+        rung (one class only, say); `fit` turns that into an unfitted model.
+        """
 
     # --- Scoring -------------------------------------------------------------
 
@@ -252,6 +270,7 @@ class Recommender(ABC):
         meta = json.loads((path / "params.json").read_text(encoding="utf-8"))
         self.trained_on_events = int(meta.get("trained_on_events", 0))
         self.is_fitted = bool(meta.get("is_fitted", False))
+        self.unfit_reason = None if self.is_fitted else "the saved version was never fitted"
         self._load(path)
         return self
 
@@ -261,6 +280,14 @@ class Recommender(ABC):
 
 class UnfittedModelError(RuntimeError):
     """Scoring was attempted on a model that has not been fitted."""
+
+
+class InsufficientSignal(ValueError):
+    """The labels exist but cannot train this rung yet, e.g. only one class.
+
+    Raised by `_fit`, caught by `Recommender.fit`, and never seen by the feed:
+    it becomes `is_fitted = False` with the message kept in `unfit_reason`.
+    """
 
 
 def require_fitted(model: Recommender) -> None:

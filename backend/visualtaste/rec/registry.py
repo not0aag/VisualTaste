@@ -161,6 +161,13 @@ def set_active(connection: sqlite3.Connection, version: str) -> None:
     logger.info("activated model version %s", version)
 
 
+def deactivate_all(connection: sqlite3.Connection) -> None:
+    """No version active: the feed serves cold start (used by profile reset)."""
+    connection.execute("UPDATE rec_models SET is_active = 0 WHERE is_active = 1")
+    connection.commit()
+    logger.info("deactivated every model version")
+
+
 def active_version(connection: sqlite3.Connection) -> ModelVersion | None:
     row = connection.execute("SELECT * FROM rec_models WHERE is_active = 1 LIMIT 1").fetchone()
     return ModelVersion.from_row(row) if row else None

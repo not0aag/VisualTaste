@@ -35,7 +35,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from visualtaste.api import deps
 from visualtaste.api.deps import AppState, get_db, get_state, set_offline_env
-from visualtaste.api.routes import events, feed, history, images, profile
+from visualtaste.api.routes import events, feed, history, images, models, profile
 from visualtaste.api.schemas import HealthResponse
 from visualtaste.config import get_settings
 from visualtaste.db import repo
@@ -76,6 +76,22 @@ async def lifespan(app: FastAPI):
     state.load()
     for note in state.notes:
         logger.warning("startup note: %s", note)
+
+    # A profile with enough labels but no trained model (a fresh install over
+    # an existing history, or a deleted artefact) trains one now rather than
+    # waiting up to 20 swipes for the next boundary. R3 fits in well under a
+    # second at these sizes, so this is cheap enough to do synchronously.
+    if state.model is not None and not state.model.is_fitted and state.profile_id is not None:
+        connection = state.connect()
+        try:
+            labels = state.label_count(connection)
+        finally:
+            connection.close()
+        if labels >= settings.serve_min_labels:
+            from visualtaste.api.training import retrain
+
+            outcome = retrain(state)
+            logger.info("startup retrain: %s %s", outcome.status, outcome.detail)
     logger.info(
         "serving on http://%s:%d (profile %s, model %s)",
         settings.api_host,
@@ -109,7 +125,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for module in (feed, events, images, history, profile):
+for module in (feed, events, images, history, profile, models):
     app.include_router(module.router, prefix="/api")
 
 

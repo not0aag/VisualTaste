@@ -69,6 +69,21 @@ class Settings(BaseSettings):
     retrain_every: int = 20
     neural_min_labels: int = 1500
 
+    # --- The handover chain (Part 2 §4.4) -------------------------------------
+    #
+    # R0 serves until the profile has `serve_min_labels` labels with at least
+    # `serve_min_per_class` of each class; then `default_rung` takes over. A
+    # rung that cannot serve falls back down the chain rather than erroring.
+    # `default_rung` is chosen from the final simulator study (Phase 14) and
+    # recorded in docs/DECISIONS.md; R2 and R6 are never eligible.
+    default_rung: str = "r3"
+    serve_min_labels: int = 30
+    serve_min_per_class: int = 5
+
+    # Weight of a skip as a negative label. Phase 9 compares 0 / 0.25 / exclude
+    # on the simulator; the outcome is in docs/EVALUATION.md.
+    skip_weight: float = 0.25
+
     api_host: str = "127.0.0.1"
     api_port: int = 8000
 

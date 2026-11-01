@@ -467,6 +467,54 @@ class TestBootstrapHandover:
         assert batch.model_version == "r1_v1"
         assert {card.reason for card in batch.cards} == {"similar_likes"}
 
+    def test_the_fallback_reason_is_recorded_on_every_card(self, corpus):
+        # Part 2 §4.4: the handover is visible, not silent.
+        import json
+
+        from visualtaste.rec.r3_logreg import LogisticRecommender
+
+        settings, connection, features = corpus
+        profile_id = self._profile(connection)
+        model = LogisticRecommender().fit(self._likes(features), features)
+
+        batch = build_batch(
+            connection,
+            features,
+            model,
+            profile_id=profile_id,
+            model_version="r3_v1",
+            bootstrap=ColdStartRecommender(seed=settings.seed),
+        )
+        stored = [
+            json.loads(row["explanation_json"])
+            for row in connection.execute(
+                "SELECT explanation_json FROM impressions WHERE profile_id = ?", (profile_id,)
+            )
+        ]
+
+        assert batch.model_version == "r0_bootstrap"
+        assert all(entry["fallback"]["from"] == "r3" for entry in stored)
+        assert "needs 30" in stored[0]["fallback"]["reason"]
+
+    def test_a_rung_that_fails_to_score_falls_back_instead_of_erroring(self, corpus):
+        settings, connection, features = corpus
+        profile_id = self._profile(connection)
+        model = RocchioRecommender().fit(self._likes(features), features)
+        model.preference = None  # a corrupt in-memory model
+
+        batch = build_batch(
+            connection,
+            features,
+            model,
+            profile_id=profile_id,
+            model_version="r1_v1",
+            bootstrap=ColdStartRecommender(seed=settings.seed),
+        )
+
+        assert len(batch.cards) == 5
+        assert batch.rung == "r0"
+        assert "scoring failed" in batch.cards[0].explanation["fallback"]["reason"]
+
     def _likes(self, features) -> LabelSet:
         """Enough likes for R1 to be fitted, straight from the corpus."""
         ids = features.image_ids[:8]

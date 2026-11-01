@@ -48,13 +48,14 @@ def next_batch(
     except DatabaseBusy as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    model = state.require_model()
+    # Read as a pair: an online retrain may swap the model mid-request.
+    model, model_version = state.serving()
     batch = build_batch(
         connection,
         features,
         model,
         profile_id=profile_id,
-        model_version=state.model_version,
+        model_version=model_version,
         n=n,
         # R0 covers the collection until the active rung has enough labels to
         # be fitted. Without this, activating R1 on a fresh profile would make

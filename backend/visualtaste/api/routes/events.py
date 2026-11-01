@@ -28,10 +28,11 @@ import logging
 import sqlite3
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from visualtaste.api.deps import AppState, DatabaseBusy, ensure_profile, get_db, get_state
 from visualtaste.api.schemas import EventIn, EventOut, UndoResponse
+from visualtaste.api.training import retrain
 from visualtaste.db import repo
 from visualtaste.rec.labels import label_count
 
@@ -49,6 +50,7 @@ def record_event(
     payload: EventIn,
     connection: Annotated[sqlite3.Connection, Depends(get_db)],
     state: Annotated[AppState, Depends(get_state)],
+    background: BackgroundTasks,
 ) -> EventOut:
     """Record a verdict, superseding any earlier live one for the same image."""
     if repo.get_image(connection, payload.image_id) is None:
@@ -98,7 +100,9 @@ def record_event(
 
     retrain_queued = _should_retrain(labels, state)
     if retrain_queued:
-        logger.info("label %d crossed a retraining boundary", labels)
+        logger.info("label %d crossed a retraining boundary; retraining after the response", labels)
+        # Runs after the response is sent, off the request path (§5.5).
+        background.add_task(retrain, state)
 
     return EventOut(
         event_id=event_id,
@@ -162,10 +166,9 @@ def _live_event_for(connection: sqlite3.Connection, profile_id: int, image_id: s
 def _should_retrain(labels: int, state: AppState) -> bool:
     """Whether this label crossed a retraining boundary.
 
-    Every `VT_RETRAIN_EVERY` labels (default 20). The retrain itself is a
-    background task added in Phase 9, when there is a model worth retraining;
-    this flag exists from the start so the UI can show "the model is updating"
-    at the right moments and so the boundary logic is tested before it matters.
+    Every `VT_RETRAIN_EVERY` labels (default 20). The retrain runs as a
+    background task (`api/training.py`); the flag also lets the UI show "the
+    model is updating" at the right moments.
     """
     every = max(1, state.settings.retrain_every)
     return labels > 0 and labels % every == 0

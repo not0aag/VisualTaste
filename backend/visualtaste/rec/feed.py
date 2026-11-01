@@ -156,17 +156,25 @@ def build_batch(
     simulator can be run, with and without exploration -- which is exactly the
     comparison Phase 10 has to make.
 
-    `bootstrap` serves in place of `model` while `model` has too few labels to
-    be fitted (see the module docstring). Passing none keeps the strict
-    behaviour: an unfitted model raises rather than silently serving something
-    else, which is what the tests want.
+    `bootstrap` serves in place of `model` while `model` cannot serve: too few
+    labels, labels of one class only, or a failure while scoring (Part 2 §4.4).
+    The reason goes into every card's `explanation_json` under `fallback`, and
+    `model_version` records the rung that actually served. Passing no bootstrap
+    keeps the strict behaviour: an unfitted model raises rather than silently
+    serving something else, which is what the tests want.
     """
     batch_id = uuid.uuid4().hex[:12]
 
+    # Why the configured rung is not the one serving, if it is not. Written
+    # into every card's explanation so the Model Lab can show the handover.
+    fallback: dict[str, Any] | None = None
+
     if not model.is_fitted and bootstrap is not None:
+        fallback = {"from": model.rung, "reason": model.unfit_reason or "not fitted"}
         logger.info(
-            "%s is not fitted yet; %s is serving this batch",
+            "%s cannot serve (%s); %s is serving this batch",
             model.rung,
+            fallback["reason"],
             bootstrap.rung,
         )
         model = bootstrap
@@ -178,11 +186,24 @@ def build_batch(
         logger.warning("profile %d has seen every available image", profile_id)
         return FeedBatch(batch_id, model_version, model.rung, [], 0)
 
-    scores = np.asarray(model.score(features, candidates), dtype=np.float32)
-    if len(scores) != len(candidates):
-        raise ValueError(
-            f"{model.rung} returned {len(scores)} scores for {len(candidates)} candidates"
-        )
+    try:
+        scores = np.asarray(model.score(features, candidates), dtype=np.float32)
+        if len(scores) != len(candidates):
+            raise ValueError(
+                f"{model.rung} returned {len(scores)} scores for {len(candidates)} candidates"
+            )
+    except Exception as exc:
+        # A rung that fails at scoring time -- a missing feature block, a
+        # corrupt artefact -- must not take the feed down with it (Part 2
+        # §4.4). Fall one step down the chain; with no step left, re-raise,
+        # because then there is genuinely nothing to serve.
+        if bootstrap is None or model is bootstrap:
+            raise
+        logger.exception("%s failed to score; falling back to %s", model.rung, bootstrap.rung)
+        fallback = {"from": model.rung, "reason": f"scoring failed: {exc}"}
+        model = bootstrap
+        model_version = f"{bootstrap.rung}_bootstrap"
+        scores = np.asarray(model.score(features, candidates), dtype=np.float32)
 
     if rerank is not None:
         chosen, sampled, propensities = rerank(features, candidates, scores, n)
@@ -198,6 +219,8 @@ def build_batch(
     for rank, offset in enumerate(chosen):
         position = int(candidates[offset])
         explanation = model.explain(features, position)
+        if fallback is not None:
+            explanation.detail["fallback"] = fallback
         cards.append(
             FeedCard(
                 image_id=features.image_ids[position],

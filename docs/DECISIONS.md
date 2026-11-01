@@ -431,3 +431,76 @@ invisible until an evaluation disagrees with itself.
 Passing no bootstrap keeps the strict behaviour: an unfitted model raises. The
 fallback is opt-in, so a unit test still catches a model that should have been
 fitted and was not.
+
+---
+
+## 16. Pre-flight for Part 2: a red lint, and the facts F1-F5 checked
+
+**Date:** 2026-10-31
+
+`scripts/check.ps1` was red at the start of Part 2 on three `RUF100` errors:
+`# noqa: E402` comments in `scripts/build_e2e_corpus.py` for a rule this
+project's ruff config does not select. Phase 8 was committed green, so the
+likeliest cause is a ruff update between sessions (now 0.17.3) that began
+reporting unused directives. Removed the comments; no behaviour changed.
+
+F1 (#12), F2 (#13), F3 (#14) and F4 (#15) match the repo. F5's numbers match
+`docs/PROGRESS.md` and the Phase 8 analysis in `docs/EVALUATION.md`. No
+discrepancies with Part 2 §3.
+
+## 17. R3's features are standardised with pool statistics; sklearn's L2 via `l1_ratio`
+
+**Date:** 2026-10-31
+
+**Standardisation (Part 2 §5.1).** Every column of every feature block is
+rescaled to mean 0 and std 1 over the 50,000-image pool before R3 sees it. On
+this pool the first SigLIP PCA component has std 0.184 and the 128th 0.029, so
+without it the L2 penalty would charge a weight on a small component 36 times
+more than one on a large component for the same effect on the score: a prior of
+"ignore the small components", which nobody chose. Options considered: no
+scaling (rejected for that reason); statistics of the labelled examples
+(rejected: the labelled set is chosen by the feed and drifts as the model
+changes, so every retrain would see a different feature space); pool statistics
+(chosen: fixed, label-free, so no leakage). Saved as `<stem>_standardise.npz`
+next to each feature file by `python -m visualtaste.jobs.select --features-only`.
+A constant column (an always-empty colour bin) is centred but not scaled.
+
+**DINOv2 PCA-128.** Fitted on the selected pool for the `dino` block, saved as
+`dinov2_pca128.*`. It keeps 46.8% of the DINOv2 variance, against 72.7% for
+SigLIP 2's PCA-128: DINOv2's appearance features are spread over more
+directions. Optional at startup: its absence is not a `/health` note, because
+only the ablation uses it.
+
+**scikit-learn 1.9 deprecated `penalty="l2"`.** L2 is now the default through
+`l1_ratio=0`, so R3 passes only `C`, `solver="lbfgs"`, `tol=1e-10` and
+`max_iter=10000`. The intercept is not penalised by lbfgs, which matches §5.2.
+The C mapping is `C = 1/(lambda S)`; a test fits with `C = 1/lambda` and shows
+it disagrees with the hand-written solver by more than 0.05.
+
+## 18. The handover chain, online retraining, and what serves after a reset
+
+**Date:** 2026-10-31
+
+- **Unfit is a state, not an error.** `Recommender.fit` records `unfit_reason`
+  when labels are too few or `_fit` raises `InsufficientSignal` (one class
+  only). The feed falls back to R0, writes `fallback: {from, reason}` into
+  every card's `explanation_json`, and files the impression as `r0_bootstrap`.
+  A rung that raises while *scoring* (a corrupt artefact) falls back the same
+  way instead of returning a 500. R1/R2 keep their own Phase 8 minima (5 and
+  10 labels), so the Phase 8 study is unchanged.
+- **Startup with no active version loads `default_rung` unfitted**, rather than
+  R0, so the chain climbs on its own. If the profile already has
+  `serve_min_labels` labels, the lifespan retrains synchronously (R3 takes well
+  under a second), which also covers a deleted artefact.
+- **Retraining** (`api/training.py`) builds a new object and swaps the
+  `(model, version)` pair under a lock, so a request never sees a half-swap. A
+  non-blocking lock means a retrain that finds one running is skipped, not
+  queued. When the retrain cannot fit and nothing fitted is serving, the failed
+  attempt is swapped in anyway so the fallback reason is precise ("30 positive
+  and 0 negative labels") rather than "never fitted".
+- **Profile reset deactivates every version.** Before, a reset swapped R0 into
+  memory but left the old profile's model active in `rec_models`, so a restart
+  would have loaded someone else's taste for the new profile. Fixed with
+  `registry.deactivate_all`, covered by `tests/test_training.py`.
+- `GET /profile` now reports the rung actually serving (R0 while the configured
+  rung is unfitted), not the configured one.

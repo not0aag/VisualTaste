@@ -52,7 +52,7 @@ from visualtaste.data.select import (
     select_diverse,
 )
 from visualtaste.db import repo
-from visualtaste.vision.encoders import SIGLIP2_KEY, load_encoder, pick_device
+from visualtaste.vision.encoders import DINOV2_KEY, SIGLIP2_KEY, load_encoder, pick_device
 from visualtaste.vision.store import EmbeddingStore
 
 logger = logging.getLogger(__name__)
@@ -203,18 +203,29 @@ def run_selection(
 
 
 def run_pca(
-    settings: Settings, connection: sqlite3.Connection, *, components: int = 128
+    settings: Settings,
+    connection: sqlite3.Connection,
+    *,
+    components: int = 128,
+    model_key: str = SIGLIP2_KEY,
+    stem: str = "pca128",
 ) -> np.ndarray:
-    """Fit PCA-128 on the selected pool's SigLIP 2 vectors and save it.
+    """Fit PCA-128 on the selected pool's vectors for one model and save it.
 
-    Saved as both the fitted transform (`pca128.joblib`, so a single new image
+    Saved as both the fitted transform (`<stem>.joblib`, so a single new image
     can be projected at request time) and the projected matrix
-    (`pca128.npy` with its id index, so training does not re-project 50,000
-    rows on every retrain).
+    (`<stem>.npy` with its id index, so training does not re-project 50,000
+    rows on every retrain), plus the pool mean and std of the projection
+    (`<stem>_standardise.npz`) that `rec/features.py` standardises with.
+
+    SigLIP 2 -> `pca128` is the original Phase 5 artefact; DINOv2 ->
+    `dinov2_pca128` was added in Phase 9 for the feature-block ablation.
     """
     import joblib
 
-    store = EmbeddingStore(settings.embedding_dir(SIGLIP2_KEY), SIGLIP2_KEY)
+    from visualtaste.rec.features import save_stats
+
+    store = EmbeddingStore(settings.embedding_dir(model_key), model_key)
     vectors, ids = store.load()
 
     selected = {
@@ -235,25 +246,49 @@ def run_pca(
     features.mkdir(parents=True, exist_ok=True)
 
     for path, array in (
-        (features / "pca128.npy", reduced),
-        (features / "pca128_ids.npy", np.array(pool_ids, dtype="<U16")),
+        (features / f"{stem}.npy", reduced),
+        (features / f"{stem}_ids.npy", np.array(pool_ids, dtype="<U16")),
     ):
         tmp = path.with_name(f".{path.name}.part")
         with tmp.open("wb") as handle:
             np.save(handle, array)
         tmp.replace(path)
 
-    model_path = features / "pca128.joblib"
+    model_path = features / f"{stem}.joblib"
     tmp_model = model_path.with_name(f".{model_path.name}.part")
     joblib.dump(model, tmp_model)
     tmp_model.replace(model_path)
+    save_stats(features, stem, reduced)
 
     logger.info(
-        "PCA-128 saved: %d x %d, cumulative explained variance %.1f%%",
+        "%s PCA-%d saved as %s: %d x %d, cumulative explained variance %.1f%%",
+        model_key,
+        components,
+        stem,
         *reduced.shape,
         100 * cumulative[-1],
     )
     return cumulative
+
+
+def save_colour_stats(settings: Settings, connection: sqlite3.Connection) -> None:
+    """Pool mean and std of colour64, for standardising the `col` block.
+
+    Over the selected pool only, for the same reason the PCA is: those are the
+    rows every model scores.
+    """
+    from visualtaste.rec.features import save_stats
+
+    features = settings.features_dir
+    vectors = np.load(features / "colour64.npy")
+    ids = np.load(features / "colour64_ids.npy", allow_pickle=False).tolist()
+    selected = {
+        row["image_id"]
+        for row in repo.query(connection, "SELECT image_id FROM images WHERE selected = 1")
+    }
+    keep = [i for i, image_id in enumerate(ids) if image_id in selected]
+    save_stats(features, "colour64", vectors[keep])
+    logger.info("colour64 standardisation stats saved over %d pool images", len(keep))
 
 
 def render_summary(
@@ -349,6 +384,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--pca-components", type=int, default=128)
     parser.add_argument("--skip-safety", action="store_true")
     parser.add_argument("--skip-selection", action="store_true")
+    parser.add_argument(
+        "--features-only",
+        action="store_true",
+        help=(
+            "only (re)fit the Phase 9 feature files over the existing selection: "
+            "DINOv2 PCA-128 and the standardisation stats for every block"
+        ),
+    )
     args = parser.parse_args(argv)
 
     settings = get_settings()
@@ -357,6 +400,21 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("log file: %s", log_path)
 
     connection = repo.init_db(settings.db_path)
+
+    if args.features_only:
+        from visualtaste.rec.features import save_stats
+
+        save_stats(settings.features_dir, "pca128", np.load(settings.features_dir / "pca128.npy"))
+        run_pca(
+            settings,
+            connection,
+            components=args.pca_components,
+            model_key=DINOV2_KEY,
+            stem="dinov2_pca128",
+        )
+        save_colour_stats(settings, connection)
+        connection.close()
+        return 0
 
     safety = None if args.skip_safety else run_safety_screen(settings, connection)
 
@@ -367,6 +425,14 @@ def main(argv: list[str] | None = None) -> int:
     if not args.skip_selection:
         selection = run_selection(settings, connection, target=args.target)
         cumulative = run_pca(settings, connection, components=args.pca_components)
+        run_pca(
+            settings,
+            connection,
+            components=args.pca_components,
+            model_key=DINOV2_KEY,
+            stem="dinov2_pca128",
+        )
+        save_colour_stats(settings, connection)
 
     summary = render_summary(safety, selection, cumulative, connection)
     print("\n" + summary)

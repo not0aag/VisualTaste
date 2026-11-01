@@ -43,6 +43,7 @@ def get_profile(
     ).fetchone()
     labels = label_count(connection, profile_id)
     counts = build_label_set(connection, profile_id).counts()
+    model, version = state.serving()
 
     return ProfileResponse(
         profile_id=profile_id,
@@ -50,8 +51,9 @@ def get_profile(
         is_simulated=bool(row["is_simulated"]) if row else False,
         labels=labels,
         counts=counts,
-        active_model_version=state.model_version,
-        active_rung=state.model.rung if state.model else None,
+        active_model_version=version,
+        # The rung actually serving: R0 while the configured one is unfitted.
+        active_rung=model.rung if model.is_fitted else "r0",
         coldstart_active=coldstart_is_active(labels),
     )
 
@@ -79,11 +81,14 @@ def reset_profile(
     state.profile_id = new_profile
 
     # Back to cold start: a fresh profile has no labels, so any model trained
-    # on the old one would be describing someone else's taste.
-    from visualtaste.rec.r0_coldstart import ColdStartRecommender
+    # on the old one would be describing someone else's taste. The old version
+    # is deactivated too, or a restart would load it straight back. The default
+    # rung starts unfitted and takes over once the new profile can train it.
+    from visualtaste.api.deps import load_rung
+    from visualtaste.rec import registry
 
-    state.model = ColdStartRecommender(seed=state.settings.seed)
-    state.model_version = "r0_bootstrap"
+    registry.deactivate_all(connection)
+    state.swap(load_rung(state.settings.default_rung, state.settings), "r0_bootstrap")
 
     return ResetResponse(
         previous_profile_id=previous,

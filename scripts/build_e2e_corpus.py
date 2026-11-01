@@ -28,9 +28,9 @@ import numpy as np
 # by Playwright's webServer from the repo root), so make sure it is.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
-from visualtaste.config import Settings  # noqa: E402
-from visualtaste.db import repo  # noqa: E402
-from visualtaste.vision.store import EmbeddingStore  # noqa: E402
+from visualtaste.config import Settings
+from visualtaste.db import repo
+from visualtaste.vision.store import EmbeddingStore
 
 DEFAULT_IMAGES = 40
 EMBEDDING_DIM = 32
