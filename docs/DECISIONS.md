@@ -777,3 +777,25 @@ missed.
 serves until 30 labels with at least 5 of each class, then R4+R5 takes over and
 retrains every 20 labels. `phase15_explore` tests whether the like-rate cost
 can be cut further without losing that breadth.
+
+## 30. A described taste aims one card in five, not three
+
+**Date:** 2026-11-01
+**Evidence:** `phase15_text`, S1 and S6, 20 seeds x 100 swipes (the cold
+start's working life), docs/EVALUATION.md.
+
+The simulated user describes one of its planted interests in three words, and
+the cold start aims a share of each batch at that description:
+
+| share of each batch | S1 like rate | S1 interests found | S6 like rate | S6 interests found |
+| --- | --- | --- | --- | --- |
+| 60% | +0.092 | −0.6 | +0.058 | −2.6 |
+| 40% | +0.067 | −0.2 (inconclusive) | +0.042 | −1.3 |
+| **20%** | **+0.048** | **±0.0** | **+0.026** | **−0.9** |
+
+All against plain R0, paired by seed. Every share raises the like rate; the
+larger ones buy it by crowding out the interests the person did not mention,
+the same narrowing H3 found in learned rungs. At 20% coverage stays at 100%
+and, with three interests, nothing is lost. The app's `TEXT_SHARE` is 0.2.
+The simulator keeps 0.6 as the default for the spec `r0:describe=1`, because
+that is what its cached results were run with.

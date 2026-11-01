@@ -549,10 +549,11 @@ TEXT_STUDY = "phase15_text"
 PRESETS[TEXT_STUDY] = Preset(
     title="Phase 15: describing a taste in words before swiping (S1, S6)",
     variants=(_S1, _S6),
-    specs=("r0", "r0:describe=1"),
+    specs=("r0", "r0:describe=1", "r0:describe=1,share=0.4", "r0:describe=1,share=0.2"),
     comparisons=tuple(
-        (variant, "r0:describe=1", "r0", metric, "higher")
+        (variant, spec, "r0", metric, "higher")
         for variant in (_S1, _S6)
+        for spec in ("r0:describe=1", "r0:describe=1,share=0.4", "r0:describe=1,share=0.2")
         for metric in ("like_rate", "interests_found")
     ),
     with_replay=False,

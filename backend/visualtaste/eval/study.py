@@ -102,6 +102,7 @@ class RungSpec:
         "decay": ("label_halflife", float),
         # Phase 15 (ROADMAP D4): the simulated user describes an interest.
         "describe": ("describe_interests", int),
+        "share": ("describe_share", float),
         # ROADMAP E1: re-tune lambda only on every k-th fit.
         "tune_every": ("tune_every", int),
         "loss": ("loss", str),
@@ -502,7 +503,9 @@ def described_cold_start(model, user, features: FeatureBundle, settings: Setting
     described = [describe_interest(user.centroids[k], concepts, vectors) for k in range(count)]
     text = "; ".join(words for words, _ in described)
     vector = np.mean([v for _, v in described], axis=0)
-    return TextSeededColdStart(model, text, vector / np.linalg.norm(vector))
+    return TextSeededColdStart(
+        model, text, vector / np.linalg.norm(vector), text_share=model.describe_share
+    )
 
 
 def clusters_for_variant(features: FeatureBundle, variant: str, seed: int) -> np.ndarray | None:

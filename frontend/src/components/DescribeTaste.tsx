@@ -1,7 +1,7 @@
 /**
  * "Describe what you like": shown on the Feed during cold start (ROADMAP D4).
  *
- * A few words aim three of every five cold-start cards at the description,
+ * A few words aim one of every five cold-start cards at the description,
  * until enough verdicts exist for a learned model to take over. Optional, and
  * one click to forget.
  */

@@ -2,9 +2,9 @@
 
 Plain R0 covers the collection evenly, which is right when nothing is known.
 When the person has described their taste in a few words ("foggy forests, old
-maps"), most of the first cards can start there instead. Each batch then has:
+maps"), some of the first cards can start there instead. Each batch then has:
 
-- `text_share` of its cards (3 of 5 by default) chosen from the images whose
+- `text_share` of its cards (1 of 5 by default) chosen from the images whose
   SigLIP 2 vectors are closest to the description, diversified with MMR so
   they are not five versions of the same picture;
 - the rest from plain R0, so the collection is still covered and an interest
@@ -22,8 +22,10 @@ from visualtaste.rec.base import Explanation, FeatureBundle, Recommender
 from visualtaste.rec.r0_coldstart import ColdStartRecommender
 from visualtaste.rec.rerank import MMR_LAMBDA, mmr_select
 
-#: Share of each cold-start batch aimed at the description.
-TEXT_SHARE = 0.6
+#: Share of each cold-start batch aimed at the description: 20%, measured in
+#: `phase15_text` (DECISIONS #30). 60% raised the like rate more but found
+#: fewer of the user's other interests; 20% kept them all in S1.
+TEXT_SHARE = 0.2
 #: MMR picks from this many of the closest candidates.
 TEXT_SHORTLIST = 200
 

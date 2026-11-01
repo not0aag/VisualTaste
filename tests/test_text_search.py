@@ -74,8 +74,8 @@ class TestSeedText:
         target_id = deps.get_state().features.image_ids[TARGET]
 
         assert body["rung"] == "r0+text"
-        assert reasons.count("text_seed") == 3  # 60% of five
-        assert reasons.count("cold_start") == 2
+        assert reasons.count("text_seed") == 1  # 20% of five (DECISIONS #30)
+        assert reasons.count("cold_start") == 4
         assert target_id in {c["image"]["image_id"] for c in body["cards"]}
         seeded = next(c for c in body["cards"] if c["reason"] == "text_seed")
         assert seeded["sentence"] == 'Close to what you described: "old maps".'

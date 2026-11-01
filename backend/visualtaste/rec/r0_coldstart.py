@@ -69,6 +69,8 @@ class ColdStartRecommender(Recommender):
         #: simulated user describes in words. R0 itself never reads it;
         #: `eval/study.run_seed` wraps R0 in `TextSeededColdStart` when set.
         self.describe_interests = 0
+        #: Simulator only: the share of each batch aimed at the description.
+        self.describe_share = 0.6  # what the cached spec "r0:describe=1" means
 
         # Fitted from the moment it exists, without anyone calling `fit`. A
         # rule with no parameters has nothing to learn, and the feed's

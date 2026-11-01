@@ -1073,3 +1073,62 @@ Combined score per variant = z(like rate) + z(interests found) + z(coverage), ea
 
 **Chosen: `r4+r5`** (mean rank 1.8; runner-up `r4` at 2.4). Its combined-score margin over R3 per variant: S1_semantic -0.07, S2_appearance +0.75, S3_colour -0.84, S5_drift +1.00, S6_six_interests +0.22; mean +0.21.
 
+
+---
+
+## Phase 15: describing a taste in words before swiping (S1, S6) (2026-11-01 23:22 UTC)
+
+```
+python -m visualtaste.jobs.evaluate --study phase15_text --seeds 20 --swipes 100
+```
+
+**SIMULATED.** Variants and their calibration: `backend/visualtaste/eval/sim.py`. Every number is mean ± sd across seeds; comparisons are paired by seed (Part 2 §4.1). An interest counts as found at 5 likes.
+
+### S1_semantic
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.472 ± 0.039 | 2.90 ± 0.44 | 0.95 ± 0.22 | 61 ± 20 | -- | -- | 1.00 ± 0.00 | 0.489 ± 0.006 | 0.376 ± 0.007 | -- | 0.660 ± 0.048 | -- | -- |
+| `r0:describe=1` | 20 | 0.564 ± 0.049 | 2.30 ± 0.78 | 0.50 ± 0.50 | 90 ± 13 | -- | -- | 0.74 ± 0.05 | 0.469 ± 0.027 | 0.311 ± 0.027 | -- | 0.686 ± 0.060 | -- | -- |
+| `r0:describe=1,share=0.4` | 20 | 0.539 ± 0.044 | 2.70 ± 0.64 | 0.80 ± 0.40 | 70 ± 21 | -- | -- | 0.96 ± 0.02 | 0.486 ± 0.015 | 0.336 ± 0.019 | -- | 0.694 ± 0.057 | -- | -- |
+| `r0:describe=1,share=0.2` | 20 | 0.520 ± 0.043 | 2.90 ± 0.30 | 0.90 ± 0.30 | 64 ± 19 | -- | -- | 1.00 ± 0.00 | 0.485 ± 0.008 | 0.347 ± 0.015 | -- | 0.692 ± 0.066 | -- | -- |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 32 | 2 of 60 |
+| `r0:describe=1` | 42 | 14 of 60 |
+| `r0:describe=1,share=0.4` | 34 | 6 of 60 |
+| `r0:describe=1,share=0.2` | 36 | 2 of 60 |
+
+### S6_six_interests
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.471 ± 0.043 | 4.90 ± 0.89 | 0.25 ± 0.43 | 99 ± 4 | -- | -- | 1.00 ± 0.00 | 0.489 ± 0.006 | 0.376 ± 0.007 | -- | 0.642 ± 0.056 | -- | -- |
+| `r0:describe=1` | 20 | 0.530 ± 0.060 | 2.30 ± 0.95 | 0.00 ± 0.00 | 101 ± 0 | -- | -- | 0.74 ± 0.05 | 0.469 ± 0.027 | 0.311 ± 0.027 | -- | 0.673 ± 0.059 | -- | -- |
+| `r0:describe=1,share=0.4` | 20 | 0.513 ± 0.046 | 3.60 ± 0.86 | 0.00 ± 0.00 | 101 ± 0 | -- | -- | 0.96 ± 0.02 | 0.486 ± 0.015 | 0.336 ± 0.019 | -- | 0.669 ± 0.066 | -- | -- |
+| `r0:describe=1,share=0.2` | 20 | 0.497 ± 0.046 | 4.00 ± 0.95 | 0.10 ± 0.30 | 100 ± 2 | -- | -- | 1.00 ± 0.00 | 0.485 ± 0.008 | 0.347 ± 0.015 | -- | 0.668 ± 0.050 | -- | -- |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 56 | 22 of 120 |
+| `r0:describe=1` | 60 | 74 of 120 |
+| `r0:describe=1,share=0.4` | 66 | 48 of 120 |
+| `r0:describe=1,share=0.2` | 60 | 40 of 120 |
+
+### Comparisons
+
+| variant | comparison | metric | mean diff | 90% CI | sign test (W-L) | losing seeds | seeds | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| S1_semantic | `r0:describe=1` vs `r0` | like_rate | +0.0915 | [+0.0780, +0.1050] | 20-0 (p = 1.91e-06) | none | 20 | **supported** |
+| S1_semantic | `r0:describe=1` vs `r0` | interests_found | -0.6000 | [-0.9000, -0.3000] | 1-9 (p = 0.0215) | 1732, 1733, 1735, 1739, 1740, 1741, 1742, 1744, 1746 | 20 | **not supported** |
+| S1_semantic | `r0:describe=1,share=0.4` vs `r0` | like_rate | +0.0670 | [+0.0520, +0.0825] | 19-1 (p = 4.01e-05) | 1735 | 20 | **supported** |
+| S1_semantic | `r0:describe=1,share=0.4` vs `r0` | interests_found | -0.2000 | [-0.4500, +0.0500] | 1-3 (p = 0.625) | 1735, 1742, 1746 | 20 | **inconclusive** |
+| S1_semantic | `r0:describe=1,share=0.2` vs `r0` | like_rate | +0.0480 | [+0.0360, +0.0590] | 19-1 (p = 4.01e-05) | 1730 | 20 | **supported** |
+| S1_semantic | `r0:describe=1,share=0.2` vs `r0` | interests_found | +0.0000 | [-0.1000, +0.1000] | 1-1 (p = 1) | 1746 | 20 | **inconclusive** |
+| S6_six_interests | `r0:describe=1` vs `r0` | like_rate | +0.0580 | [+0.0395, +0.0775] | 17-3 (p = 0.00258) | 1732, 1740, 1743 | 20 | **supported** |
+| S6_six_interests | `r0:describe=1` vs `r0` | interests_found | -2.6000 | [-3.0500, -2.1000] | 1-19 (p = 4.01e-05) | 1729, 1730, 1732, 1733, 1734, 1735, 1736, 1737, 1738, 1739, 1740, 1741, 1742, 1743, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S6_six_interests | `r0:describe=1,share=0.4` vs `r0` | like_rate | +0.0415 | [+0.0260, +0.0575] | 17-2 (p = 0.000729) | 1732, 1743 | 20 | **supported** |
+| S6_six_interests | `r0:describe=1,share=0.4` vs `r0` | interests_found | -1.3000 | [-1.7000, -0.9000] | 1-17 (p = 0.000145) | 1729, 1730, 1732, 1733, 1734, 1735, 1736, 1738, 1739, 1740, 1741, 1742, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S6_six_interests | `r0:describe=1,share=0.2` vs `r0` | like_rate | +0.0255 | [+0.0150, +0.0360] | 13-4 (p = 0.049) | 1732, 1742, 1743, 1746 | 20 | **supported** |
+| S6_six_interests | `r0:describe=1,share=0.2` vs `r0` | interests_found | -0.9000 | [-1.3500, -0.4500] | 2-11 (p = 0.0225) | 1729, 1730, 1732, 1734, 1735, 1736, 1737, 1738, 1745, 1746, 1747 | 20 | **not supported** |
