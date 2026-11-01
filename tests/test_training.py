@@ -64,25 +64,38 @@ def alternate(index, _card):
     return "like" if index % 2 else "dislike"
 
 
+def default_rung() -> str:
+    """The configured default, chosen by the final study (DECISIONS #29)."""
+    return deps.get_state().settings.default_rung
+
+
+#: Reasons a learned rung gives; cold start's is `cold_start`.
+LEARNED_REASONS = ("model_confident", "explore", "similar_likes")
+
+
 class TestHandoverChain:
     def test_a_fresh_profile_serves_cold_start(self, client):
         response = client.get("/api/feed/next")
         body = response.json()
         assert response.status_code == 200
         assert body["model_version"] == "r0_bootstrap"
-        assert body["cards"][0]["explanation"]["fallback"]["from"] == "r3"
+        assert body["cards"][0]["explanation"]["fallback"]["from"] == default_rung()
 
-    def test_r3_takes_over_after_enough_labels_of_both_classes(self, client):
+    def test_the_default_rung_takes_over_after_enough_labels_of_both_classes(self, client):
         swipe_batches(client, 40, alternate)  # crosses the boundaries at 20 and 40
 
         body = client.get("/api/feed/next").json()
-        assert body["rung"] == "r3"
-        assert body["model_version"].startswith("r3_")
-        assert body["cards"][0]["reason"] == "model_confident"
+        rung = default_rung()
+        assert body["rung"] == rung
+        assert body["model_version"].startswith(f"{rung}_")
+        assert all(
+            card["reason"] in LEARNED_REASONS or card["reason"].startswith("interest:")
+            for card in body["cards"]
+        )
 
         models = client.get("/api/models").json()
         active = [v for v in models["versions"] if v["is_active"]]
-        assert len(active) == 1 and active[0]["rung"] == "r3"
+        assert len(active) == 1 and active[0]["rung"] == rung
         assert "validation_curve" in active[0]["metrics"]
 
     def test_thirty_likes_and_no_dislikes_still_serve(self, client):
@@ -238,7 +251,9 @@ class TestR4ThroughTheApi:
         assert reasons.count("explore") == 1
 
     def test_deterministic_rungs_record_propensity_one(self, client):
-        swipe_batches(client, 40, alternate)  # R3, the default rung, is now serving
+        swipe_batches(client, 40, alternate)
+        # R3 explicitly: the default rung (R4+R5) is stochastic.
+        assert client.post("/api/models/train", json={"rung": "r3"}).json()["status"] == "swapped"
         cards = client.get("/api/feed/next").json()["cards"]
         assert {c["propensity"] for c in cards} == {1.0}
 

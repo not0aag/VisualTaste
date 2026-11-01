@@ -76,7 +76,7 @@ class Settings(BaseSettings):
     # rung that cannot serve falls back down the chain rather than erroring.
     # `default_rung` is chosen from the final simulator study (Phase 14) and
     # recorded in docs/DECISIONS.md; R2 and R6 are never eligible.
-    default_rung: str = "r3"
+    default_rung: str = "r4+r5"
     serve_min_labels: int = 30
     serve_min_per_class: int = 5
 

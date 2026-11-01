@@ -745,3 +745,35 @@ both +R5 rungs. When a bundle has no DINOv2 vectors (a corpus not yet embedded,
 or a small test bundle), the optional block is dropped with a warning instead
 of failing the fit. Studies recorded before this change ran with `sig` alone,
 as their spec column says. `phase14_final` runs with `sig+dino`.
+
+## 29. The default rung is R4+R5
+
+**Date:** 2026-11-01
+**Evidence:** `phase14_final`, every eligible rung on S1, S2, S3, S5 and S6,
+20 seeds x 1,000 swipes each, docs/EVALUATION.md.
+
+Part 2 §10.2's rule: z-score like rate, interests found and coverage of the
+last 500 cards across the eligible rungs (R1, R3, R3+R5, R4, R4+R5; R2 misses
+the latency budget, R6 is manual-only), sum them per scenario, and choose the
+best mean rank.
+
+| rung | mean rank | combined score, mean over scenarios |
+| --- | --- | --- |
+| **R4+R5** | **1.8** | best in S5 (+1.40) and close to best in S2 |
+| R4 | 2.4 | |
+| R3 | 2.8 | best in S1 |
+| R3+R5 | 3.0 | best in S3 (colour) |
+| R1 | 5.0 | |
+
+What the choice trades: against R3, R4+R5 gives up 0.03 to 0.10 of like rate
+(significant in every scenario) for its breadth. At the tuned temperature
+(τ = 0.1, #25) that cost is about half of what H3 measured at τ = 1. R3 would
+be the choice if like rate alone mattered; the rule deliberately values
+finding every interest and keeping the collection open as much as liking
+what is shown, because a recommender that narrows early never learns what it
+missed.
+
+`default_rung = "r4+r5"` in `config.py`. The handover chain is unchanged: R0
+serves until 30 labels with at least 5 of each class, then R4+R5 takes over and
+retrains every 20 labels. `phase15_explore` tests whether the like-rate cost
+can be cut further without losing that breadth.

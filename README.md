@@ -177,7 +177,7 @@ Each rung answers a weakness of the one below it, and each is tested against it 
 | **R5** · multi-interest | k-means interests over your likes, log-sum-exp scoring, Hungarian matching so interest ids stay stable, and concept-word labels | Real taste is several separate things. R5 names them and can track each one. |
 | **R6** · neural ranker | A per-block LayerNorm MLP trained with BCE + 0.5 BPR, as a 5-seed ensemble, with bootstrap Thompson sampling | A non-linear ranker for when labels are plentiful. It refuses to train below 1,500 labels and is never switched on automatically. |
 
-R3 and R4 can also take R5's interest features (`r3+r5`, `r4+r5`). Interest features are computed time-respectingly, from strictly earlier likes only, and a dedicated test checks for leakage.
+**The default is R4+R5**, chosen by the final study (all six scenarios, 20 seeds each) on like rate, interests found and coverage together; it gives up 0.03 to 0.10 of like rate against R3 for its breadth ([DECISIONS #29](docs/DECISIONS.md)). R3 and R4 can also take R5's interest features (`r3+r5`, `r4+r5`). Interest features are computed time-respectingly, from strictly earlier likes only, and a dedicated test checks for leakage.
 
 ---
 
@@ -201,7 +201,7 @@ Every comparison is **paired** (the same simulated user meets every model), run 
 | **H1** | Rocchio and kNN beat cold start | ✅ **Supported.** +0.138 and +0.161 like rate. Both find only 2 of 3 planted interests, though. |
 | **H2** | Logistic regression beats kNN after about 150 labels | ❌ **Not supported for ranking.** R3 is better calibrated (lower log loss at every cut from 400 labels), but kNN ranks better (higher AUC at every cut from 150). |
 | **H3** | Thompson sampling finds all interests faster than R3 | ⚖️ **Supported for discovery, at a price.** With six interests, the share of seeds where R4 finds all six rises by 85 points, it finds them about 770 swipes sooner, and it covers 58 points more of the collection. But it gives up 0.19 of like rate, failing the pre-registered bar of keeping 70% of R3's gain. |
-| **H4** | Interest features improve R4 | ➖ **Inconclusive** on every metric and scenario. Named interests help explain the model, not rank. |
+| **H4** | Interest features (R5) improve the classifier | ➖ **Only when taste drifts.** R3+R5 beats R3 by +0.021 like rate when the planted taste changes mid-session (S5); in the five other scenarios, and on top of R4, no difference. Named interests mainly help explain the model. |
 | **H5** | The neural ranker wins only once labels are plentiful | ❌ **Not supported.** Up to 4,900 labels, R6 never ranked better than R3+R5 (it was worse at 3,000 labels in both scenarios tested), and won on log loss only once. At this scale a neural ranker did not earn its cost. |
 
 ### What the simulator shows
