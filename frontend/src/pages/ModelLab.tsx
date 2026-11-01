@@ -328,7 +328,7 @@ function InterleavingPanel({
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           {[['A', a, setA], ['B', b, setB]].map(([label, value, set]) => (
-            <select key={label as string} value={value as string} onChange={(e) => (set as (v: string) => void)(e.target.value)}>
+            <select key={label as string} aria-label={`Version ${label as string} for the experiment`} value={value as string} onChange={(e) => (set as (v: string) => void)(e.target.value)}>
               <option value="">version {label as string}…</option>
               {versions.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
@@ -359,7 +359,7 @@ function StudiesPanel({
       <p className="eyebrow mb-1">Simulator</p>
       <h2 className="mb-3 font-medium text-white">Simulator studies</h2>
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <select value={study} onChange={(e) => setStudy(e.target.value)}>
+        <select aria-label="Study to run" value={study} onChange={(e) => setStudy(e.target.value)}>
           <option value="">study…</option>
           {studies.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
