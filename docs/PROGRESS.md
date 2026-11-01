@@ -4,7 +4,7 @@
 **Last green commit:** `c9c28ac` — phases 9-13 checkpoint, 2026-11-01
 **Running jobs:** see "Part 2 status" below
 
-Resume rule (brief §2): read `VISUALTASTE_BUILD_PROMPT.md`, then this file, then
+Resume rule (brief §2): read the specification, then this file, then
 `DECISIONS.md`, then `QUESTIONS.md`, and restart from the first unchecked box.
 
 ---

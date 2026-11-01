@@ -2,7 +2,7 @@
 
 ## Context
 
-`VISUALTASTE_BUILD_PROMPT.md` specifies a local, single-user image recommendation
+The project specification (kept outside this repository) describes a local, single-user image recommendation
 engine that starts knowing nothing about Alen's visual taste and learns it from
 swipes — frozen pretrained embeddings, a personal classifier, Bayesian
 exploration, multi-interest modelling, a small neural ranker, and an honest
@@ -320,8 +320,8 @@ per-source dataset summary, one-line simulator headline, blockers, and
 
 ## Part 2 plan (Phases 9-14)
 
-Appended at the start of Part 2 (2026-10-31) from `VISUALTASTE_PART2_PROMPT.md`
-§5-§10, as its §2 asks. Part 2 amends Part 1 where they conflict. Statistical
+Appended at the start of Part 2 (2026-10-31) from §5-§10 of the Part 2
+specification. Part 2 amends Part 1 where they conflict. Statistical
 standard: 20 seeds × 1,000 swipes, paired bootstrap 90% CI, sign test, verdicts.
 
 **Cross-cutting, first:**

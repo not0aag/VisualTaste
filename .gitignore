@@ -39,3 +39,8 @@ frontend/playwright-report/
 frontend/test-results/
 frontend/.vitest/
 .e2e/
+
+# Specification documents (kept local, not published)
+/VISUALTASTE_BUILD_PROMPT.md
+/VISUALTASTE_PART2_PROMPT.md
+/VisualTaste*Blueprint.md
