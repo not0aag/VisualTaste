@@ -375,8 +375,33 @@ class LogisticRecommender(Recommender):
         return self.pool_logits(features, self.w[:, None])[:, 0]
 
     def score(self, features: FeatureBundle, candidates: np.ndarray) -> np.ndarray:
-        """p(like) for each candidate: sigma(w . x + b), computed over the whole pool."""
-        return expit(self.logits(features)).astype(np.float32)[candidates]
+        """p(like) for each candidate: sigma(w . x + b), computed over the whole pool.
+
+        The whole-pool result is cached until anything it depends on changes:
+        the weights (compared by value), the bias, the blocks, the design
+        matrix and interest columns (by identity; both are replaced, never
+        edited, when they change). Between refits every batch reuses it, which
+        takes a 50,000-row product off each feed request. R4 overrides the
+        batch path with fresh Thompson draws, so this only serves plain R3.
+        """
+        require_fitted(self)
+        assert self.w is not None
+        static = design_matrix(features, self.static_blocks)
+        interests = self._interest_columns(features) if self.uses_interests else None
+        key = (self.w.tobytes(), self.b, self.blocks)
+        held = (features, static, interests)
+        cached = getattr(self, "_pool_scores", None)
+        if (
+            cached is None
+            or cached[0] != key
+            or any(a is not b for a, b in zip(cached[1], held, strict=True))
+        ):
+            scores = expit(self.logits(features)).astype(np.float32)
+            scores.setflags(write=False)
+            cached = self._pool_scores = (key, held, scores)
+        out = cached[2][candidates]
+        # A slice would be a view of the cache; hand out a copy instead.
+        return out.copy() if np.shares_memory(out, cached[2]) else out
 
     # --- Interest features (R3+R5) -------------------------------------------
 

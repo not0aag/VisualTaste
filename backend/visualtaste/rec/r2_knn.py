@@ -146,6 +146,13 @@ class KnnRecommender(Recommender):
         self._liked_index: VectorIndex | None = None
         self._disliked_index: VectorIndex | None = None
 
+        # The whole-pool score depends only on the held vectors, k, gamma and
+        # the pool, so it is computed once per fit and reused by every batch
+        # until the next one. The feed asks for a batch of 5 and refits every
+        # 20 labels, so this removes 3 of every 4 pool searches. Cleared in
+        # `_rebuild_indexes`, the one place the held vectors change.
+        self._pool_scores: tuple[tuple, np.ndarray, np.ndarray] | None = None
+
     def _fit(self, labels: LabelSet, features: FeatureBundle) -> None:
         liked_ids = [i for i in labels.positives if features.position(i) is not None]
         self._liked = features.rows("siglip", labels.positives)
@@ -169,6 +176,7 @@ class KnnRecommender(Recommender):
 
     def _rebuild_indexes(self) -> None:
         """Index whatever vectors are currently held. Safe to call repeatedly."""
+        self._pool_scores = None
         self._liked_index = (
             VectorIndex(self._liked, self._liked_ids or [""] * len(self._liked))
             if self._liked is not None and len(self._liked)
@@ -196,18 +204,35 @@ class KnnRecommender(Recommender):
 
     def score(self, features: FeatureBundle, candidates: np.ndarray) -> np.ndarray:
         require_fitted(self)
+        scores = self._score_pool(features.siglip)[candidates]
+        # A slice would be a view of the cache; hand out a copy instead.
+        return scores.copy() if np.shares_memory(scores, self._pool_scores[2]) else scores
 
-        # Scored over every row and indexed afterwards, never gathered first:
-        # the gather costs more than the arithmetic. `r1_rocchio.score` has the
-        # measurements and the explanation.
-        pool = np.ascontiguousarray(features.siglip, dtype=np.float32)
+    def _score_pool(self, vectors: np.ndarray) -> np.ndarray:
+        """The score of every pool row, cached until the next fit (see __init__).
 
+        Scored over every row and indexed afterwards, never gathered first:
+        the gather costs more than the arithmetic. `r1_rocchio.score` has the
+        measurements and the explanation.
+        """
+        # Keyed on the pool array itself (held by the cache, so its id cannot
+        # be reused) and on the parameters that shape the score, so changing k
+        # or gamma by hand also recomputes.
+        key = (id(vectors), vectors.shape, self.neighbours, self.gamma)
+        cached = self._pool_scores
+        if cached is not None and cached[0] == key and cached[1] is vectors:
+            return cached[2]
+
+        pool = np.ascontiguousarray(vectors, dtype=np.float32)
         positive = self._top_k_similarity(self._liked_index, pool)
         if self._disliked_index is None:
-            return positive[candidates]
-
-        negative = self._top_k_similarity(self._disliked_index, pool)
-        return (positive - self.gamma * negative)[candidates]
+            scores = positive
+        else:
+            negative = self._top_k_similarity(self._disliked_index, pool)
+            scores = positive - self.gamma * negative
+        scores.setflags(write=False)
+        self._pool_scores = (key, vectors, scores)
+        return scores
 
     def explain(self, features: FeatureBundle, image_index: int) -> Explanation:
         """Name the nearest liked images, which here *are* the reason.

@@ -34,6 +34,8 @@ knows nothing about, which is where a missed interest would be hiding.
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 import numpy as np
 from scipy.stats import beta as beta_distribution
 
@@ -82,8 +84,14 @@ def mmr_select(
     return picked
 
 
+@lru_cache(maxsize=1024)
 def beta_interval_width(likes: int, dislikes: int, credibility: float = CREDIBILITY) -> float:
-    """Width of the central `credibility` interval of Beta(1 + likes, 1 + dislikes)."""
+    """Width of the central `credibility` interval of Beta(1 + likes, 1 + dislikes).
+
+    Cached: exploration only asks about clusters rated fewer than three times,
+    so there are six distinct inputs, and each `ppf` call costs ~1 ms of
+    scipy argument checking. The cached value is the same float.
+    """
     tail = (1.0 - credibility) / 2.0
     a, b = 1 + likes, 1 + dislikes
     return float(beta_distribution.ppf(1 - tail, a, b) - beta_distribution.ppf(tail, a, b))
