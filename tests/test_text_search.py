@@ -114,3 +114,19 @@ class TestUnits:
         seeded = TextSeededColdStart(base, "x", np.ones(4, dtype=np.float32))
         seeded.note_shown(3)
         assert base._draws_per_cluster == {3: 1}
+
+
+class TestDescribedInterest:
+    def test_the_description_is_the_three_nearest_words(self):
+        from visualtaste.eval.study import describe_interest
+
+        vectors = np.eye(5, dtype=np.float32)
+        centroid = np.array([0.1, 0.9, 0.0, 0.5, 0.3], dtype=np.float32)
+        words, vector = describe_interest(centroid, ["a", "b", "c", "d", "e"], vectors)
+
+        assert words == "b, d, e"
+        assert np.isclose(np.linalg.norm(vector), 1.0)
+        assert vector[1] > 0 and vector[0] == 0
+
+    def test_r0_carries_the_option_without_using_it(self):
+        assert ColdStartRecommender().describe_interests == 0

@@ -65,6 +65,10 @@ class ColdStartRecommender(Recommender):
         # How many times each cluster has been drawn from, so the round-robin
         # survives across requests rather than restarting every batch.
         self._draws_per_cluster: dict[int, int] = {}
+        #: Simulator only (ROADMAP D4): how many of the planted interests the
+        #: simulated user describes in words. R0 itself never reads it;
+        #: `eval/study.run_seed` wraps R0 in `TextSeededColdStart` when set.
+        self.describe_interests = 0
 
         # Fitted from the moment it exists, without anyone calling `fit`. A
         # rule with no parameters has nothing to learn, and the feed's

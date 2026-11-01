@@ -100,6 +100,8 @@ class RungSpec:
         "knn": ("knn_blend", float),
         # Phase 15 (ROADMAP D6): let old labels fade.
         "decay": ("label_halflife", float),
+        # Phase 15 (ROADMAP D4): the simulated user describes an interest.
+        "describe": ("describe_interests", int),
         "loss": ("loss", str),
         "minlabels": ("min_labels", int),
         "epochs": ("max_epochs", int),
@@ -343,6 +345,8 @@ def run_seed(
     started = time.perf_counter()
     user = make_variant_user(variant, features, seed=seed, cluster_labels=cluster_labels)
     model = spec.build(settings, seed)
+    if getattr(model, "describe_interests", 0) > 0:
+        model = described_cold_start(model, user, features, settings)
     weights, exclude = spec.label_options(settings)
     result = run_session(
         connection,
@@ -462,6 +466,41 @@ def run_seed(
         outcome.seconds,
     )
     return outcome
+
+
+#: Words in a simulated user's description of one interest.
+DESCRIPTION_WORDS = 3
+
+
+def describe_interest(centroid: np.ndarray, concepts: list[str], vectors: np.ndarray):
+    """What a simulated user would say about an interest, and its text vector.
+
+    The interest's three nearest vocabulary words (cosine in SigLIP space),
+    joined as a phrase; the vector is the mean of their text embeddings from
+    the concept cache, so no text model is needed. A person's description
+    would be less exact; this is the favourable case.
+    """
+    top = np.argsort(-(vectors @ centroid))[:DESCRIPTION_WORDS]
+    vector = vectors[top].mean(axis=0)
+    return ", ".join(concepts[i] for i in top), (vector / np.linalg.norm(vector)).astype(np.float32)
+
+
+def described_cold_start(model, user, features: FeatureBundle, settings: Settings):
+    """R0 aimed at the first `describe_interests` interests the user describes."""
+    from visualtaste.rec.concepts import cache_for
+    from visualtaste.rec.r0_text import TextSeededColdStart
+
+    if user.space != "siglip":
+        raise ValueError("a described taste needs interests planted in SigLIP space")
+    cached = cache_for(settings).load()
+    if cached is None:
+        raise RuntimeError("no concept cache; run `python -m visualtaste.rec.concepts`")
+    concepts, vectors = cached
+    count = min(model.describe_interests, len(user.centroids))
+    described = [describe_interest(user.centroids[k], concepts, vectors) for k in range(count)]
+    text = "; ".join(words for words, _ in described)
+    vector = np.mean([v for _, v in described], axis=0)
+    return TextSeededColdStart(model, text, vector / np.linalg.norm(vector))
 
 
 def clusters_for_variant(features: FeatureBundle, variant: str, seed: int) -> np.ndarray | None:

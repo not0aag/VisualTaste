@@ -541,6 +541,24 @@ PRESETS[DRIFT_STUDY] = Preset(
 )
 
 
+#: ROADMAP D4: if the person describes one interest in words before swiping,
+#: does the cold start find what they like sooner? Plain R0 against R0 aimed
+#: at a three-word description of the user's first planted interest, over the
+#: first 100 swipes (the cold start's whole working life).
+TEXT_STUDY = "phase15_text"
+PRESETS[TEXT_STUDY] = Preset(
+    title="Phase 15: describing a taste in words before swiping (S1, S6)",
+    variants=(_S1, _S6),
+    specs=("r0", "r0:describe=1"),
+    comparisons=tuple(
+        (variant, "r0:describe=1", "r0", metric, "higher")
+        for variant in (_S1, _S6)
+        for metric in ("like_rate", "interests_found")
+    ),
+    with_replay=False,
+)
+
+
 def default_rung_choice(
     results: dict[tuple[str, str], list],
     *,
