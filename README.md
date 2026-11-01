@@ -26,6 +26,14 @@
 </p>
 
 <p align="center">
+  <img src="docs/images/learning-strip.png" alt="Watch it learn: the first 12 cards of a recorded session are a random mix (6 of 12 liked); the last 12 are mostly yellow flowers and sunflowers (11 of 12 liked)" width="100%">
+</p>
+
+<p align="center">
+  <sub>A recorded session of a simulated user with three hidden interests; by the end its feed has homed in on yellow flowers. Seed 1748 of 20; across all 20, the like rate rises from 50% in the first 100 cards to 65% in the last 100.</sub>
+</p>
+
+<p align="center">
   <img src="https://skillicons.dev/icons?i=python,pytorch,sklearn,fastapi,sqlite,react,ts,vite,tailwind&theme=dark" alt="Python, PyTorch, scikit-learn, FastAPI, SQLite, React, TypeScript, Vite, Tailwind">
 </p>
 
@@ -63,6 +71,8 @@
 
 The app is a dark viewfinder built around one photograph at a time. Its details come from the photos themselves: the room takes on the light of the current image, and the frame carries readouts the way a camera's does.
 
+These screenshots follow a **simulated user with six planted interests**, replayed from a recorded 1,000-swipe session, so you can see what the app makes of a varied taste.
+
 <table>
   <tr>
     <td width="50%"><img src="docs/images/feed.jpg" alt="The Feed: one photograph in a viewfinder frame"></td>
@@ -73,11 +83,11 @@ The app is a dark viewfinder built around one photograph at a time. Its details 
     <td><b>Why this image.</b> <code>I</code> opens the explanation: a plain sentence, the reason code and the score. Pressing a key also presses its on-screen button, and the screen's edge flashes in the verdict's colour.</td>
   </tr>
   <tr>
-    <td><img src="docs/images/profile.jpg" alt="Profile: interests found from likes, with their central images"></td>
+    <td><img src="docs/images/profile.jpg" alt="Profile: eight interests learned from a simulated user, including lithographs, vintage cars, trucks, wildflowers and birds"></td>
     <td><img src="docs/images/model-lab.jpg" alt="Model Lab: counters, learning curve and model versions"></td>
   </tr>
   <tr>
-    <td><b>Profile.</b> The separate interests found in your likes, each with its six most central images, three concept words, and a 90% Beta interval on how often you like that area. Below that, your taste in words, liked and disliked.</td>
+    <td><b>Profile.</b> The separate interests found in your likes. Here the model found eight in the simulated user's 436 likes: lithographs, vintage cars, trucks, black-and-white photos, wildflowers, birds and more. Each card shows its six most central images, three concept words, and a 90% Beta interval on how often you like that area.</td>
     <td><b>Model Lab.</b> Like rate, coverage and interests on one timeline, with a marker wherever the serving model changed. Every trained version is listed with its metrics and can be evaluated, activated or A/B-tested by interleaving.</td>
   </tr>
   <tr>
@@ -250,6 +260,11 @@ Other properties:
 ---
 
 ## The image collection
+
+<p align="center">
+  <img src="docs/images/collection-mosaic.jpg" alt="64 photos, one from each visual cluster of the collection: maps, engravings, food, vehicles, landscapes, sport, wildlife, architecture and more" width="100%">
+  <sub>One photo from each of the collection's 64 visual clusters.</sub>
+</p>
 
 | Source | Images | Licence |
 | --- | --- | --- |
