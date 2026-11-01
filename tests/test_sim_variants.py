@@ -342,3 +342,30 @@ class TestPhase10Machinery:
         )
         assert ratio == pytest.approx(0.75)
         assert low == pytest.approx(0.75) and high == pytest.approx(0.75)
+
+
+class TestDefaultRungChoice:
+    def test_the_best_mean_rank_on_the_combined_score_wins(self):
+        from visualtaste.jobs.evaluate import CHOICE_VARIANTS, default_rung_choice
+
+        def seeds(spec, like, found, cover):
+            fields = dict.fromkeys(SeedResult.__dataclass_fields__)
+            rows = []
+            for seed in range(3):
+                f = dict(fields)
+                f.update(spec=spec, seed=seed, like_rate=like, interests_found=found)
+                f.update(coverage_last_500=cover, discovery={}, image_ids=[], actions=[])
+                f.update(served_rungs=[], dwell_ms=[], true_probabilities=[])
+                rows.append(SeedResult(**f))
+            return rows
+
+        results = {}
+        for variant in CHOICE_VARIANTS:
+            results[(variant, "r3")] = seeds("r3", 0.62, 2.0, 0.3)  # high like rate, narrow
+            results[(variant, "r4")] = seeds("r4", 0.58, 3.0, 0.9)  # broad, a little lower
+            results[(variant, "r1")] = seeds("r1", 0.50, 2.0, 0.2)
+        choice, combined, mean_rank = default_rung_choice(results, eligible=("r1", "r3", "r4"))
+
+        assert choice == "r4"
+        assert mean_rank == {"r4": 1.0, "r3": 2.0, "r1": 3.0}
+        assert combined["S1_semantic"]["r4"] > combined["S1_semantic"]["r3"]

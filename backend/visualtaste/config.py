@@ -84,6 +84,11 @@ class Settings(BaseSettings):
     # on the simulator; the outcome is in docs/EVALUATION.md.
     skip_weight: float = 0.25
 
+    # R4's posterior temperature: draws are w* + sqrt(tau) * (Laplace deviation).
+    # Part 2 specifies 1.0; the value used is chosen from phase10_sensitivity
+    # on the H3 criterion and recorded in docs/DECISIONS.md #25.
+    r4_tau_post: float = 1.0
+
     api_host: str = "127.0.0.1"
     api_port: int = 8000
 

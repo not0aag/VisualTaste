@@ -203,111 +203,82 @@ H1 is supported. The result that matters more: both learned rungs find only two
 of the three planted interests, and buy their like rate by narrowing coverage
 from 100% of clusters to about 40%. That is the argument for R4.
 
-## Phase 9 — R3 + ablations
+## Part 2 status (2026-11-01)
 
-**Running jobs (2026-10-31).** Each runs on its own DB copy (#22), caches every seed under `data/eval/`, appends its section to EVALUATION.md when done, and resumes if re-run.
+Code for Phases 9-13 is complete and tested: `c9c28ac`, `check.ps1` green (999 pytest, 35 Vitest, build, 11 Playwright).
+What remains is the studies, their write-ups, and Phase 14's measurements and handover.
+
+**Running jobs.** Each runs on its own DB copy (#22), caches every seed under `data/eval/`, appends its section to EVALUATION.md when done, and resumes if re-run.
 
 | started | runner | PID | studies | log |
 | --- | --- | --- | --- | --- |
-| 22:10 | `scripts/run_phase9_studies.ps1` (main DB) | 31280 | `phase9_rungs`, `phase9_h2`, `phase9_skip`, `phase9_ablation` (20 × 1,000) | `logs/phase9_studies_20261031_221022.log.err` |
-| 22:57 | `scripts/run_phase10_studies.ps1` (`sim_studies_b.db`) | 8652 | `phase10_h3` (20), `phase10_checks` (20), `phase10_sensitivity` (10) | `logs/phase10_studies_20261031_225723.log.err` |
-| 23:3x | `scripts/run_studies.ps1 -Database sim_c` | 11336 | `phase11_h4` (20 × 1,000) | `logs/phase11_studies.log.err` |
-| 23:3x | `scripts/run_studies.ps1 -Database sim_d` | 33952 | `phase12_logs` (10 × 5,000, R4 logging) | `logs/phase12_logs.log.err` |
+| 10-31 22:10 | `scripts/run_phase9_studies.ps1` (main DB) | 31280 | `phase9_rungs`, `phase9_h2`, `phase9_skip`, `phase9_ablation` (20 × 1,000) | `logs/phase9_studies_20261031_221022.log.err` |
+| 10-31 22:57 | `scripts/run_phase10_studies.ps1` (`sim_studies_b.db`) | 8652 | `phase10_h3` (20), `phase10_checks` (20), `phase10_sensitivity` (10, already cached by the run below) | `logs/phase10_studies_20261031_225723.log.err` |
+| 10-31 23:3x | `run_studies.ps1 -Database sim_c` | 11336 | `phase11_h4` (20 × 1,000) | `logs/phase11_studies.log.err` |
+| 10-31 23:3x | `run_studies.ps1 -Database sim_d` | 33952 | `phase12_logs` (10 × 5,000, R4 logging) | `logs/phase12_logs.log.err` |
+| 11-01 | `run_studies.ps1 -Database sim_e` | 37140 | `phase10_sensitivity` (10, extended τ grid #25) | `logs/phase10_sensitivity.log.err` |
 
-After `phase12_logs` finishes: `python -m visualtaste.jobs.evaluate --study phase12_h5 --seeds 10` (GPU).
+**Next, in order:**
+1. When `phase10_sensitivity` is in: choose `VT_R4_TAU_POST` on the H3 criterion and record it in #25.
+2. Start `phase14_final` split across three processes with `--variants` (S1,S2 / S3,S4 / S5,S6), then a final render run.
+3. After `phase12_logs`: run `--study phase12_h5 --seeds 10` (GPU).
+4. When the CPU is idle: `jobs.latency`, the kill-mid-retrain check, and the restore check.
+5. Write up EVALUATION.md, figures, DEFAULT_RUNG, the fresh-clone check, the empty real profile, and the final message.
 
-**Done since the part-1 commit (`4e503a8`):**
-- simulator variants S1–S6 with simulated dwell
-- `eval/study.py`: specs, cache, §4.3 outcomes, §4.1 statistics, H2 curve
-- `--study` presets in `jobs/evaluate.py`
-- R0 seeded per session (#19)
+## Phase 9 — R3 + ablations
 
-**Earlier resume note (superseded):**
-- Done, untested by new tests yet:
-  - `config.py`: `default_rung`, `serve_min_labels`, `serve_min_per_class`, `skip_weight`
-  - `rec/base.py`: `InsufficientSignal` and `unfit_reason`
-  - `rec/features.py`: standardised `sig`/`dino`/`col` blocks
-  - `rec/logreg_numpy.py`
-  - `rec/r3_logreg.py`: C = 1/(λS), λ tuned by time-ordered validation
-  - `rec/feed.py`: the fallback is recorded in `explanation_json`, and a scoring failure falls back too
-  - `load_rung("r3")`
-  - DINOv2 PCA-128 and the stats files, via `jobs.select --features-only` (already run)
-- Fixed: 3 unused `noqa` comments in `scripts/build_e2e_corpus.py`. This turned `check.ps1` red at pre-flight.
-- Next:
-  - tests (M5, agreement, C-mapping, λ ties, fallback chain)
-  - DECISIONS #16 (noqa fix, standardisation) and #17 (sklearn 1.9 `l1_ratio`)
-  - retrain background task and model swap, plus `/models` routes
-  - simulator variants S1–S6, the evaluate cache and the §4.1 stats
-  - studies, notebook 03, commit
-- Plan: `C:\Users\alena\.claude\plans\synthetic-jumping-jellyfish.md`, still to be copied into PLAN.md as "Part 2 plan".
-
-- [ ] `rec/logreg_numpy.py` hand-written weighted GD with L2; M5 example asserted
-- [ ] `rec/r3_logreg.py` scikit-learn production path
-- [ ] NumPy vs scikit-learn agreement test (coefficients within 1e-3)
-- [ ] λ chosen by time-ordered validation over 1e-4 … 1e1
-- [ ] Skip-weight comparison (0 / 0.25 / exclude) on the simulator
-- [ ] Feature-block ablation (SigLIP2 / +DINOv2 / +colour)
-- [ ] Online retrain every 20 labels + hot-swap, tested
-- [ ] Notebook 03 executed
+- [x] `rec/logreg_numpy.py` hand-written weighted GD with L2; M5 example asserted
+- [x] `rec/r3_logreg.py` scikit-learn production path, C = 1/(λS) (mapping test)
+- [x] NumPy vs scikit-learn agreement test (within 1e-3; synthetic and 500-label profile)
+- [x] λ chosen by time-ordered validation over 1e-4 … 1e1, every retrain
+- [x] Online retrain every 20 labels + atomic hot-swap, tested (old model during retrain, failure keeps old, never two in flight)
+- [x] Notebook 03 executed
+- [ ] Studies recorded: `phase9_rungs`, `phase9_h2`, `phase9_skip` (0.25 / 1.0 / exclude, #20), `phase9_ablation`
 
 ## Phase 10 — R4 exploration
 
-- [ ] Laplace posterior and Cholesky Thompson draw per batch
-- [ ] `rec/rerank.py` MMR λ=0.7; §8 M7 example asserted
-- [ ] Exploration quota 1-of-5 decaying to 1-of-10 after 2,000 labels
-- [ ] Widest-Beta cluster64 selection among clusters rated < 3 times
-- [ ] Monte-Carlo propensity per impression (200 replays), approximation documented
-- [ ] Interleaving toggle in Model Lab
-- [ ] Simulator study R3 vs R4
-- [ ] Notebook 05 executed
+- [x] Laplace posterior and Cholesky Thompson draw per batch; covariance = H⁻¹ test; M7 37% test
+- [x] `rec/rerank.py` MMR λ=0.7 (M7 test), quota 1-of-5 decaying to 1-of-10, widest-Beta cluster among clusters rated < 3 times
+- [x] Monte-Carlo inclusion propensities (200 draws) after the response; clipped at 0.005 and flagged
+- [x] Interleaving: API, feed, Model Lab panel; simulated interleaving runner; IPS check
+- [x] Notebook 05 executed
+- [ ] H3, sensitivity (τ grid extended, #25), interleaving and IPS checks recorded; default τ chosen
+- [ ] `/feed/next` p95 < 50 ms with R4 (`jobs.latency`, once the CPU is idle)
 
 ## Phase 11 — R5 multi-interest
 
-- [ ] k-means on liked vectors, k = min(8, ⌊likes/25⌋)
-- [ ] Log-sum-exp score, τ=0.05; §8 M8 examples asserted
-- [ ] Online centroid nudge; recluster every 100 likes with Hungarian matching
-- [ ] Top-3 concept label per interest
-- [ ] m(x) and per-interest similarities as extra R3 features (R3+R5)
-- [ ] Profile page: interest cards, taste in words, reset with confirm
-- [ ] R3+R5 vs R3 on the simulator
-- [ ] Notebook 06 executed
+- [x] k-means interests, log-sum-exp (M8 tests), nudges, Hungarian matching (shuffle test), concept labels
+- [x] R3+R5 / R4+R5 time-respecting features; leakage test; snapshot cache
+- [x] Interests persisted; `/profile/taste`; Profile page with Vitest coverage
+- [x] Notebook 06 executed
+- [ ] H4 and S5 drift recovery recorded
 
 ## Phase 12 — R6 neural ranker
 
-- [ ] `rec/r6_neural.py` architecture per §7.5 with per-block LayerNorm
-- [ ] Weighted BCE, then + 0.5 × BPR on same-session pairs; both selectable
-- [ ] §8 M9 backprop and BPR examples asserted; hand gradients vs autograd
-- [ ] `jobs/train_neural.py`: checkpoints, early stopping (patience 10), 5 seeds
-- [ ] Ensemble mean = score, ensemble std = uncertainty
-- [ ] Refuses to train below 1,500 labels with a clear message
-- [ ] Dwell-time AUC analysis (on simulated dwell for now; stated as such)
-- [ ] R6 vs R3 on the simulator with ≥ 3,000 labels
-- [ ] Notebook 07 executed; activation only from Model Lab
+- [x] `rec/r6_neural.py`: per-block LayerNorm MLP, BCE or BCE + 0.5 BPR, 5-seed ensemble, bootstrap Thompson
+- [x] M9 and BPR tests; hand gradients vs autograd; checkpoints reload identically; leakage test
+- [x] `jobs/train_neural.py`: refuses below 1,500 labels; never in the API; registers inactive; `--record`
+- [x] Notebook 07 executed (on a cached 5,000-swipe S4 log: overfits from epoch 1)
+- [ ] H5 learning curve and SIMULATED dwell study recorded (`phase12_h5`, after `phase12_logs`)
 
 ## Phase 13 — Analytics + visualisation
 
-- [ ] `viz/projection.py` + `jobs/project.py`: PCA-50 → UMAP, cached per model
-- [ ] Remaining routes: stats (6), viz, models, eval, experiments, review, profile
-- [ ] Model Lab page complete
-- [ ] Embedding Map: 50k `scattergl`, colour modes, overlays, hover thumbnails,
-      time slider, both models side by side
-- [ ] History page; Review page
-- [ ] Every dashboard number traced to a query/endpoint in ARCHITECTURE.md
-- [ ] Notebooks 02, 04, 08 executed
+- [x] `viz/projection.py` + `jobs/project.py`; both projections built (SigLIP 366 s, DINOv2 153 s; BENCHMARKS.md)
+- [x] Routes: stats (summary, learning-curve, clusters, diversity, calibration, exploration, scores), profiles, viz, models evaluate, eval, experiments, review
+- [x] Model Lab, Embedding Map, History, Review pages; Playwright smoke per page
+- [x] Traceability table in ARCHITECTURE.md
+- [x] Notebooks 02, 04, 08 executed
 
 ## Phase 14 — Hardening + final evaluation
 
-- [ ] Full simulator study, 5 seeds × 1,000 swipes, R0-R5 and R6 (≥ 3,000 labels)
-- [ ] EVALUATION.md + `docs/figures/`, labelled as simulator results
-- [ ] The five §7.7 hypotheses reported honestly, hold or not
-- [ ] `/feed/next` p95 measured and recorded (target < 50 ms)
-- [ ] README: setup with the pinned torch index, run, daily use, reset,
-      backup/restore, re-embedding
-- [ ] LEARNING_PATH.md mapped to M1-M10 and the notebooks
-- [ ] ARCHITECTURE.md: components, Mermaid data flow, `/feed/next` path, writers
-- [ ] Fresh-clone setup verified in a temp venv from the README alone
-- [ ] `scripts/check.ps1` green
-- [ ] Final empty real profile with R0 active
+- [x] `jobs/backup.py` (list, restore with a pre-restore snapshot, verified counts); daily snapshot in the API
+- [x] README: setup, corpus build, daily use, reset, backup/restore, re-embedding, studies, latency
+- [x] LEARNING_PATH.md mapped to M1-M10, notebooks, and simulator experiments
+- [x] ARCHITECTURE.md: Mermaid data flow, `/feed/next` path, table writers, traceability
+- [ ] `phase14_final` study, figures, DEFAULT_RUNG chosen and set in config
+- [ ] Latency table at 0 / 100 / 1,000 / 3,000 labels
+- [ ] Robustness: kill mid-retrain; delete active artefact (tested); restore (tested; run once on real data)
+- [ ] Fresh-clone check; final empty real profile; backup; final message
 
 ---
 

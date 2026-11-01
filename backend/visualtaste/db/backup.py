@@ -56,6 +56,12 @@ def snapshot_database(settings: Settings) -> Path | None:
     destination_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M")
     destination = destination_dir / f"visualtaste_{stamp}.db"
+    # Two snapshots in one minute (a restore's safety snapshot, say) get a
+    # suffix rather than silently replacing the first.
+    counter = 2
+    while destination.exists():
+        destination = destination_dir / f"visualtaste_{stamp}_{counter}.db"
+        counter += 1
 
     source = repo.connect(settings.db_path, read_only=True)
     try:
@@ -182,3 +188,65 @@ def _highest_exported_event_id(path: Path) -> int:
 def run_backup(settings: Settings) -> tuple[Path | None, Path | None]:
     """Both backups together. The daily job and the shutdown hook call this."""
     return snapshot_database(settings), export_events_jsonl(settings)
+
+
+#: Tables whose row counts a restore is verified against.
+COUNTED_TABLES = ("images", "profiles", "impressions", "events", "rec_models", "interests")
+
+
+def table_counts(path: Path) -> dict[str, int]:
+    """Row counts of the tables that matter, read-only.
+
+    The table names are the module constant above, never user input, so the
+    f-string cannot inject anything.
+    """
+    connection = repo.connect(path, read_only=True)
+    try:
+        return {
+            table: int(connection.execute(f"SELECT COUNT(*) AS n FROM {table}").fetchone()["n"])
+            for table in COUNTED_TABLES
+        }
+    finally:
+        connection.close()
+
+
+def list_snapshots(settings: Settings) -> list[Path]:
+    """Snapshots, newest first."""
+    directory = settings.backups_dir / "db"
+    if not directory.exists():
+        return []
+    return sorted(directory.glob("visualtaste_*.db"), key=lambda p: p.stat().st_mtime, reverse=True)
+
+
+def restore_database(settings: Settings, snapshot: Path) -> dict[str, int]:
+    """Replace the database with a snapshot. Stop the API first.
+
+    The current database is snapshotted before it is overwritten, so a restore
+    can itself be undone, and nothing is ever lost by restoring. The copy uses
+    the same online-backup API as the snapshot, into a temporary file that is
+    renamed into place. Returns the restored database's row counts, which the
+    caller compares with `table_counts(snapshot)`.
+    """
+    if not snapshot.exists():
+        raise FileNotFoundError(snapshot)
+
+    # Copy the snapshot out first, then take the safety snapshot: in that order
+    # nothing the safety snapshot writes can touch the file being restored.
+    tmp = settings.db_path.with_name(f".{settings.db_path.name}.restore")
+    source = sqlite3.connect(f"file:{snapshot.as_posix()}?mode=ro", uri=True)
+    target = sqlite3.connect(tmp)
+    try:
+        source.backup(target)
+    finally:
+        target.close()
+        source.close()
+
+    before = snapshot_database(settings)
+    logger.info("pre-restore snapshot of the current database: %s", before)
+    for suffix in ("-wal", "-shm"):
+        sidecar = settings.db_path.with_name(settings.db_path.name + suffix)
+        if sidecar.exists():
+            sidecar.unlink()
+    tmp.replace(settings.db_path)
+    logger.info("restored %s from %s", settings.db_path, snapshot)
+    return table_counts(settings.db_path)

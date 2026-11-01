@@ -26,6 +26,7 @@ when the process is stopping anyway.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -112,7 +113,12 @@ async def lifespan(app: FastAPI):
         state.model_version,
     )
 
+    # Daily snapshot while running (brief §7.8); the shutdown one follows below.
+    daily = asyncio.create_task(_daily_backups(settings))
+
     yield
+
+    daily.cancel()
 
     try:
         from visualtaste.db.backup import snapshot_database
@@ -120,6 +126,21 @@ async def lifespan(app: FastAPI):
         snapshot_database(settings)
     except Exception:  # a failed backup must not mask a clean shutdown
         logger.exception("shutdown backup failed")
+
+
+DAILY_SECONDS = 24 * 60 * 60
+
+
+async def _daily_backups(settings) -> None:
+    """Snapshot the database and export new events once a day, off the event loop."""
+    from visualtaste.db.backup import run_backup
+
+    while True:
+        await asyncio.sleep(DAILY_SECONDS)
+        try:
+            await asyncio.to_thread(run_backup, settings)
+        except Exception:  # a failed backup must never take the API down
+            logger.exception("daily backup failed")
 
 
 app = FastAPI(

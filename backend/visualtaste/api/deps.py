@@ -556,7 +556,7 @@ def load_rung(rung: str, settings: Settings) -> Recommender:
     if rung == "r4":
         from visualtaste.rec.r4_thompson import ThompsonRecommender
 
-        return ThompsonRecommender(seed=settings.seed)
+        return ThompsonRecommender(seed=settings.seed, tau_post=settings.r4_tau_post)
     if rung == "r5":
         from visualtaste.rec.r5_interests import InterestRecommender
 
@@ -577,6 +577,7 @@ def load_rung(rung: str, settings: Settings) -> Recommender:
         model.concept_labeller = concept_labeller(settings)
         if rung == "r4+r5":
             model.seed = settings.seed
+            model.tau_post = settings.r4_tau_post
         return model
     raise KeyError(f"unknown rung {rung!r}; it may be from a later phase than this build")
 

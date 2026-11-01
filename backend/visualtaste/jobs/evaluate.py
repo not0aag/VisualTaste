@@ -456,6 +456,94 @@ PRESETS["phase12_logs"] = Preset(
     with_replay=False,
 )
 
+FINAL_STUDY = "phase14_final"
+#: The variants DEFAULT_RUNG is chosen on (Part 2 §10.2). S4 is left out: it
+#: exists for R6, which cannot serve automatically.
+CHOICE_VARIANTS = (_S1, _S2, _S3, _S5, _S6)
+#: Rungs eligible to be the default: within the latency budget, automatic.
+#: R2 misses the budget (F3) and R6 is manual-only, so neither can be chosen.
+ELIGIBLE_DEFAULTS = ("r1", "r3", "r3+r5", "r4", "r4+r5")
+CHOICE_METRICS = ("like_rate", "interests_found", "coverage_last_500")
+
+PRESETS[FINAL_STUDY] = Preset(
+    title="Final study: every serving rung on S1-S6",
+    variants=(_S1, _S2, _S3, _S4, _S5, _S6),
+    specs=("r0", "r1", "r2", "r3", "r3+r5", "r4", "r4+r5"),
+    comparisons=tuple(
+        (variant, first, "r3", "like_rate", "higher")
+        for variant in (_S1, _S2, _S3, _S4, _S5, _S6)
+        for first in ("r4", "r4+r5", "r3+r5")
+    ),
+)
+
+
+def default_rung_choice(
+    results: dict[tuple[str, str], list],
+    *,
+    variants=CHOICE_VARIANTS,
+    eligible=ELIGIBLE_DEFAULTS,
+) -> tuple[str, dict[str, dict[str, float]], dict[str, float]]:
+    """Part 2 §10.2: the best mean rank on a combined score, among eligible rungs.
+
+    Per variant: each rung's mean over seeds of like rate, interests found and
+    coverage; each metric z-scored across the eligible rungs; the three z-scores
+    added with equal weight; rungs ranked (1 = best). The default is the rung
+    with the lowest mean rank over `variants`. Returns (choice, combined score
+    per variant per rung, mean rank per rung).
+    """
+    combined: dict[str, dict[str, float]] = {}
+    ranks: dict[str, list[int]] = {rung: [] for rung in eligible}
+    for variant in variants:
+        means = {
+            rung: [
+                float(np.mean([getattr(r, m) for r in results[(variant, rung)]]))
+                for m in CHOICE_METRICS
+            ]
+            for rung in eligible
+            if (variant, rung) in results
+        }
+        matrix = np.array(list(means.values()))
+        spread = matrix.std(axis=0)
+        z = (matrix - matrix.mean(axis=0)) / np.where(spread == 0, 1.0, spread)
+        scores = dict(zip(means, z.sum(axis=1).tolist(), strict=True))
+        combined[variant] = scores
+        for position, rung in enumerate(sorted(scores, key=lambda r: -scores[r]), start=1):
+            ranks[rung].append(position)
+    mean_rank = {rung: float(np.mean(r)) for rung, r in ranks.items() if r}
+    choice = min(mean_rank, key=lambda rung: (mean_rank[rung], rung))
+    return choice, combined, mean_rank
+
+
+def render_default_choice(results) -> list[str]:
+    choice, combined, mean_rank = default_rung_choice(results)
+    header = "| rung | " + " | ".join(CHOICE_VARIANTS) + " | mean rank |"
+    lines = [
+        "",
+        "### Choosing DEFAULT_RUNG (Part 2 §10.2)",
+        "",
+        "Combined score per variant = z(like rate) + z(interests found) + z(coverage), each "
+        "z-scored across the eligible rungs (R1, R3, R3+R5, R4, R4+R5; R2 misses the latency "
+        "budget and R6 is manual-only). Rank 1 is best.",
+        "",
+        header,
+        "|" + " --- |" * (len(CHOICE_VARIANTS) + 2),
+    ]
+    for rung in sorted(mean_rank, key=lambda r: mean_rank[r]):
+        cells = " | ".join(f"{combined[v].get(rung, float('nan')):+.2f}" for v in CHOICE_VARIANTS)
+        lines.append(f"| `{rung}` | {cells} | {mean_rank[rung]:.1f} |")
+    runner_up = sorted(mean_rank, key=lambda r: mean_rank[r])[1]
+    margin = {v: combined[v][choice] - combined[v].get("r3", float("nan")) for v in CHOICE_VARIANTS}
+    lines += [
+        "",
+        f"**Chosen: `{choice}`** (mean rank {mean_rank[choice]:.1f}; runner-up `{runner_up}` at "
+        f"{mean_rank[runner_up]:.1f}). Its combined-score margin over R3 per variant: "
+        + ", ".join(f"{v} {m:+.2f}" for v, m in margin.items())
+        + f"; mean {np.nanmean(list(margin.values())):+.2f}.",
+        "",
+    ]
+    return lines
+
+
 #: H5's label counts. 4,900 rather than 5,000 leaves a 100-event test block.
 H5_CUTS = (500, 1_500, 3_000, 4_900)
 R6_SPECS = ("r6:minlabels=0", "r6:minlabels=0,loss=bpr")
@@ -828,8 +916,15 @@ def run_preset(
     swipes: int,
     out: Path | None,
     print_only: bool,
+    only_variants: list[str] | None = None,
 ) -> int:
-    """Run a Part 2 preset, using and filling the cache, and write it up."""
+    """Run a Part 2 preset, using and filling the cache, and write it up.
+
+    `only_variants` fills the cache for those variants and writes no report,
+    so one large study can be split across parallel processes (each on its own
+    database, DECISIONS #22). A final run without it then reads every seed
+    from the cache and writes the whole section.
+    """
     from visualtaste.eval.study import (
         COMPARISON_HEADER,
         compare,
@@ -855,6 +950,13 @@ def run_preset(
         return run_phase12_h5(features, settings, seeds=seeds, out=out, print_only=print_only)
 
     preset = PRESETS[name]
+    if only_variants:
+        unknown = set(only_variants) - set(preset.variants)
+        if unknown:
+            raise SystemExit(f"{sorted(unknown)} are not variants of {name}")
+        from dataclasses import replace
+
+        preset = replace(preset, variants=tuple(only_variants), comparisons=())
 
     connection = repo.connect(settings.db_path)
     try:
@@ -872,6 +974,10 @@ def run_preset(
         )
     finally:
         connection.close()
+
+    if only_variants:
+        print(f"{name}: cached {sum(len(r) for r in results.values())} seeds for {only_variants}")
+        return 0
 
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     parts = [
@@ -925,6 +1031,8 @@ def run_preset(
                     f"| {variant} | `{candidate}` | {ratio:.2f} | [{low:.2f}, {high:.2f}] "
                     f"| {verdict} |"
                 )
+    if name == FINAL_STUDY:
+        parts += render_default_choice(results)
     section = "\n".join(parts) + "\n"
 
     if print_only:
@@ -950,6 +1058,11 @@ def main(argv: list[str] | None = None) -> int:
         "--rungs",
         default=",".join(DEFAULT_RUNGS),
         help="comma-separated rungs to compare, e.g. r0,r1,r2",
+    )
+    parser.add_argument(
+        "--variants",
+        default=None,
+        help="with --study: only fill the cache for these variants (comma-separated); no report",
     )
     parser.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     parser.add_argument("--swipes", type=int, default=DEFAULT_SWIPES)
@@ -984,6 +1097,7 @@ def main(argv: list[str] | None = None) -> int:
             swipes=args.swipes,
             out=args.out,
             print_only=args.print_only,
+            only_variants=[v.strip() for v in args.variants.split(",")] if args.variants else None,
         )
 
     settings = get_settings()
