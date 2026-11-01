@@ -220,3 +220,77 @@ def monte_carlo_propensity(
             counts[key] = counts.get(key, 0) + 1
 
     return {key: count / trials for key, count in counts.items()}
+
+
+@dataclass
+class DrEstimate:
+    """A doubly robust estimate of a new policy's reward, with its standard error."""
+
+    value: float
+    standard_error: float
+    samples: int
+    dropped: int
+    clipped: int
+
+
+def doubly_robust(
+    rewards: np.ndarray,
+    logged_propensities: np.ndarray,
+    new_propensities: np.ndarray,
+    predicted_reward_logged: np.ndarray,
+    predicted_value_new: np.ndarray,
+    *,
+    weight_cap: float = DEFAULT_WEIGHT_CAP,
+) -> DrEstimate:
+    """Doubly robust off-policy estimate (Dudik, Langford and Li, 2011).
+
+    Per logged round t, with a reward model r_hat:
+
+        DR_t = V_hat(x_t) + (pi(a_t|x_t) / mu(a_t|x_t)) * (r_t - r_hat(x_t, a_t))
+
+    where V_hat(x_t) = sum_a pi(a|x_t) r_hat(x_t, a) is the reward model's
+    value of the new policy in that context (`predicted_value_new`), and
+    r_hat(x_t, a_t) its prediction for the logged action
+    (`predicted_reward_logged`).
+
+    It is unbiased if either the propensities or the reward model are right.
+    How much it gains over SNIPS depends on where the variance comes from: a
+    good reward model removes the variance due to contexts, but not each
+    binary like's own coin-flip noise. On synthetic bandits with yes/no
+    rewards the gain is small (about 6% lower spread with a perfect model),
+    and a poor reward model makes DR noisier than SNIPS. Same propensity floor
+    and weight cap as `snips`.
+
+    Applying it to VisualTaste's own logs needs `r_hat` for every card the new
+    policy might have shown, which the simulator caches do not store; the
+    estimator is validated on synthetic bandits (tests/test_propensity_dr.py).
+    """
+    arrays = [
+        np.asarray(a, dtype=np.float64)
+        for a in (
+            rewards,
+            logged_propensities,
+            new_propensities,
+            predicted_reward_logged,
+            predicted_value_new,
+        )
+    ]
+    if len({len(a) for a in arrays}) != 1:
+        raise ValueError("rewards, propensities and predictions must all align")
+    r, logged, proposed, r_hat, v_hat = arrays
+    if len(r) == 0:
+        return DrEstimate(float("nan"), float("nan"), 0, 0, 0)
+
+    keep = np.isfinite(logged) & (logged >= MINIMUM_PROPENSITY)
+    dropped = int((~keep).sum())
+    r, logged, proposed, r_hat, v_hat = (a[keep] for a in (r, logged, proposed, r_hat, v_hat))
+    if len(r) == 0:
+        return DrEstimate(float("nan"), float("nan"), 0, dropped, 0)
+
+    raw_weights = proposed / logged
+    weights = np.minimum(raw_weights, weight_cap)
+    clipped = int((raw_weights > weight_cap).sum())
+
+    per_round = v_hat + weights * (r - r_hat)
+    standard_error = float(per_round.std(ddof=1) / np.sqrt(len(r))) if len(r) > 1 else float("nan")
+    return DrEstimate(float(per_round.mean()), standard_error, len(r), dropped, clipped)
