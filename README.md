@@ -461,6 +461,7 @@ The code is written to be read. [`docs/LEARNING_PATH.md`](docs/LEARNING_PATH.md)
 
 | Notebook | Topic |
 | --- | --- |
+| [`01_vectors_and_cosine`](notebooks/01_vectors_and_cosine.ipynb) | cosine by hand, why normalised vectors make it a dot product, and what SigLIP 2 and DINOv2 each count as similar |
 | [`02_rocchio_and_knn`](notebooks/02_rocchio_and_knn.ipynb) | Rocchio and kNN, and why one direction cannot hold two tastes |
 | [`03_logistic_regression_by_hand`](notebooks/03_logistic_regression_by_hand.ipynb) | weighted, regularised gradient descent written out, then checked against scikit-learn |
 | [`04_pca_and_umap`](notebooks/04_pca_and_umap.ipynb) | what the Embedding Map's axes do and do not mean |

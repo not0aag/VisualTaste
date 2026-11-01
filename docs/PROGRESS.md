@@ -128,7 +128,7 @@ Final status counts: `ok` 78,197 · `near_dup` 1,044 · `removed` 789 ·
 `rejected` 1 (80,031 distinct rows)
 - [x] PCA-128 fitted: 32 components explain 46.1%, 64 → 58.7%, 128 → 72.7%;
       `cluster64` and `cluster400` stored
-- [ ] Notebook 01 executed with neighbour grids for both models
+- [x] Notebook 01 executed with neighbour grids for both models (`01_vectors_and_cosine`: top-10 overlap 2.8 of 10)
 
 ## Phase 6 — Backend core + Feed UI + R0
 
