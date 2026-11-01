@@ -143,9 +143,14 @@ class Settings(BaseSettings):
     def models_dir(self) -> Path:
         return self.data / "models"
 
+    #: Overrides the database file. Used to run a second simulator study in
+    #: parallel against its own copy, so two study processes never contend for
+    #: SQLite's single write lock (docs/DECISIONS.md #22).
+    db_file: Path | None = None
+
     @property
     def db_path(self) -> Path:
-        return self.data / "db" / "visualtaste.db"
+        return self.db_file or (self.data / "db" / "visualtaste.db")
 
     @property
     def hf_home(self) -> Path:

@@ -43,7 +43,7 @@ from visualtaste.eval.metrics import (
     rolling_like_rate,
 )
 from visualtaste.eval.sim import SimulatedUser, create_simulated_profile
-from visualtaste.rec.feed import build_batch
+from visualtaste.rec.feed import build_batch, write_estimated_propensities
 from visualtaste.rec.r0_coldstart import ColdStartRecommender
 
 logger = logging.getLogger(__name__)
@@ -64,6 +64,17 @@ class SessionResult:
     novelties: list[float] = field(default_factory=list)
     user: SimulatedUser | None = None
     profile_id: int | None = None
+
+    #: Per card, aligned with `actions`: the rung that served it, the score it
+    #: was served with, the user's true p(like), and the simulated dwell.
+    served_rungs: list[str] = field(default_factory=list)
+    scores: list[float] = field(default_factory=list)
+    true_probabilities: list[float] = field(default_factory=list)
+    dwell_ms: list[int] = field(default_factory=list)
+    #: P(shown) per card: estimated for R4 when asked, 1.0 or R0's 1/|cluster| otherwise.
+    propensities: list[float] = field(default_factory=list)
+    #: Per card, 1.0 if the shadow policy would also have shown it, else 0.0.
+    shadow_shown: list[float] = field(default_factory=list)
 
     def __len__(self) -> int:
         return len(self.actions)
@@ -97,6 +108,10 @@ def run_session(
     batch_size: int = 5,
     refit_every: int = 20,
     rung_label: str | None = None,
+    label_weights: dict[str, float] | None = None,
+    exclude_skips: bool = False,
+    with_propensities: bool = False,
+    shadow=None,
 ) -> SessionResult:
     """Swipe `swipes` times through the real feed path.
 
@@ -104,8 +119,16 @@ def run_session(
     default, §7.5). Refitting on the simulator's own schedule rather than once
     at the start is deliberate: a model evaluated after training on all the data
     it will ever see is not the model that would have served those batches.
+
+    `label_weights` and `exclude_skips` are the Phase 9 skip-weight arms.
+
+    Dwell is simulated (Part 2 §4.2) from its own random stream, seeded
+    `seed + 2`, so turning it on left every Phase 8 reaction draw unchanged.
     """
+    from visualtaste.eval.sim import simulated_dwell
     from visualtaste.rec.labels import build_label_set
+
+    dwell_rng = np.random.default_rng(seed + 2)
 
     profile_id = create_simulated_profile(connection, note=f"simulator {model.rung} seed {seed}")
     connection.commit()
@@ -139,6 +162,19 @@ def run_session(
         if not batch.cards:
             logger.info("%s: the pool ran out after %d swipes", model.rung, len(result.actions))
             break
+        if shadow is not None:
+            # The IPS check (Part 2 §6.4): would the shadow policy, fitted on
+            # the same history, have shown each card? A deterministic top-n
+            # ranker's propensity for an item is exactly that indicator.
+            result.shadow_shown.extend(_shadow_indicators(connection, features, shadow, batch))
+        if with_propensities and batch.shape is not None:
+            # Inline here, where the API does it in a background task: the
+            # Phase 10 IPS check needs a log of stochastic batches with
+            # propensities, and a study has no request path to protect.
+            write_estimated_propensities(connection, model, features, batch)
+        result.propensities.extend(
+            card.propensity if card.propensity is not None else float("nan") for card in batch.cards
+        )
 
         positions = [features.position(card.image_id) for card in batch.cards]
         positions = [p for p in positions if p is not None]
@@ -148,25 +184,34 @@ def run_session(
         # are measured before the user reacts to it.
         result.batch_diversities.append(intra_batch_diversity(batch_vectors))
         if seen_positions:
-            result.novelties.extend(
-                novelty(batch_vectors, features.siglip[seen_positions]).tolist()
-            )
+            batch_novelty = novelty(batch_vectors, features.siglip[seen_positions])
         else:
-            result.novelties.extend([1.0] * len(batch_vectors))
+            batch_novelty = np.ones(len(batch_vectors))
+        result.novelties.extend(np.asarray(batch_novelty).tolist())
 
-        actions = user.react(batch_vectors)
+        actions = user.react_rows(features, positions)
+        probabilities = (
+            user.last_probabilities
+            if user.last_probabilities is not None
+            else np.full(len(actions), np.nan)
+        )
+        dwell = simulated_dwell(probabilities, batch_novelty, dwell_rng)
 
         with_events = zip(batch.cards, actions, strict=False)
-        for card, action in with_events:
+        for index, (card, action) in enumerate(with_events):
             connection.execute(
                 """
                 INSERT INTO events (impression_id, profile_id, image_id, action, dwell_ms)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (card.impression_id, profile_id, card.image_id, action, 1_000),
+                (card.impression_id, profile_id, card.image_id, action, int(dwell[index])),
             )
             result.actions.append(action)
             result.image_ids.append(card.image_id)
+            result.served_rungs.append(batch.rung)
+            result.scores.append(card.score)
+            result.true_probabilities.append(float(probabilities[index]))
+            result.dwell_ms.append(int(dwell[index]))
             if clusters is not None:
                 position = features.position(card.image_id)
                 if position is not None:
@@ -177,8 +222,12 @@ def run_session(
 
         # Retrain on the schedule the live system uses.
         if refit_every and len(result.actions) % refit_every < batch_size:
-            labels = build_label_set(connection, profile_id)
+            labels = build_label_set(
+                connection, profile_id, weights=label_weights, exclude_skips=exclude_skips
+            )
             model.fit(labels, features)
+            if shadow is not None:
+                shadow.fit(labels, features)
 
     logger.info(
         "%s seed %d: %d swipes, like rate %.3f",
@@ -188,6 +237,22 @@ def run_session(
         like_rate(result.actions),
     )
     return result
+
+
+def _shadow_indicators(connection, features, shadow, batch) -> list[float]:
+    """1.0 for each card the shadow model would have put in its own top n.
+
+    Scored over the batch's candidates as they stood (before this batch's
+    events), so the shadow sees exactly the choice the logging policy saw. An
+    unfitted shadow would have served R0, whose picks are not this policy's,
+    so it shows nothing here and contributes zero weight.
+    """
+    if not shadow.is_fitted or batch.candidates is None:
+        return [0.0] * len(batch.cards)
+    scores = np.asarray(shadow.score(features, batch.candidates))
+    n = len(batch.cards)
+    top = set(np.argpartition(-scores, n - 1)[:n].tolist())
+    return [1.0 if card.candidate_offset in top else 0.0 for card in batch.cards]
 
 
 def summarise_session(result: SessionResult) -> SessionSummary:

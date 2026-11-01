@@ -8,6 +8,7 @@ no dislikes, and a profile whose active artefact was deleted all get a batch.
 
 from __future__ import annotations
 
+import json
 import shutil
 import threading
 
@@ -26,7 +27,9 @@ POOL = 120
 
 @pytest.fixture
 def settings(tmp_path):
-    return build_corpus(tmp_path, POOL)
+    # 40 clusters, so after 40 cold-start labels most are still barely rated
+    # and R4's exploration quota has somewhere to go.
+    return build_corpus(tmp_path, POOL, clusters=40)
 
 
 @pytest.fixture
@@ -202,3 +205,115 @@ def test_the_retrain_scores_are_probabilities(client):
     model, _ = deps.get_state().serving()
     scores = model.score(deps.get_state().features, np.arange(POOL))
     assert np.all((scores > 0) & (scores < 1))
+
+
+class TestR4ThroughTheApi:
+    """Phase 10: R4 serving, propensities written after the response, interleaving."""
+
+    def _r4_version(self, client) -> str:
+        swipe_batches(client, 40, alternate)
+        body = client.post("/api/models/train", json={"rung": "r4"}).json()
+        assert body["status"] == "swapped"
+        return body["version"]
+
+    def test_every_r4_impression_gets_a_propensity(self, client):
+        self._r4_version(client)
+        body = client.get("/api/feed/next").json()
+        assert body["rung"] == "r4"
+
+        # TestClient runs background tasks before returning, so they are written.
+        connection = deps.get_state().connect()
+        rows = connection.execute(
+            "SELECT propensity, explanation_json FROM impressions WHERE batch_id = ?",
+            (body["batch_id"],),
+        ).fetchall()
+        connection.close()
+        assert len(rows) == 5
+        assert all(row["propensity"] is not None and row["propensity"] >= 0.005 for row in rows)
+        assert all(json.loads(row["explanation_json"])["propensity_draws"] == 200 for row in rows)
+
+    def test_a_batch_carries_one_exploration_card(self, client):
+        self._r4_version(client)
+        reasons = [c["reason"] for c in client.get("/api/feed/next").json()["cards"]]
+        assert reasons.count("explore") == 1
+
+    def test_deterministic_rungs_record_propensity_one(self, client):
+        swipe_batches(client, 40, alternate)  # R3, the default rung, is now serving
+        cards = client.get("/api/feed/next").json()["cards"]
+        assert {c["propensity"] for c in cards} == {1.0}
+
+    def test_an_interleaving_experiment_end_to_end(self, client):
+        r4 = self._r4_version(client)
+        r3 = client.post("/api/models/train", json={"rung": "r3", "activate": False}).json()[
+            "version"
+        ]
+
+        started = client.post("/api/experiments", json={"version_a": r3, "version_b": r4})
+        assert started.status_code == 201
+        experiment_id = started.json()["experiment_id"]
+
+        for _ in range(4):
+            body = client.get("/api/feed/next").json()
+            assert body["rung"] == "interleaved"
+            assert {c["explanation"]["arm"] for c in body["cards"]} <= {"a", "b"}
+            for card in body["cards"]:
+                client.post(
+                    "/api/events",
+                    json={
+                        "image_id": card["image"]["image_id"],
+                        "action": "like" if card["explanation"]["arm"] == "a" else "dislike",
+                        "impression_id": card["impression_id"],
+                    },
+                )
+
+        listed = client.get("/api/experiments").json()[0]
+        assert listed["active"] and listed["wins_a"] + listed["ties"] >= 1
+        assert listed["wins_b"] == 0
+
+        stopped = client.post(f"/api/experiments/{experiment_id}/stop").json()
+        assert not stopped["active"]
+        assert client.get("/api/feed/next").json()["rung"] != "interleaved"
+
+    def test_an_experiment_needs_two_loadable_versions(self, client):
+        r4 = self._r4_version(client)
+        assert (
+            client.post("/api/experiments", json={"version_a": r4, "version_b": r4}).status_code
+            == 400
+        )
+        assert (
+            client.post("/api/experiments", json={"version_a": r4, "version_b": "nope"}).status_code
+            == 404
+        )
+
+
+class TestInterestsThroughTheApi:
+    def test_taste_explains_why_it_is_empty_early(self, client):
+        swipe_batches(client, 20, alternate)
+        body = client.get("/api/profile/taste").json()
+        assert body["interests"] == []
+        assert "interests appear at 50" in body["note"]
+        assert "concept vocabulary" in body["note"]  # no cache in the temporary corpus
+
+    def test_r3_plus_r5_persists_interests_and_the_profile_shows_them(self, client):
+        swipe_batches(client, 110, alternate)  # 55 likes -> 2 interests
+        trained = client.post("/api/models/train", json={"rung": "r3+r5"}).json()
+        assert trained["status"] == "swapped"
+
+        connection = deps.get_state().connect()
+        rows = connection.execute(
+            "SELECT interest_id, n_likes FROM interests WHERE model_version = ?",
+            (trained["version"],),
+        ).fetchall()
+        connection.close()
+        assert len(rows) >= 2
+
+        body = client.get("/api/profile/taste").json()
+        assert body["source"] == trained["version"]
+        assert {card["interest_id"] for card in body["interests"]} == {
+            r["interest_id"] for r in rows
+        }
+        for card in body["interests"]:
+            assert 1 <= len(card["central_image_ids"]) <= 6
+            interval = card["like_rate"]
+            assert interval["low"] < interval["mean"] < interval["high"]
+        assert body["history"][0]["born"]

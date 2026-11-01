@@ -171,6 +171,55 @@ class ProfileResponse(BaseModel):
     coldstart_active: bool
 
 
+class LikeRateInterval(BaseModel):
+    """Beta(1 + likes, 1 + dislikes): mean and central 90% interval."""
+
+    likes: int
+    dislikes: int
+    mean: float
+    low: float
+    high: float
+
+
+class InterestCard(BaseModel):
+    interest_id: int
+    label: str
+    n_likes: int
+    #: The liked images nearest the centroid, most central first (up to 6).
+    central_image_ids: list[str]
+    like_rate: LikeRateInterval
+
+
+class ConceptWord(BaseModel):
+    concept: str
+    z_score: float
+
+
+class InterestEvent(BaseModel):
+    """One recluster: which interest ids appeared and which were retired."""
+
+    likes: int
+    born: list[int]
+    retired: list[int]
+
+
+class TasteResponse(BaseModel):
+    """The Profile page: interests and taste in words (Part 2 §7.2)."""
+
+    profile_id: int
+    likes: int
+    dislikes: int
+    #: Where the interests came from: the serving model's version, or
+    #: "computed" when the serving model has none and they were fitted here.
+    source: str
+    interests: list[InterestCard]
+    likes_in_words: list[ConceptWord]
+    dislikes_in_words: list[ConceptWord]
+    history: list[InterestEvent]
+    #: Why something is empty, in words, when it is.
+    note: str = ""
+
+
 class ResetResponse(BaseModel):
     """`POST /profile/reset` archives and starts fresh; it never deletes."""
 
@@ -215,6 +264,30 @@ class TrainResponse(BaseModel):
     metrics: dict[str, Any] | None = None
 
 
+class ExperimentStart(BaseModel):
+    version_a: str
+    version_b: str
+
+
+class ExperimentOut(BaseModel):
+    """An interleaving experiment and its result, recomputed from the log."""
+
+    experiment_id: int
+    version_a: str
+    version_b: str
+    method: str
+    started_at: str
+    ended_at: str | None = None
+    active: bool
+    wins_a: int
+    wins_b: int
+    ties: int
+    p_value: float | None = None
+    like_rate_a: float | None = None
+    like_rate_b: float | None = None
+    summary: str
+
+
 class HealthResponse(BaseModel):
     status: Literal["ok", "degraded"]
     schema_version: int
@@ -223,3 +296,146 @@ class HealthResponse(BaseModel):
     embeddings: dict[str, int]
     active_model_version: str | None = None
     notes: list[str] = Field(default_factory=list)
+
+
+# --- Analytics (Phase 13): every number on a dashboard comes from one of these.
+
+
+class Interval(BaseModel):
+    """A Beta(1 + k, 1 + n - k) posterior over a rate: mean and 90% interval."""
+
+    successes: int
+    trials: int
+    mean: float
+    low: float
+    high: float
+
+
+class ProfileListItem(BaseModel):
+    profile_id: int
+    started_at: str
+    ended_at: str | None = None
+    is_simulated: bool
+    note: str | None = None
+    labels: int
+
+
+class StatsSummary(BaseModel):
+    profile_id: int
+    is_simulated: bool
+    labels: int
+    counts: dict[str, int]
+    impressions: int
+    like_rate: float | None = None
+    like_rate_last_100: float | None = None
+    serving_version: str
+    serving_rung: str
+    versions: int
+
+
+class RungSwitch(BaseModel):
+    """The swipe index at which the serving model version changed."""
+
+    index: int
+    model_version: str
+
+
+class LearningCurve(BaseModel):
+    """Like rate, coverage and interests on one timeline (indexed by swipe)."""
+
+    window: int
+    like_rate: list[float]
+    coverage: list[float]
+    interests: list[int]
+    switches: list[RungSwitch]
+
+
+class ClusterStat(BaseModel):
+    cluster64: int
+    shown: int
+    rate: Interval
+
+
+class DiversityStats(BaseModel):
+    batch_diversity: list[float]
+    batch_novelty: list[float]
+    coverage_last_500: float
+
+
+class CalibrationBinOut(BaseModel):
+    low: float
+    high: float
+    count: int
+    mean_predicted: float
+    observed_rate: float
+
+
+class CalibrationStats(BaseModel):
+    bins: list[CalibrationBinOut]
+    ece: float | None = None
+    samples: int
+
+
+class ExplorationStats(BaseModel):
+    explore: Interval
+    exploit: Interval
+
+
+class ScoreDistribution(BaseModel):
+    """Histogram of the serving model's scores over unseen images, current batch marked."""
+
+    model_version: str
+    edges: list[float]
+    counts: list[int]
+    batch_scores: list[float]
+
+
+class ProjectionOut(BaseModel):
+    """The Embedding Map, columnar: one entry per pool image in each list."""
+
+    model: str
+    image_ids: list[str]
+    x: list[float]
+    y: list[float]
+    cluster: list[int]
+    source: list[str]
+    score: list[float] | None = None
+    liked: list[str]
+    disliked: list[str]
+    saved: list[str]
+
+
+class TastePoint(BaseModel):
+    labels: int
+    x: float
+    y: float
+
+
+class TastePath(BaseModel):
+    """The preference vector after every N labels, and the interests, on the map."""
+
+    model: str
+    every: int
+    path: list[TastePoint]
+    interests: list[TastePoint]
+
+
+class ReviewItem(BaseModel):
+    image: ImageSummary
+    status: str
+
+
+class ReviewDecision(BaseModel):
+    decision: Literal["keep", "remove"]
+
+
+class EvalRunRequest(BaseModel):
+    study: str
+    seeds: int = Field(default=20, ge=1, le=50)
+    swipes: int = Field(default=1_000, ge=100, le=10_000)
+
+
+class EvalRunResponse(BaseModel):
+    pid: int
+    command: str
+    log_path: str

@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 #: Rungs refitted by the online retrain. R0 learns nothing; R6 is CLI-only.
-ONLINE_RUNGS = frozenset({"r1", "r2", "r3", "r4", "r5"})
+ONLINE_RUNGS = frozenset({"r1", "r2", "r3", "r4", "r5", "r3+r5", "r4+r5"})
 
 
 @dataclass
@@ -108,6 +108,11 @@ def retrain(state: AppState, *, rung: str | None = None, activate: bool = True) 
             metrics=metrics,
             activate=activate,
         )
+        from visualtaste.rec.r5_interests import persist_interests, tracker_of
+
+        tracker = tracker_of(model)
+        if tracker is not None and tracker.state.k:
+            persist_interests(connection, state.profile_id, version.version, tracker)
         if activate:
             state.swap(model, version.version)
             logger.info("retrained and swapped in %s", version.version)

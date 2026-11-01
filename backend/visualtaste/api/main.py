@@ -35,7 +35,19 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from visualtaste.api import deps
 from visualtaste.api.deps import AppState, get_db, get_state, set_offline_env
-from visualtaste.api.routes import events, feed, history, images, models, profile
+from visualtaste.api.routes import (
+    eval,
+    events,
+    experiments,
+    feed,
+    history,
+    images,
+    models,
+    profile,
+    review,
+    stats,
+    viz,
+)
 from visualtaste.api.schemas import HealthResponse
 from visualtaste.config import get_settings
 from visualtaste.db import repo
@@ -125,7 +137,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for module in (feed, events, images, history, profile, models):
+for module in (
+    feed,
+    events,
+    images,
+    history,
+    profile,
+    models,
+    experiments,
+    stats,
+    viz,
+    review,
+    eval,
+):
     app.include_router(module.router, prefix="/api")
 
 

@@ -144,3 +144,16 @@ allocates and scatter-copies 153 MB while the dot product streams the same
 153 MB once through BLAS. This operation is memory-bandwidth bound: 38 million
 multiply-adds is nothing for this CPU. Both R1 and R2 score the whole pool and
 index afterwards (`docs/DECISIONS.md` #13).
+
+## UMAP projection (2026-11-01 03:25 UTC)
+
+```
+python -m visualtaste.jobs.project --models siglip2_b16_224,dinov2_b14
+```
+
+PCA-50 then UMAP (cosine, n_neighbors 30, min_dist 0.1, seeded, so single-threaded). Machine: AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD. Run alongside the simulator studies, so on a busy CPU.
+
+| model | points | wall time |
+| --- | --- | --- |
+| `siglip2_b16_224` | 50,000 | 366 s |
+| `dinov2_b14` | 50,000 | 153 s |

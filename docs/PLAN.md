@@ -315,3 +315,30 @@ reboot costs minutes.
 One final message per §12 (done / done-with-blockers, `scripts/dev.ps1` + URL,
 per-source dataset summary, one-line simulator headline, blockers, and
 `docs/LEARNING_PATH.md` as the starting point). Then stop.
+
+---
+
+## Part 2 plan (Phases 9-14)
+
+Appended at the start of Part 2 (2026-10-31) from `VISUALTASTE_PART2_PROMPT.md`
+§5-§10, as its §2 asks. Part 2 amends Part 1 where they conflict. Statistical
+standard: 20 seeds × 1,000 swipes, paired bootstrap 90% CI, sign test, verdicts.
+
+**Cross-cutting, first:**
+- handover chain in `config.py` and `rec/feed.py`: never raise, record the fallback
+- standardised feature blocks and the time-respecting builder in `rec/features.py`
+- simulator variants S1-S6 and simulated dwell in `eval/sim.py`
+- the cached study runner and §4.1 statistics in `eval/study.py`
+- `--study` presets in `jobs/evaluate.py`
+
+| Phase | Tasks | Files |
+| --- | --- | --- |
+| 9 R3 | NumPy GD + sklearn with C = 1/(λS); agreement test; λ by time-ordered validation; online retrain + atomic swap; H2 curve; skip-weight study; feature ablation; R0-R3 on S1/S2/S3/S5; notebook 03 | `rec/logreg_numpy.py`, `rec/r3_logreg.py`, `api/training.py`, `api/routes/models.py` |
+| 10 R4 | Laplace posterior + Cholesky draw; MMR; exploration quota; Monte-Carlo propensities off the request path; team-draft interleaving (API + Model Lab); H3; sensitivity grid; interleaving and IPS checks; notebook 05 | `rec/r4_thompson.py`, `rec/rerank.py`, `api/routes/experiments.py` |
+| 11 R5 | k-means interests with stable ids (Hungarian); R3+R5 / R4+R5 features with no leakage; interests persisted; Profile page; H4; notebook 06 | `rec/r5_interests.py`, `api/routes/profile.py`, `frontend/src/pages/Profile.tsx` |
+| 12 R6 | Per-block LayerNorm MLP; BCE and BCE+BPR; 5-seed ensemble; bootstrap Thompson; CLI-only training; R4-logged 5,000-swipe logs on S1 and S4; H5 learning curve; dwell study; notebook 07 | `rec/r6_neural.py`, `jobs/train_neural.py` |
+| 13 Analytics | UMAP job; stats, viz, review and eval routes; Model Lab, Embedding Map, History, Review pages; Playwright smoke per page; traceability table; notebooks 02, 04, 08 | `viz/projection.py`, `jobs/project.py`, `api/routes/{stats,viz,review,eval}.py`, `frontend/src/pages/*` |
+| 14 Final | All rungs × S1-S6; DEFAULT_RUNG by the combined z-score rule; p95 latency table; robustness checks; README, ARCHITECTURE, LEARNING_PATH, EVALUATION; fresh-clone check; empty real profile; final message | `jobs/latency.py`, docs |
+
+Studies run in the background, several at once on separate database copies
+(DECISIONS #22), while the code for later phases is written against fixtures.

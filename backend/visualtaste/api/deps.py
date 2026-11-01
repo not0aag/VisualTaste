@@ -92,6 +92,10 @@ class AppState:
     #: Guards the `(model, model_version)` pair, which must change together.
     _serving_lock: threading.Lock = field(default_factory=threading.Lock)
 
+    #: A running interleaving experiment: (experiment_id, {"a": (model,
+    #: version), "b": (model, version)}). The feed team-drafts while it is set.
+    experiment: tuple[int, dict[str, tuple[Recommender, str]]] | None = None
+
     # --- The serving model ---------------------------------------------------
 
     def serving(self) -> tuple[Recommender, str]:
@@ -144,6 +148,7 @@ class AppState:
             self._load_features(connection)
             self._load_indexes()
             self._load_model(connection)
+            self._load_experiment(connection)
             self.bootstrap = ColdStartRecommender(seed=self.settings.seed)
             self._ensure_profile(connection)
         finally:
@@ -247,6 +252,13 @@ class AppState:
             cluster64=clusters,
             # The `dino` feature block for R3's ablation (rec/features.py).
             extra={} if dinov2_pca is None else {"dinov2_pca": dinov2_pca},
+        )
+        # R6's profile feature 8: which collection each image came from.
+        sources = dict(connection.execute("SELECT image_id, source FROM images").fetchall())
+        names = sorted({sources.get(i, "") for i in image_ids})
+        index = {name: k for k, name in enumerate(names)}
+        self.features.extra["source_index"] = np.array(
+            [index[sources.get(i, "")] for i in image_ids], dtype=np.float32
         )
         self._warm_design_matrices()
         logger.info(
@@ -383,6 +395,43 @@ class AppState:
             self.model = ColdStartRecommender(seed=self.settings.seed)
             self.model_version = "r0_bootstrap"
 
+    def _load_experiment(self, connection: sqlite3.Connection) -> None:
+        """Resume an interleaving experiment that was running at shutdown.
+
+        Without this a restart would silently stop interleaving while the
+        database still called the experiment active. If either version can no
+        longer be loaded, the experiment is ended instead, with a note.
+        """
+        try:
+            row = connection.execute(
+                "SELECT * FROM experiments WHERE ended_at IS NULL ORDER BY experiment_id DESC"
+            ).fetchone()
+        except sqlite3.OperationalError:
+            return
+        if row is None:
+            return
+        try:
+            arms = {
+                arm: (
+                    load_version(connection, self.settings, row[f"version_{arm}"]),
+                    row[f"version_{arm}"],
+                )
+                for arm in ("a", "b")
+            }
+            self.experiment = (int(row["experiment_id"]), arms)
+            logger.info("resumed interleaving experiment %d", row["experiment_id"])
+        except (OSError, KeyError, ValueError) as exc:
+            from visualtaste.eval.interleave import finish_experiment, result_from_impressions
+
+            finish_experiment(
+                connection,
+                row["experiment_id"],
+                result_from_impressions(connection, row["experiment_id"]),
+            )
+            self.notes.append(
+                f"ended experiment {row['experiment_id']}: a version failed to load ({exc})"
+            )
+
     # --- Queries used by more than one route --------------------------------
 
     def label_count(self, connection: sqlite3.Connection) -> int:
@@ -445,6 +494,45 @@ def ensure_profile(connection: sqlite3.Connection, state: AppState) -> int:
     return profile_id
 
 
+_LABELLERS: dict[str, object] = {}
+
+
+def concept_labeller(settings: Settings):
+    """A function centroid -> "word, word, word", or None without a concept cache.
+
+    Read from `<DATA>/concepts/` (built once by `python -m visualtaste.rec.
+    concepts`). Cached per data root: the vectors are 637 x 768 and every
+    interest model built in a process would otherwise reread them.
+    """
+    key = str(settings.data)
+    if key not in _LABELLERS:
+        from visualtaste.rec.concepts import cache_for, label_for
+
+        cached = cache_for(settings).load()
+        if cached is None:
+            _LABELLERS[key] = None
+        else:
+            concepts, vectors = cached
+            _LABELLERS[key] = lambda centroid: label_for(centroid, vectors, concepts)
+    return _LABELLERS[key]
+
+
+def load_version(connection: sqlite3.Connection, settings: Settings, version: str) -> Recommender:
+    """A stored version, loaded from its artefacts. Raises KeyError or OSError.
+
+    Shared by activation and interleaving, which both refuse a version that
+    cannot be loaded rather than discovering it on the next request.
+    """
+    from visualtaste.rec import registry
+
+    stored = registry.get_version(connection, version)
+    if stored is None:
+        raise KeyError(f"no such model version: {version}")
+    model = load_rung(stored.rung, settings)
+    model.load(registry.artifact_dir(connection, version, models_root=settings.models_dir))
+    return model
+
+
 def load_rung(rung: str, settings: Settings) -> Recommender:
     """Construct an empty model of the named rung, ready to `load`.
 
@@ -465,6 +553,31 @@ def load_rung(rung: str, settings: Settings) -> Recommender:
         from visualtaste.rec.r3_logreg import LogisticRecommender
 
         return LogisticRecommender()
+    if rung == "r4":
+        from visualtaste.rec.r4_thompson import ThompsonRecommender
+
+        return ThompsonRecommender(seed=settings.seed)
+    if rung == "r5":
+        from visualtaste.rec.r5_interests import InterestRecommender
+
+        return InterestRecommender(seed=settings.seed, concept_labeller=concept_labeller(settings))
+    if rung == "r6":
+        from visualtaste.rec.r6_neural import NeuralRecommender
+
+        return NeuralRecommender(min_labels=settings.neural_min_labels, seed=settings.seed)
+    if rung in ("r3+r5", "r4+r5"):
+        # R3 or R4 with R5's interest features as an extra block (Part 2 §7.1).
+        if rung == "r3+r5":
+            from visualtaste.rec.r3_logreg import LogisticRecommender as Base
+        else:
+            from visualtaste.rec.r4_thompson import ThompsonRecommender as Base
+        model = Base(blocks=("sig", "int"))
+        model.rung = rung
+        model.seed_for_interests = settings.seed
+        model.concept_labeller = concept_labeller(settings)
+        if rung == "r4+r5":
+            model.seed = settings.seed
+        return model
     raise KeyError(f"unknown rung {rung!r}; it may be from a later phase than this build")
 
 

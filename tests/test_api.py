@@ -32,7 +32,7 @@ def corpus(tmp_path):
     return build_corpus(tmp_path, IMAGE_COUNT)
 
 
-def build_corpus(tmp_path, image_count: int) -> Settings:
+def build_corpus(tmp_path, image_count: int, clusters: int = 6) -> Settings:
     """The `corpus` fixture's body, reusable at other sizes (tests/test_training.py)."""
     IMAGE_COUNT = image_count
     settings = Settings(
@@ -70,7 +70,7 @@ def build_corpus(tmp_path, image_count: int) -> Settings:
         )
         connection.execute(
             "UPDATE images SET selected = 1, cluster64 = ?, cluster400 = ? WHERE image_id = ?",
-            (index % 6, index, image_id),
+            (index % clusters, index, image_id),
         )
         for path in (settings.display_path(image_id), settings.thumb_path(image_id)):
             path.parent.mkdir(parents=True, exist_ok=True)

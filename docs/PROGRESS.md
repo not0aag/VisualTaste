@@ -205,7 +205,24 @@ from 100% of clusters to about 40%. That is the argument for R4.
 
 ## Phase 9 — R3 + ablations
 
-**Resume here (2026-10-31, session paused at a usage limit; uncommitted, tests green):**
+**Running jobs (2026-10-31).** Each runs on its own DB copy (#22), caches every seed under `data/eval/`, appends its section to EVALUATION.md when done, and resumes if re-run.
+
+| started | runner | PID | studies | log |
+| --- | --- | --- | --- | --- |
+| 22:10 | `scripts/run_phase9_studies.ps1` (main DB) | 31280 | `phase9_rungs`, `phase9_h2`, `phase9_skip`, `phase9_ablation` (20 × 1,000) | `logs/phase9_studies_20261031_221022.log.err` |
+| 22:57 | `scripts/run_phase10_studies.ps1` (`sim_studies_b.db`) | 8652 | `phase10_h3` (20), `phase10_checks` (20), `phase10_sensitivity` (10) | `logs/phase10_studies_20261031_225723.log.err` |
+| 23:3x | `scripts/run_studies.ps1 -Database sim_c` | 11336 | `phase11_h4` (20 × 1,000) | `logs/phase11_studies.log.err` |
+| 23:3x | `scripts/run_studies.ps1 -Database sim_d` | 33952 | `phase12_logs` (10 × 5,000, R4 logging) | `logs/phase12_logs.log.err` |
+
+After `phase12_logs` finishes: `python -m visualtaste.jobs.evaluate --study phase12_h5 --seeds 10` (GPU).
+
+**Done since the part-1 commit (`4e503a8`):**
+- simulator variants S1–S6 with simulated dwell
+- `eval/study.py`: specs, cache, §4.3 outcomes, §4.1 statistics, H2 curve
+- `--study` presets in `jobs/evaluate.py`
+- R0 seeded per session (#19)
+
+**Earlier resume note (superseded):**
 - Done, untested by new tests yet:
   - `config.py`: `default_rung`, `serve_min_labels`, `serve_min_per_class`, `skip_weight`
   - `rec/base.py`: `InsufficientSignal` and `unfit_reason`

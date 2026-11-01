@@ -504,3 +504,204 @@ it disagrees with the hand-written solver by more than 0.05.
   `registry.deactivate_all`, covered by `tests/test_training.py`.
 - `GET /profile` now reports the rung actually serving (R0 while the configured
   rung is unfitted), not the configured one.
+
+## 19. Simulated sessions seed R0 per session; R0's Phase 8 numbers re-recorded
+
+**Date:** 2026-10-31
+**Found by:** re-running the Phase 8 study, as Part 2 §4.7 requires.
+
+R1 and R2 reproduce their recorded per-seed like rates exactly (R1 0.740 /
+0.541 / 0.439 / 0.622 / 0.619; R2 0.694 / 0.500 / 0.551 / 0.722 / 0.607). R0 did
+not: every seed now served the *identical* cold-start sequence (batch diversity
+sd 0.000).
+
+Cause: the end-of-Phase-8 fix that made R0 `is_fitted` on construction (#15).
+The study builds the rung under test with `load_rung("r0")`, which uses the
+global seed. Before the fix that model was unfitted, so the per-session
+bootstrap (seeded per seed) served the first 20 swipes, after which the first
+refit marked the global-seed R0 fitted and it took over with its round-robin
+reset. The recorded R0 numbers came from that accidental two-stage policy.
+
+**Chosen:** `jobs/evaluate.session_model` seeds R0 with the session's seed, in
+the Phase 8 study and in every Part 2 study. Reproducing the old numbers exactly
+would have meant re-creating the handover bug, so per §4.7 R0 is re-recorded
+instead: 0.463 / 0.456 / 0.463 / 0.471 / 0.437, mean 0.458 (was 0.454). H1 is
+unchanged: R1 +0.134 and R2 +0.157 over R0.
+
+## 20. The skip study compares 0.25 / 1.0 / excluded, because 0 is the same as excluded
+
+**Date:** 2026-10-31
+
+Part 2 §5.4 asks for skip weights 0, 0.25 and "exclude". In the §5.2 objective
+a zero-weight example contributes nothing to the data term and nothing to
+S = sum s_i, so weight 0 and exclusion define the same function of `(w, b)`
+and give the same fit. `build_label_set` already drops zero-weight rows, so
+they are the same code path too. `tests/test_sim_variants.py` asserts the two
+label sets are identical. Running both would spend a third of the study
+measuring a tautology.
+
+**Chosen:** 0.25 (the default), 1.0 (a skip counts as a full dislike, the other
+natural choice), and excluded. Part 2's expectation, that excluding skips does
+best because simulated skips carry no taste signal, is tested as stated.
+
+## 21. Simulator variants: how S2-S6 are planted, scaled and calibrated
+
+**Date:** 2026-10-31
+
+- **Planting outside SigLIP space (S2, S3).** `cluster64` is a SigLIP
+  clustering, and planting a DINOv2 or colour taste from its clusters would
+  make the taste semantic again. Interests are planted from a k-means(64)
+  fitted in the variant's own space (`sim.space_clusters`, seeded).
+- **Equal noise across spaces.** DINOv2 max-cosine affinities have sd 0.116 and
+  colour Bhattacharyya affinities 0.18, against SigLIP's 0.070. Keeping slope
+  10 would make S2 and S3 users far more decisive than S1. Their slope is
+  10 × 0.070 / sd: measured 6.38 for S2 and 3.53 for S3 on seed 1729.
+- **S3's similarity.** colour64 rows are sqrt-histograms of unit norm, so their
+  dot product is the Bhattacharyya coefficient, the Hellinger similarity Part 2
+  asks for.
+- **S4's AND.** `p = sigma(10 * min(cos - o, k (warm - w0)))`. Warmth is the
+  histogram mass with a* >= 0 and b* >= 0. w0 lets 70% of the pool pass; o is
+  calibrated among warm images to a 50% overall like rate; k = sd(cos) /
+  sd(warm). A linear model on any of R3's blocks cannot represent min().
+- **S5's replacement interest** is the fourth farthest-point pick, distinct
+  from all three originals. Interest ids stay stable: the new one gets id 3,
+  and the retired id 0 no longer counts towards recall.
+- **5% label noise** flips like/save <-> dislike after drawing, and is drawn
+  only when enabled, so the Phase 8 user's random stream is untouched.
+- **Dwell** has its own stream (seed + 2), for the same reason.
+
+## 22. A second study process runs against its own database copy
+
+**Date:** 2026-10-31
+
+Each simulated session writes impressions and events through the real feed
+path, so two study processes on one SQLite file would contend for its single
+write lock. Phase 9's studies take about five hours and Phase 10's several
+more. `VT_DB_FILE` overrides the database path, and `scripts/
+run_phase10_studies.ps1` runs against `data/db/sim_studies_b.db`, a
+`sqlite3.backup` copy of the main database. Results are unaffected:
+- simulated profiles live only in whichever database ran them;
+- every result a study reports is cached as JSON under `data/eval/<study>/`.
+
+The copy is git-ignored like all of `data/`, and holds no real profile's events.
+
+## 23. R4: the choices Part 2 §6 left open
+
+**Date:** 2026-10-31
+
+- **Exploration counts are refreshed at fit time.** The quota picks the cluster
+  with the widest Beta interval among clusters rated fewer than 3 times, using
+  ratings recorded at the last retrain, at most 20 labels old. Re-reading
+  ratings from the database on every request would put a query per cluster on
+  the request path for information that changes by one label per swipe.
+- **One in ten, counted across batches.** With five-card batches, "1 of 10
+  after 2,000 labels" means a probe every other batch
+  (`rerank.explore_slots`), not a fractional slot.
+- **Propensity seed** = the batch id read as hex, because Python's string hash
+  is randomised per process and would make the estimate irreproducible. The
+  batch's shape (size, probe count) is captured when it is served, so a later
+  request cannot change what the background replay reproduces.
+- **R0's propensity** is 1/|unseen images in the card's cluster|, as Part 2
+  says. It is exact only when R0's cluster turn is deterministic, which it is
+  (round-robin).
+- **Interleaving uses each rung's real batch as the head of its ranking**: R4's
+  posterior draw, MMR and probe, then the rest by score. Team-draft then
+  compares the policies as they serve, not their bare scores.
+
+## 24. R5: k-means interests, stable ids, and R3+R5's features
+
+**Date:** 2026-10-31
+
+- **Recluster triggers:** every 100 likes, as Part 2 says, and also whenever
+  k = min(8, likes // 25) should grow and 25 likes have arrived since the last
+  recluster. Without the second trigger a profile would sit at 2 interests from
+  like 50 to like 150, despite having likes enough for six.
+- **Hungarian matching refuses distant pairs.** A new cluster whose best partner
+  is more than 0.5 cosine distance away is a new interest with a new id, and its
+  would-be partner is retired. Otherwise a vanished interest would hand its id
+  to an unrelated newcomer, and "interest #2" would silently change meaning.
+- **R3+R5's interest columns use a fixed scale**, (cos - 0.5) / 0.1. They are
+  not standardised by the pool. The interests change at every fit, so pool
+  statistics would change too, and the same cosine would mean different things
+  in different training rows. Absent interests stay exactly 0.
+- **Time-respecting, at 25-label granularity** (`rec/features.
+  time_respecting_features`). A training example uses interests fitted on
+  labels before the most recent multiple of 25 at or before it, so they can be
+  up to 24 labels stale, which matches the live system between retrains.
+  `tests/test_interests.py` rewrites the future and asserts that earlier rows
+  do not change.
+- **Rung names `r3+r5` and `r4+r5`** follow Part 2's notation. They are R3 and R4
+  with an extra `int` feature block, so R4+R5's posterior covers the interest
+  weights too.
+- **The concept vocabulary is embedded once** (`python -m visualtaste.rec.
+  concepts`, into `<DATA>/concepts/`). Interest labels and "taste in words"
+  only ever read that cache, so the API never loads a text model.
+
+## 25. R4 at tau_post = 1 explores at random; the sensitivity grid is extended
+
+**Date:** 2026-11-01
+**Found by:** the first phase10_h3 and phase11_h4 R4 sessions. On S1, R4's like
+rate was 0.40-0.47 across 14 seeds, at or below R0's 0.46, with 97% coverage.
+
+Measured on a cached R4 history (S1, seed 1729), MAP logit spread over the pool
+vs the spread of one posterior draw's deviation:
+
+| labels | lambda chosen | MAP logit sd | sampled deviation sd | top-500 overlap with MAP |
+| --- | --- | --- | --- | --- |
+| 200 | 3 | 0.125 | 0.462 | 4.3% |
+| 500 | 1 | 0.224 | 0.467 | 9.7% |
+| 1,000 | 1 | 0.178 | 0.329 | 13.2% |
+
+The noise is 2-4x the signal. Time-ordered tuning picks a strong lambda on this
+noisy user, which shrinks the MAP weights hard, while the Laplace covariance
+H^-1 = (lam S I + sum s p(1-p) x x^T)^-1 shrinks only slowly over 128
+dimensions. Summed over 128 standardised features, the per-weight uncertainty
+gives a logit deviation larger than the whole spread of predictions, so one
+draw ranks the pool almost at random. The maths is as Part 2 §6.1 specifies,
+and `tests/test_thompson.py` checks the covariance. This is what an exact
+Laplace posterior does here, not a bug.
+
+**Chosen:**
+- Report it as measured. H3's "keeps 70% of R3's gain" is not expected to
+  hold at the specified tau = 1.
+- Extend Part 2's sensitivity grid {0.5, 1, 2} with 0.1 and 0.25, which shrink
+  the deviation by sqrt(tau) to 0.32x and 0.5x. Part 2's grid contains no value
+  where the signal exceeds the noise.
+- Run R3 and R0 alongside, so every arm gets H3's gain-retention test.
+- Choose the default per Part 2 §6.5 (the H3 criterion) from the extended
+  grid, and record it here when the study is in.
+
+## 26. Dwell: the promotion rule, and why the feature cannot rank
+
+**Date:** 2026-11-01
+
+Part 2 §8.3's rule, recorded as asked: dwell becomes a model feature only if
+adding log-dwell to R3 lowers replay log loss with a 90% CI that excludes 0.
+Even then it stays off for real data until there are 1,000 real labels.
+
+One limit, stated wherever the study is reported: dwell is observed *with* the
+verdict, after the image has been shown. A dwell feature can explain past
+verdicts better, but it cannot rank an image nobody has looked at yet. "Dwell
+helps log loss" is a statement about label quality, not about serving. Every
+dwell number is labelled SIMULATED.
+
+## 27. R6: the choices §7.5 and Part 2 §8 left open
+
+**Date:** 2026-11-01
+
+- **"Same-session" BPR pairs come from 100-label blocks.** The log's timestamps
+  have one-second resolution, and simulated sessions have none at all, so gaps
+  cannot delimit sessions. Consecutive blocks of 100 labels stand in, which
+  keeps every pair close in time: the point of "same session".
+- **Pool scores are cached per fit.** Five networks over 50,000 rows cost about
+  a second on the CPU, too slow for every request. The profile features
+  therefore describe the history as of the last training run. R6 retrains only
+  through the CLI anyway.
+- **Absent blocks are dropped from the input**, not zero-padded, so the network
+  is built for the blocks actually present. With all blocks present the input
+  is the specified 1,608 wide.
+- **Source id** (profile feature 8) comes from `images.source`, loaded into the
+  feature bundle as `source_index`. It is 0 when unavailable.
+- **H5 lowers R6's 1,500-label minimum to 0** (`r6:minlabels=0`) so the learning
+  curve can show R6 at 500 labels. The minimum stays a rule for real data: the
+  CLI job refuses, and the Model Lab warns.

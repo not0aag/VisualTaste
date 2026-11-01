@@ -1,14 +1,15 @@
 /**
  * The shell: a nav bar and the six pages.
- *
- * Only Feed exists at this phase; the rest arrive in Phases 11 and 13 and are
- * listed here as placeholders so the navigation is honest about what the
- * finished app contains rather than growing a link at a time.
  */
 
 import { NavLink, Navigate, Route, Routes, BrowserRouter } from 'react-router-dom'
 
+import { EmbeddingMap } from './pages/EmbeddingMap'
 import { Feed } from './pages/Feed'
+import { History } from './pages/History'
+import { ModelLab } from './pages/ModelLab'
+import { Profile } from './pages/Profile'
+import { Review } from './pages/Review'
 
 const PAGES = [
   { path: '/feed', label: 'Feed' },
@@ -48,23 +49,14 @@ export function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/feed" replace />} />
             <Route path="/feed" element={<Feed />} />
-            <Route path="/history" element={<ComingSoon name="History" phase={13} />} />
-            <Route path="/profile" element={<ComingSoon name="Profile" phase={11} />} />
-            <Route path="/lab" element={<ComingSoon name="Model Lab" phase={13} />} />
-            <Route path="/map" element={<ComingSoon name="Embedding Map" phase={13} />} />
-            <Route path="/review" element={<ComingSoon name="Review" phase={13} />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/lab" element={<ModelLab />} />
+            <Route path="/map" element={<EmbeddingMap />} />
+            <Route path="/review" element={<Review />} />
           </Routes>
         </div>
       </div>
     </BrowserRouter>
-  )
-}
-
-function ComingSoon({ name, phase }: { name: string; phase: number }) {
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 bg-canvas-200 text-center dark:bg-canvas-900">
-      <p className="font-medium">{name}</p>
-      <p className="text-sm text-canvas-500">Built in phase {phase}.</p>
-    </div>
   )
 }

@@ -147,3 +147,209 @@ export interface HealthResponse {
   active_model_version: string | null
   notes: string[]
 }
+
+/** Beta(1 + likes, 1 + dislikes): its mean and central 90% interval. */
+export interface LikeRateInterval {
+  likes: number
+  dislikes: number
+  mean: number
+  low: number
+  high: number
+}
+
+export interface InterestCard {
+  interest_id: number
+  label: string
+  n_likes: number
+  /** Most central liked images first, up to six. */
+  central_image_ids: string[]
+  like_rate: LikeRateInterval
+}
+
+export interface ConceptWord {
+  concept: string
+  z_score: number
+}
+
+/** One recluster of the interests: ids that appeared and ids retired. */
+export interface InterestEvent {
+  likes: number
+  born: number[]
+  retired: number[]
+}
+
+export interface TasteResponse {
+  profile_id: number
+  likes: number
+  dislikes: number
+  /** The serving model's version, or "computed" when fitted on the fly. */
+  source: string
+  interests: InterestCard[]
+  likes_in_words: ConceptWord[]
+  dislikes_in_words: ConceptWord[]
+  history: InterestEvent[]
+  note: string
+}
+
+// --- Analytics (Phase 13) --------------------------------------------------
+
+export interface Interval {
+  successes: number
+  trials: number
+  mean: number
+  low: number
+  high: number
+}
+
+export interface ProfileListItem {
+  profile_id: number
+  started_at: string
+  ended_at: string | null
+  is_simulated: boolean
+  note: string | null
+  labels: number
+}
+
+export interface StatsSummary {
+  profile_id: number
+  is_simulated: boolean
+  labels: number
+  counts: Record<string, number>
+  impressions: number
+  like_rate: number | null
+  like_rate_last_100: number | null
+  serving_version: string
+  serving_rung: string
+  versions: number
+}
+
+export interface RungSwitch {
+  index: number
+  model_version: string
+}
+
+export interface LearningCurve {
+  window: number
+  like_rate: number[]
+  coverage: number[]
+  interests: number[]
+  switches: RungSwitch[]
+}
+
+export interface ClusterStat {
+  cluster64: number
+  shown: number
+  rate: Interval
+}
+
+export interface DiversityStats {
+  batch_diversity: number[]
+  batch_novelty: number[]
+  coverage_last_500: number
+}
+
+export interface CalibrationBin {
+  low: number
+  high: number
+  count: number
+  mean_predicted: number
+  observed_rate: number
+}
+
+export interface CalibrationStats {
+  bins: CalibrationBin[]
+  ece: number | null
+  samples: number
+}
+
+export interface ExplorationStats {
+  explore: Interval
+  exploit: Interval
+}
+
+export interface ScoreDistribution {
+  model_version: string
+  edges: number[]
+  counts: number[]
+  batch_scores: number[]
+}
+
+export interface ModelVersion {
+  version: string
+  rung: string
+  embedding_key: string | null
+  params: Record<string, unknown>
+  trained_on_events: number
+  metrics: Record<string, unknown>
+  is_active: boolean
+  created_at: string
+}
+
+export interface ModelsResponse {
+  versions: ModelVersion[]
+  serving_version: string
+  serving_rung: string
+  default_rung: string
+}
+
+export interface TrainResponse {
+  status: string
+  rung: string | null
+  version: string | null
+  detail: string
+  metrics: Record<string, unknown> | null
+}
+
+export interface Experiment {
+  experiment_id: number
+  version_a: string
+  version_b: string
+  method: string
+  started_at: string
+  ended_at: string | null
+  active: boolean
+  wins_a: number
+  wins_b: number
+  ties: number
+  p_value: number | null
+  like_rate_a: number | null
+  like_rate_b: number | null
+  summary: string
+}
+
+export interface Projection {
+  model: string
+  image_ids: string[]
+  x: number[]
+  y: number[]
+  cluster: number[]
+  source: string[]
+  score: number[] | null
+  liked: string[]
+  disliked: string[]
+  saved: string[]
+}
+
+export interface TastePoint {
+  labels: number
+  x: number
+  y: number
+}
+
+export interface TastePath {
+  model: string
+  every: number
+  path: TastePoint[]
+  interests: TastePoint[]
+}
+
+export interface ReviewItem {
+  image: ImageSummary
+  status: string
+}
+
+export interface EvalRunResponse {
+  pid: number
+  command: string
+  log_path: string
+}

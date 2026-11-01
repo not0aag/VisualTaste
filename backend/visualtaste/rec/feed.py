@@ -81,6 +81,11 @@ class FeedCard:
     sentence: str
     explanation: dict[str, Any] = field(default_factory=dict)
     impression_id: int | None = None
+    #: Index into the batch's candidate array, for the propensity replay.
+    candidate_offset: int = -1
+    #: Interleaving only: which arm picked this card, and that arm's version.
+    arm: str | None = None
+    model_version: str | None = None
 
 
 @dataclass
@@ -92,6 +97,14 @@ class FeedBatch:
     rung: str
     cards: list[FeedCard]
     candidates_considered: int
+    #: The candidate rows this batch was chosen from (kept for R4's propensity
+    #: estimate, which must replay the batch over exactly the same set).
+    candidates: np.ndarray | None = None
+    #: (batch size, exploration cards) as served, captured at serving time so
+    #: a later request cannot change what the propensity replay reproduces.
+    shape: tuple[int, int] | None = None
+    #: Set when this batch is part of an interleaving experiment.
+    experiment_id: int | None = None
 
     @property
     def image_ids(self) -> list[str]:
@@ -205,6 +218,9 @@ def build_batch(
         model_version = f"{bootstrap.rung}_bootstrap"
         scores = np.asarray(model.score(features, candidates), dtype=np.float32)
 
+    # A rung with its own batch logic (R4: posterior draw, MMR, quota) supplies
+    # it as `model.rerank`; an explicit `rerank` argument overrides it.
+    rerank = rerank or getattr(model, "rerank", None)
     if rerank is not None:
         chosen, sampled, propensities = rerank(features, candidates, scores, n)
     else:
@@ -214,6 +230,9 @@ def build_batch(
         chosen = top[np.argsort(-scores[top])]
         sampled = None
         propensities = None
+
+    if propensities is None and not getattr(model, "stochastic", False):
+        propensities = deterministic_propensities(model, features, candidates, chosen)
 
     cards: list[FeedCard] = []
     for rank, offset in enumerate(chosen):
@@ -231,6 +250,7 @@ def build_batch(
                 reason=explanation.reason,
                 sentence=explanation.sentence,
                 explanation=explanation.detail,
+                candidate_offset=int(offset),
             )
         )
 
@@ -240,6 +260,8 @@ def build_batch(
         rung=model.rung,
         cards=cards,
         candidates_considered=len(candidates),
+        candidates=candidates,
+        shape=getattr(model, "last_batch", None) if getattr(model, "stochastic", False) else None,
     )
     record_impressions(connection, batch, profile_id=profile_id)
 
@@ -254,6 +276,169 @@ def build_batch(
                 note_shown(int(clusters[index]))
 
     return batch
+
+
+def deterministic_propensities(
+    model: Recommender, features: FeatureBundle, candidates: np.ndarray, chosen: np.ndarray
+) -> np.ndarray:
+    """P(shown) for rungs whose batch is not sampled (Part 2 §6.3).
+
+    A deterministic ranker shows its top cards with certainty: propensity 1.
+    R0 picks a random unseen image from the cluster whose turn it is, so each
+    card had probability 1 / (unseen images in its cluster).
+    Indexed like `scores`, i.e. by candidate offset.
+    """
+    out = np.ones(len(candidates), dtype=np.float32)
+    if model.rung == "r0" and features.cluster64 is not None:
+        clusters = np.asarray(features.cluster64)[candidates]
+        sizes = np.bincount(clusters - clusters.min())
+        for offset in chosen:
+            out[offset] = 1.0 / sizes[clusters[offset] - clusters.min()]
+    return out
+
+
+def model_ranking(
+    model: Recommender, features: FeatureBundle, candidates: np.ndarray, n: int
+) -> list[int]:
+    """A rung's preference order over candidate offsets, for team-draft.
+
+    The rung's own batch first (for R4 that includes its posterior draw, MMR
+    and probe, so interleaving compares the policies as they really serve),
+    then the rest of its top scores, so the draft can continue past cards the
+    other arm already took.
+    """
+    scores = np.asarray(model.score(features, candidates), dtype=np.float32)
+    head: list[int] = []
+    own = getattr(model, "rerank", None)
+    if own is not None:
+        head = [int(c) for c in own(features, candidates, scores, n)[0]]
+    take = min(len(scores), 4 * n)
+    top = np.argpartition(-scores, take - 1)[:take]
+    tail = [int(c) for c in top[np.argsort(-scores[top])] if int(c) not in head]
+    return head + tail
+
+
+def build_interleaved_batch(
+    connection: sqlite3.Connection,
+    features: FeatureBundle,
+    arms: dict[str, tuple[Recommender, str]],
+    *,
+    profile_id: int,
+    experiment_id: int,
+    n: int = DEFAULT_BATCH_SIZE,
+) -> FeedBatch:
+    """A team-draft batch from two versions (brief §7.7, Part 2 §6.4).
+
+    `arms` is {"a": (model, version), "b": (model, version)}. Each card records
+    the arm that picked it and that arm's version, so `eval.interleave.
+    result_from_impressions` can credit likes from the log alone. Both models
+    must be fitted; the caller falls back to an ordinary batch otherwise.
+    """
+    from visualtaste.eval.interleave import team_draft
+
+    batch_id = uuid.uuid4().hex[:12]
+    candidates = candidate_positions(connection, features, profile_id)
+    if len(candidates) == 0:
+        return FeedBatch(batch_id, "interleaved", "interleaved", [], 0)
+
+    rankings = {arm: model_ranking(m, features, candidates, n) for arm, (m, _) in arms.items()}
+    merged = team_draft(
+        rankings["a"], rankings["b"], slots=n, rng=np.random.default_rng(int(batch_id, 16))
+    )
+
+    cards: list[FeedCard] = []
+    for rank, (offset, arm) in enumerate(zip(merged.chosen, merged.arms, strict=True)):
+        model, version = arms[arm]
+        position = int(candidates[offset])
+        explanation = model.explain(features, position)
+        explanation.detail["arm"] = arm
+        cards.append(
+            FeedCard(
+                image_id=features.image_ids[position],
+                rank=rank,
+                score=float(model.score(features, np.array([position]))[0]),
+                sampled_score=None,
+                propensity=None,
+                reason=explanation.reason,
+                sentence=explanation.sentence,
+                explanation=explanation.detail,
+                candidate_offset=int(offset),
+                arm=arm,
+                model_version=version,
+            )
+        )
+
+    batch = FeedBatch(
+        batch_id=batch_id,
+        model_version="interleaved",
+        rung="interleaved",
+        cards=cards,
+        candidates_considered=len(candidates),
+        candidates=candidates,
+        experiment_id=experiment_id,
+    )
+    record_impressions(connection, batch, profile_id=profile_id)
+    return batch
+
+
+#: Part 2 §6.3: inclusion probabilities below this are clipped, and flagged.
+PROPENSITY_FLOOR = 0.005
+
+
+def write_estimated_propensities(
+    connection: sqlite3.Connection,
+    model: Recommender,
+    features: FeatureBundle,
+    batch: FeedBatch,
+    *,
+    draws: int = 200,
+) -> np.ndarray | None:
+    """Estimate and store each card's inclusion probability (stochastic rungs).
+
+    Runs after the response is sent (a FastAPI background task, or inline in
+    the simulator when a study needs propensities). Probabilities below
+    `PROPENSITY_FLOOR` are clipped to it and marked `propensity_clipped` in the
+    impression's explanation, because an IPS weight of 1/0.0001 would let one
+    card dominate any estimate built on the log.
+    """
+    estimate = getattr(model, "inclusion_probabilities", None)
+    if estimate is None or batch.candidates is None or batch.shape is None or not batch.cards:
+        return None
+    n, n_explore = batch.shape
+    raw = estimate(
+        features,
+        batch.candidates,
+        [card.candidate_offset for card in batch.cards],
+        n=n,
+        n_explore=n_explore,
+        draws=draws,
+        # The batch id is hex, so the replay's seed is reproducible from it
+        # (Python's own string hash is randomised per process).
+        seed=int(batch.batch_id, 16),
+    )
+    clipped = np.maximum(raw, PROPENSITY_FLOOR)
+
+    from visualtaste.db.repo import transaction
+
+    with transaction(connection):
+        for card, value, original in zip(batch.cards, clipped, raw, strict=True):
+            card.propensity = float(value)
+            connection.execute(
+                """
+                UPDATE impressions
+                SET propensity = ?,
+                    explanation_json = json_set(explanation_json,
+                        '$.propensity_clipped', json(?), '$.propensity_draws', ?)
+                WHERE impression_id = ?
+                """,
+                (
+                    float(value),
+                    "true" if original < PROPENSITY_FLOOR else "false",
+                    draws,
+                    card.impression_id,
+                ),
+            )
+    return clipped
 
 
 def record_impressions(
@@ -274,14 +459,17 @@ def record_impressions(
             cursor = connection.execute(
                 """
                 INSERT INTO impressions (profile_id, image_id, model_version,
+                                         experiment_id, arm,
                                          batch_id, rank, score, sampled_score,
                                          propensity, reason, explanation_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     profile_id,
                     card.image_id,
-                    batch.model_version,
+                    card.model_version or batch.model_version,
+                    batch.experiment_id,
+                    card.arm,
                     batch.batch_id,
                     card.rank,
                     card.score,

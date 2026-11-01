@@ -143,19 +143,28 @@ def replay(
     *,
     label: str,
     block: int = CUT_EVERY,
+    cuts: Sequence[int] | None = None,
 ) -> ReplayResult:
     """Replay one model over a history, returning per-cut metrics.
 
     `actions` is the full history in time order; `fit_and_score` is given the
     training and test index arrays and returns a probability per test event.
+
+    `cuts` overrides the §7.7 schedule. The Phase 9 H2 learning curve uses it
+    to cut from 50 labels, because "R3 overtakes R2 at about 150" cannot be seen
+    from a schedule that starts at 200.
     """
+    if cuts is not None:
+        schedule = [cut for cut in cuts if cut + 1 <= len(actions)]
+    else:
+        schedule = cut_points(len(actions))
     result = ReplayResult(label=label)
     targets = np.array(
         [1.0 if action in POSITIVE_ACTIONS else 0.0 for action in actions],
         dtype=np.float64,
     )
 
-    for cut in cut_points(len(actions)):
+    for cut in schedule:
         train_index = np.arange(cut)
         test_index = np.arange(cut, min(cut + block, len(actions)))
 

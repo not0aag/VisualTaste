@@ -22,9 +22,34 @@ import type {
   ImageDetail,
   ProfileResponse,
   ResetResponse,
+  CalibrationStats,
+  ClusterStat,
+  DiversityStats,
+  EvalRunResponse,
+  Experiment,
+  ExplorationStats,
+  LearningCurve,
+  ModelVersion,
+  ModelsResponse,
+  ProfileListItem,
+  Projection,
+  ReviewItem,
+  ScoreDistribution,
   SimilarResponse,
+  StatsSummary,
+  TastePath,
+  TasteResponse,
+  TrainResponse,
   UndoResponse,
 } from './types'
+
+/** `?profile_id=` when a specific (e.g. simulated) profile is being viewed. */
+const forProfile = (profileId?: number | null, extra: Record<string, string> = {}) => {
+  const params = new URLSearchParams(extra)
+  if (profileId != null) params.set('profile_id', String(profileId))
+  const query = params.toString()
+  return query ? `?${query}` : ''
+}
 
 /** An API call that failed, carrying enough to show the user something true. */
 export class ApiError extends Error {
@@ -119,6 +144,92 @@ export const api = {
 
   profile: () => request<ProfileResponse>('/api/profile'),
 
+  taste: () => request<TasteResponse>('/api/profile/taste'),
+
+  thumbUrl: (imageId: string) => `/api/images/${imageId}/thumb`,
+
   resetProfile: () =>
     request<ResetResponse>('/api/profile/reset', { method: 'POST' }),
+
+  // --- Model Lab ------------------------------------------------------------
+
+  profiles: (includeSimulated = false) =>
+    request<ProfileListItem[]>(`/api/profiles?include_simulated=${includeSimulated}`),
+
+  summary: (profileId?: number | null) =>
+    request<StatsSummary>(`/api/stats/summary${forProfile(profileId)}`),
+
+  learningCurve: (profileId?: number | null, window = 50) =>
+    request<LearningCurve>(
+      `/api/stats/learning-curve${forProfile(profileId, { window: String(window) })}`,
+    ),
+
+  clusters: (profileId?: number | null) =>
+    request<ClusterStat[]>(`/api/stats/clusters${forProfile(profileId)}`),
+
+  diversity: (profileId?: number | null) =>
+    request<DiversityStats>(`/api/stats/diversity${forProfile(profileId)}`),
+
+  calibration: (profileId?: number | null) =>
+    request<CalibrationStats>(`/api/stats/calibration${forProfile(profileId)}`),
+
+  exploration: (profileId?: number | null) =>
+    request<ExplorationStats>(`/api/stats/exploration${forProfile(profileId)}`),
+
+  scores: () => request<ScoreDistribution>('/api/stats/scores'),
+
+  models: () => request<ModelsResponse>('/api/models'),
+
+  train: (rung: string | null, activate = true) =>
+    request<TrainResponse>('/api/models/train', {
+      method: 'POST',
+      body: JSON.stringify({ rung, activate }),
+    }),
+
+  activate: (version: string) =>
+    request<ModelVersion>(`/api/models/${encodeURIComponent(version)}/activate`, {
+      method: 'POST',
+    }),
+
+  evaluate: (version: string) =>
+    request<ModelVersion>(`/api/models/${encodeURIComponent(version)}/evaluate`, {
+      method: 'POST',
+    }),
+
+  experiments: () => request<Experiment[]>('/api/experiments'),
+
+  startExperiment: (versionA: string, versionB: string) =>
+    request<Experiment>('/api/experiments', {
+      method: 'POST',
+      body: JSON.stringify({ version_a: versionA, version_b: versionB }),
+    }),
+
+  stopExperiment: (experimentId: number) =>
+    request<Experiment>(`/api/experiments/${experimentId}/stop`, { method: 'POST' }),
+
+  studies: () => request<string[]>('/api/eval/studies'),
+
+  runStudy: (study: string, seeds: number) =>
+    request<EvalRunResponse>('/api/eval/run', {
+      method: 'POST',
+      body: JSON.stringify({ study, seeds }),
+    }),
+
+  // --- Embedding Map, Review ------------------------------------------------
+
+  projection: (model: string, profileId?: number | null) =>
+    request<Projection>(`/api/viz/projection${forProfile(profileId, { model })}`),
+
+  tastePath: (model: string, profileId?: number | null, every = 50) =>
+    request<TastePath>(
+      `/api/viz/taste-path${forProfile(profileId, { model, every: String(every) })}`,
+    ),
+
+  review: () => request<ReviewItem[]>('/api/review'),
+
+  decide: (imageId: string, decision: 'keep' | 'remove') =>
+    request<ReviewItem>(`/api/review/${imageId}`, {
+      method: 'POST',
+      body: JSON.stringify({ decision }),
+    }),
 }

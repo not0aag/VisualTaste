@@ -19,8 +19,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from visualtaste.api.deps import AppState, DatabaseBusy, ensure_profile, get_db, get_state
-from visualtaste.api.schemas import ProfileResponse, ResetResponse
+from visualtaste.api.deps import (
+    AppState,
+    DatabaseBusy,
+    FeaturesUnavailable,
+    ensure_profile,
+    get_db,
+    get_state,
+)
+from visualtaste.api.schemas import ProfileResponse, ResetResponse, TasteResponse
 from visualtaste.db import repo
 from visualtaste.rec.labels import build_label_set, label_count
 from visualtaste.rec.r0_coldstart import coldstart_is_active
@@ -94,4 +101,134 @@ def reset_profile(
         previous_profile_id=previous,
         new_profile_id=new_profile,
         archived_labels=archived,
+    )
+
+
+#: Up to this many central images per interest card (Part 2 §7.2).
+CENTRAL_IMAGES = 6
+
+
+@router.get("/profile/taste", response_model=TasteResponse)
+def get_taste(
+    connection: Annotated[sqlite3.Connection, Depends(get_db)],
+    state: Annotated[AppState, Depends(get_state)],
+) -> TasteResponse:
+    """Interests and taste in words for the current profile.
+
+    The interests are the serving model's when it has them (R5, R3+R5, R4+R5),
+    so their ids are the stable ones. Otherwise they are fitted here from the
+    current likes with the same tracker, which needs at least 50 likes.
+    """
+    import numpy as np
+
+    from visualtaste.api.deps import concept_labeller
+    from visualtaste.api.schemas import (
+        ConceptWord,
+        InterestCard,
+        InterestEvent,
+        LikeRateInterval,
+    )
+    from visualtaste.rec.concepts import cache_for, describe
+    from visualtaste.rec.r1_rocchio import rocchio_vector
+    from visualtaste.rec.r5_interests import (
+        LIKES_PER_INTEREST,
+        MIN_INTERESTS,
+        InterestTracker,
+        tracker_of,
+    )
+    from visualtaste.rec.rerank import CREDIBILITY
+
+    try:
+        profile_id = ensure_profile(connection, state)
+        features = state.require_features()
+    except (DatabaseBusy, FeaturesUnavailable) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    labels = build_label_set(connection, profile_id)
+    liked_ids = [i for i in labels.positives if features.position(i) is not None]
+    disliked_ids = [i for i in labels.strong_negatives if features.position(i) is not None]
+    liked = features.rows("siglip", liked_ids)
+    disliked = features.rows("siglip", disliked_ids)
+
+    model, version = state.serving()
+    tracker = tracker_of(model) if model.is_fitted else None
+    source = version
+    note = ""
+    if tracker is None or not tracker.state.k:
+        tracker, source = InterestTracker(state.settings.seed), "computed"
+        if len(liked) >= MIN_INTERESTS * LIKES_PER_INTEREST:
+            tracker.update(liked, concept_labeller=concept_labeller(state.settings))
+        else:
+            note = (
+                f"{len(liked)} likes so far; interests appear at "
+                f"{MIN_INTERESTS * LIKES_PER_INTEREST} (one per {LIKES_PER_INTEREST} likes)."
+            )
+    interests = tracker.state
+
+    cards: list[InterestCard] = []
+    if interests.k and len(liked):
+        from scipy.stats import beta as beta_distribution
+
+        # Every rated image is assigned to its nearest interest: the likes and
+        # dislikes there give that interest's Beta interval of like rate.
+        rated = np.vstack([liked, disliked]) if len(disliked) else liked
+        nearest = np.argmax(rated @ interests.centroids.T, axis=1)
+        liked_nearest = nearest[: len(liked_ids)]
+        tail = (1 - CREDIBILITY) / 2
+        for index, interest_id in enumerate(interests.ids):
+            members = np.flatnonzero(liked_nearest == index)
+            closeness = liked[members] @ interests.centroids[index]
+            central = [liked_ids[members[j]] for j in np.argsort(-closeness)[:CENTRAL_IMAGES]]
+            n_like = len(members)
+            n_dislike = int((nearest[len(liked_ids) :] == index).sum())
+            a, b = 1 + n_like, 1 + n_dislike
+            cards.append(
+                InterestCard(
+                    interest_id=int(interest_id),
+                    label=interests.labels[index] if index < len(interests.labels) else "",
+                    n_likes=n_like,
+                    central_image_ids=central,
+                    like_rate=LikeRateInterval(
+                        likes=n_like,
+                        dislikes=n_dislike,
+                        mean=a / (a + b),
+                        low=float(beta_distribution.ppf(tail, a, b)),
+                        high=float(beta_distribution.ppf(1 - tail, a, b)),
+                    ),
+                )
+            )
+
+    likes_words: list[ConceptWord] = []
+    dislikes_words: list[ConceptWord] = []
+    cached = cache_for(state.settings).load()
+    if cached is not None and len(liked):
+        concepts, vectors = cached
+        preference = rocchio_vector(liked, disliked)
+        likes_words = [
+            ConceptWord(concept=c.concept, z_score=c.z_score)
+            for c in describe(preference, vectors, concepts)
+        ]
+        if len(disliked):
+            dislikes_words = [
+                ConceptWord(concept=c.concept, z_score=c.z_score)
+                for c in describe(disliked.mean(axis=0), vectors, concepts)
+            ]
+    elif cached is None:
+        note = (note + " " if note else "") + (
+            "No concept vocabulary cache; run `python -m visualtaste.rec.concepts`."
+        )
+
+    return TasteResponse(
+        profile_id=profile_id,
+        likes=len(liked_ids),
+        dislikes=len(disliked_ids),
+        source=source,
+        interests=cards,
+        likes_in_words=likes_words,
+        dislikes_in_words=dislikes_words,
+        history=[
+            InterestEvent(likes=h["likes"], born=h["born"], retired=h["retired"])
+            for h in interests.history
+        ],
+        note=note,
     )

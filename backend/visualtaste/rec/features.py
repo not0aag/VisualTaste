@@ -188,3 +188,58 @@ def block_available(features: FeatureBundle, block: str) -> bool:
     except KeyError:
         return False
     return True
+
+
+# ---------------------------------------------------------------------------
+# Time-respecting history features (Part 2 §4.6)
+# ---------------------------------------------------------------------------
+#
+# Some features describe the *person*, not the image: how close an image is to
+# their interests (R3+R5), how near it is to their likes (R6). Those features
+# are computed from the history, and that is where leakage hides.
+#
+# Train a model on label i with a feature computed from all labels, including
+# i itself and everything after, and the feature has seen the answer. The
+# model learns "images near the interests are liked", and it is right -- the
+# interests were built from those very likes. Replay metrics then look superb
+# and serving, where the future is genuinely unknown, does not.
+#
+# So for a training example at position t (time order), history features are
+# computed from labels strictly before t. Rebuilding the state for every
+# example would be quadratic, so the state is built at `boundaries` (every 25
+# labels by default) and each example uses the most recent boundary at or
+# before it -- a state built from labels [0, b) with b <= t, never from t or
+# later. The cost is that a feature can be up to 24 labels stale, which is the
+# same staleness the live system has between retrains.
+
+
+HISTORY_BOUNDARY_EVERY = 25
+
+
+def history_boundaries(n_examples: int, every: int = HISTORY_BOUNDARY_EVERY) -> list[int]:
+    """0, every, 2*every, ... below `n_examples`."""
+    return list(range(0, max(n_examples, 1), every))
+
+
+def time_respecting_features(
+    n_examples: int,
+    state_for_prefix,
+    featurise,
+    *,
+    every: int = HISTORY_BOUNDARY_EVERY,
+) -> np.ndarray:
+    """History features for examples 0..n-1, each from strictly earlier labels.
+
+    `state_for_prefix(b)` builds whatever summary of the history is needed from
+    the first `b` labels (it is called with increasing b, so it may be
+    incremental). `featurise(state, indices)` turns that state into one feature
+    row per example index. `tests/test_features.py` plants a future label and
+    asserts no earlier example's features change.
+    """
+    boundaries = history_boundaries(n_examples, every)
+    blocks = []
+    for position, start in enumerate(boundaries):
+        end = boundaries[position + 1] if position + 1 < len(boundaries) else n_examples
+        state = state_for_prefix(start)
+        blocks.append(np.asarray(featurise(state, np.arange(start, end)), dtype=np.float32))
+    return np.vstack(blocks) if blocks else np.zeros((0, 0), dtype=np.float32)

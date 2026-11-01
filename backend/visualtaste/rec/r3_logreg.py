@@ -80,6 +80,7 @@ from visualtaste.rec.base import (
     FeatureBundle,
     InsufficientSignal,
     Recommender,
+    UnfittedModelError,
     require_fitted,
 )
 from visualtaste.rec.features import DEFAULT_BLOCKS, design_matrix
@@ -111,6 +112,36 @@ SOLVER_MAX_ITER = 10_000
 
 #: Probability clipping for log loss, so a single 0 or 1 cannot make it infinite.
 EPSILON = 1e-12
+
+
+#: The pseudo-block naming R5's interest features, e.g. blocks=("sig", "int").
+INTEREST_BLOCK = "int"
+
+#: Fixed affine scale for interest similarities: SigLIP image-to-centroid
+#: cosines sit near 0.5 with a spread of about 0.1 on this pool, so
+#: (cos - 0.5) / 0.1 is roughly standard. Fixed rather than fitted, because the
+#: interests change every fit and a scale that moved with them would make the
+#: same cosine mean different things in different training rows.
+INTEREST_CENTRE, INTEREST_SCALE = 0.5, 0.1
+
+
+def scale_interest_features(state, vectors: np.ndarray) -> np.ndarray:
+    """[m(x), cos(c_1..c_8, x), n_interests], scaled for R3's L2 penalty.
+
+    Similarity columns that exist are centred and scaled; padding for absent
+    interests stays exactly 0, so an interest that does not exist yet has no
+    effect. n_interests is divided by 8.
+    """
+    from visualtaste.rec.r5_interests import MAX_INTERESTS, interest_features
+
+    raw = interest_features(state, vectors)
+    out = np.zeros_like(raw)
+    k = state.k
+    if k:
+        out[:, 0] = (raw[:, 0] - INTEREST_CENTRE) / INTEREST_SCALE
+        out[:, 1 : 1 + k] = (raw[:, 1 : 1 + k] - INTEREST_CENTRE) / INTEREST_SCALE
+    out[:, -1] = raw[:, -1] / MAX_INTERESTS
+    return out
 
 
 def sklearn_c(lam: float, total_weight: float) -> float:
@@ -241,6 +272,16 @@ class LogisticRecommender(Recommender):
         self.tuning: TuningResult | None = None
         self.train_log_loss: float | None = None
 
+        # R3+R5 only (blocks include "int"): the interests, their pool columns.
+        self.seed_for_interests = 1729
+        self.concept_labeller = None
+        self.interest_tracker = None
+        self._pool_interests: np.ndarray | None = None
+        self._train_X: np.ndarray | None = None
+        self._train_s: np.ndarray | None = None
+        #: ((image, verdict) history of the last fit, {boundary: InterestTracker}).
+        self._interest_snapshots: tuple[list[tuple[str, str]], dict] = ([], {})
+
     # --- Fitting -------------------------------------------------------------
 
     def _fit(self, labels: LabelSet, features: FeatureBundle) -> None:
@@ -251,18 +292,21 @@ class LogisticRecommender(Recommender):
                 f"at least {self.min_per_class} of each"
             )
 
-        X_pool = design_matrix(features, self.blocks)
         rows = features.positions(labels.image_ids)
-        if len(rows) != len(labels):
-            # Labels on images no longer in the pool (quarantined later) are
-            # dropped, so targets and weights must be dropped with them.
-            keep = [features.position(i) is not None for i in labels.image_ids]
-            y = labels.targets[keep].astype(np.float64)
-            s = labels.weights[keep].astype(np.float64)
-        else:
-            y = labels.targets.astype(np.float64)
-            s = labels.weights.astype(np.float64)
-        X = X_pool[rows].astype(np.float64)
+        # Labels on images no longer in the pool (quarantined later) are
+        # dropped, so targets, weights and actions are dropped with them.
+        keep = np.array([features.position(i) is not None for i in labels.image_ids], dtype=bool)
+        y = labels.targets[keep].astype(np.float64)
+        s = labels.weights[keep].astype(np.float64)
+        X = design_matrix(features, self.static_blocks)[rows].astype(np.float64)
+
+        if self.uses_interests:
+            actions = [a for a, k in zip(labels.actions, keep, strict=True) if k]
+            X = np.hstack([X, self._training_interest_features(features, rows, actions)])
+            self._refresh_pool_interests(features, rows, actions)
+
+        # Kept for R4, whose posterior curvature needs exactly this matrix.
+        self._train_X, self._train_s = X, s
 
         if len(np.unique(y)) < 2:
             raise InsufficientSignal("all usable labels are one class")
@@ -286,16 +330,136 @@ class LogisticRecommender(Recommender):
 
     # --- Scoring -------------------------------------------------------------
 
+    def pool_logits(self, features: FeatureBundle, W: np.ndarray) -> np.ndarray:
+        """X W + b for every pool row and every column of W.
+
+        With interests, X = [static | interest] and the product is split,
+        static @ W_static + interest @ W_interest, so the 50,000-row static
+        matrix is never copied into a wider one on the request path.
+        """
+        W = np.asarray(W, dtype=np.float32)
+        static = design_matrix(features, self.static_blocks)
+        width = static.shape[1]
+        out = static @ W[:width]
+        if self.uses_interests:
+            out = out + self._interest_columns(features) @ W[width:]
+        return out + np.float32(self.b)
+
+    def row_vector(self, features: FeatureBundle, image_index: int) -> np.ndarray:
+        """One image's full feature row, for explanations."""
+        x = design_matrix(features, self.static_blocks)[image_index]
+        if self.uses_interests:
+            x = np.concatenate([x, self._interest_columns(features)[image_index]])
+        return x.astype(np.float64)
+
+    def _interest_columns(self, features: FeatureBundle) -> np.ndarray:
+        """The pool's interest columns, built from the tracker on first use after a load."""
+        if self._pool_interests is None:
+            if self.interest_tracker is None:
+                raise UnfittedModelError(f"{self.rung} uses interests but has none loaded")
+            self._pool_interests = scale_interest_features(
+                self.interest_tracker.state, features.siglip
+            ).astype(np.float32)
+        return self._pool_interests
+
     def logits(self, features: FeatureBundle) -> np.ndarray:
         """w . x + b for every pool row: one matrix-vector product (F2, #13)."""
         require_fitted(self)
         assert self.w is not None
-        X = design_matrix(features, self.blocks)
-        return X @ self.w.astype(np.float32) + np.float32(self.b)
+        return self.pool_logits(features, self.w[:, None])[:, 0]
 
     def score(self, features: FeatureBundle, candidates: np.ndarray) -> np.ndarray:
         """p(like) for each candidate: sigma(w . x + b), computed over the whole pool."""
         return expit(self.logits(features)).astype(np.float32)[candidates]
+
+    # --- Interest features (R3+R5) -------------------------------------------
+
+    @property
+    def static_blocks(self) -> tuple[str, ...]:
+        return tuple(b for b in self.blocks if b != INTEREST_BLOCK)
+
+    @property
+    def uses_interests(self) -> bool:
+        return INTEREST_BLOCK in self.blocks
+
+    def _training_interest_features(
+        self, features: FeatureBundle, rows: np.ndarray, actions: list[str]
+    ) -> np.ndarray:
+        """Interest columns for each training example, from strictly earlier likes.
+
+        The tracker's state at each 25-label boundary is a snapshot. Retraining
+        every 20 labels only appends to the history, so snapshots for
+        boundaries whose prefix is unchanged are reused from the previous fit,
+        and only new boundaries cost a k-means. Without this, every retrain
+        would recluster the whole history from the start (DECISIONS #24).
+        """
+        import copy
+
+        from visualtaste.rec.features import time_respecting_features
+        from visualtaste.rec.r5_interests import InterestTracker
+
+        # The cache key is (image, verdict): a changed verdict on the same image
+        # changes the history even though the ids do not.
+        ids = [(features.image_ids[int(r)], a) for r, a in zip(rows, actions, strict=True)]
+        liked_rows = [int(r) for r, a in zip(rows, actions, strict=True) if a in ("like", "save")]
+        like_index = np.cumsum([a in ("like", "save") for a in actions])  # likes up to and incl. i
+
+        previous_ids, previous = self._interest_snapshots
+        snapshots: dict[int, InterestTracker] = {
+            b: tracker
+            for b, tracker in previous.items()
+            if b <= len(previous_ids) and ids[:b] == previous_ids[:b]
+        }
+
+        def state_for_prefix(b: int):
+            if b not in snapshots:
+                earlier = [k for k in snapshots if k < b]
+                tracker = (
+                    copy.deepcopy(snapshots[max(earlier)])
+                    if earlier
+                    else InterestTracker(self.seed_for_interests)
+                )
+                likes_before = int(like_index[b - 1]) if b > 0 else 0
+                if likes_before:
+                    tracker.update(features.siglip[liked_rows[:likes_before]])
+                snapshots[b] = tracker
+            return snapshots[b].state
+
+        def featurise(state, indices: np.ndarray) -> np.ndarray:
+            return scale_interest_features(state, features.siglip[rows[indices]])
+
+        out = time_respecting_features(len(rows), state_for_prefix, featurise).astype(np.float64)
+        self._interest_snapshots = (ids, snapshots)
+        return out
+
+    def _refresh_pool_interests(
+        self, features: FeatureBundle, rows: np.ndarray, actions: list[str]
+    ) -> None:
+        """Interests from *all* likes, for serving; pool columns cached until the next fit.
+
+        Continues from the latest training snapshot rather than starting over,
+        so the interests served are the same lineage, with the same ids, as the
+        ones the training features were built from.
+        """
+        import copy
+
+        from visualtaste.rec.r5_interests import InterestTracker
+
+        liked_rows = [int(r) for r, a in zip(rows, actions, strict=True) if a in ("like", "save")]
+        _, snapshots = self._interest_snapshots
+        latest = max(snapshots) if snapshots else None
+        self.interest_tracker = (
+            copy.deepcopy(snapshots[latest])
+            if latest is not None
+            else InterestTracker(self.seed_for_interests)
+        )
+        if liked_rows:
+            self.interest_tracker.update(
+                features.siglip[liked_rows], concept_labeller=self.concept_labeller
+            )
+        self._pool_interests = scale_interest_features(
+            self.interest_tracker.state, features.siglip
+        ).astype(np.float32)
 
     def explain(self, features: FeatureBundle, image_index: int) -> Explanation:
         """The predicted probability (reason `model_confident`).
@@ -306,7 +470,7 @@ class LogisticRecommender(Recommender):
         """
         require_fitted(self)
         assert self.w is not None
-        x = design_matrix(features, self.blocks)[image_index].astype(np.float64)
+        x = self.row_vector(features, image_index)
         contribution = self.w * x
         top = np.argsort(-contribution)[:3]
         probability = float(expit(x @ self.w + self.b))
@@ -361,6 +525,10 @@ class LogisticRecommender(Recommender):
             json.dumps({"b": self.b, "lambda": self.lam, "blocks": list(self.blocks)}),
             encoding="utf-8",
         )
+        if self.uses_interests and self.interest_tracker is not None:
+            from visualtaste.rec.r5_interests import save_interests
+
+            save_interests(path, self.interest_tracker)
 
     def _load(self, path: Path) -> None:
         if not self.is_fitted:
@@ -372,3 +540,10 @@ class LogisticRecommender(Recommender):
         self.b = float(meta["b"])
         self.lam = meta.get("lambda")
         self.blocks = tuple(meta.get("blocks", self.blocks))
+        if self.uses_interests:
+            from visualtaste.rec.r5_interests import InterestTracker, load_interests
+
+            self.interest_tracker = InterestTracker(self.seed_for_interests)
+            if (path / "interests.json").exists():
+                load_interests(path, self.interest_tracker)
+            self._pool_interests = None  # rebuilt from the tracker on first score

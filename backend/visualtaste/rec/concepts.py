@@ -277,3 +277,32 @@ class ConceptCache:
         vectors = embed_concepts(encoder_factory(), concepts)
         self.save(concepts, vectors)
         return concepts, vectors
+
+
+def cache_for(settings) -> ConceptCache:
+    """The project's concept cache: `<DATA>/concepts/`."""
+    return ConceptCache(settings.data / "concepts")
+
+
+def main() -> int:
+    """`python -m visualtaste.rec.concepts`: build the concept cache once.
+
+    Loads the SigLIP 2 text encoder (GPU if available), embeds the vocabulary
+    through the prompt template, and saves it. The API only ever *reads* the
+    cache, so it never has to load a text model at startup.
+    """
+    from visualtaste.config import get_settings
+    from visualtaste.vision.encoders import SIGLIP2_KEY, load_encoder
+
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    )
+    settings = get_settings()
+    settings.apply_hf_env()
+    concepts, vectors = cache_for(settings).ensure(lambda: load_encoder(SIGLIP2_KEY))
+    logger.info("concept cache ready: %d concepts x %d dims", len(concepts), vectors.shape[1])
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
