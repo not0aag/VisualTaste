@@ -20,8 +20,8 @@
     "framer-motion": "^11.11.17",
     "plotly.js-basic-dist-min": "2.35.2",
     "plotly.js-gl2d-dist-min": "2.35.2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
@@ -32,7 +32,7 @@
     "@testing-library/user-event": "^14.5.2",
     "@types/node": "^26.6.6",
     "@types/plotly.js-dist-min": "2.3.4",
-    "@types/react": "^18.3.12",
+    "@types/react": "^19.3.0",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/ui": "^3.2.7",
