@@ -464,12 +464,14 @@ class TestReasonCodes:
 
     def test_the_fixed_codes_are_the_briefs_codes(self):
         # §7.6 lists five; four are fixed and the fifth is the dynamic
-        # `interest:<k>`.
+        # `interest:<k>`. `text_seed` is the one addition since (ROADMAP D4:
+        # a cold-start card aimed at the person's own description).
         assert set(REASON_CODES) == {
             "cold_start",
             "similar_likes",
             "explore",
             "model_confident",
+            "text_seed",
         }
 
 
