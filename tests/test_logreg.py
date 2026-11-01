@@ -169,7 +169,13 @@ class TestAgreement:
         hand = logreg_numpy.fit(X, y, s, lam=lam)
         w, b = fit_sklearn(X, y, s, lam)
 
-        assert hand.converged
+        # At the optimum, not merely past an iteration cap. On this problem
+        # gradient descent reaches |g| ~ 1e-8, and whether it crosses its own
+        # 1e-8 stopping rule depends on the last bits of floating-point
+        # rounding, which differ between CPUs (it failed once in CI at
+        # 1.67e-8). The claim under test is agreement, so test the gradient
+        # at a meaningful scale and then the agreement itself.
+        assert hand.gradient_norm < 1e-6
         assert np.abs(hand.w - w).max() < AGREEMENT
         assert abs(hand.b - b) < AGREEMENT
 
