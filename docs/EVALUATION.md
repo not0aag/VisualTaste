@@ -31,7 +31,7 @@ The brief's §7.7 names five, to be reported honestly whether or not they hold:
 | # | Hypothesis | Status |
 | --- | --- | --- |
 | H1 | R1 (Rocchio) and R2 (kNN) beat R0 (cold start) | **supported** (+0.138 and +0.161 like rate, 5 seeds x 1,000 swipes, 2026-10-31) — but both find only 2 of 3 planted interests |
-| H2 | R3 (logistic regression) beats R2 after roughly 150 labels | not yet run |
+| H2 | R3 (logistic regression) beats R2 after roughly 150 labels | **not supported for ranking** (replay, 20 seeds, 2026-11-01): R3 has lower log loss from about 400 labels, but R2 has higher AUC at every cut from 150 on (significant at 9 of 18) |
 | H3 | R4 (Thompson sampling) finds all 3 planted interests faster than R3 | not yet run |
 | H4 | R3+R5 (multi-interest features) beats R3 | not yet run |
 | H5 | R6 (neural ranker) beats R3 only once labels are plentiful | not yet run |
@@ -772,3 +772,13 @@ python -m visualtaste.jobs.evaluate --study phase9_h2 --seeds 20
 | 850 | 0.5842 | 0.5845 | -0.0003 | [-0.0348, +0.0452] | 6-14 | inconclusive |
 | 900 | 0.5632 | 0.5831 | -0.0199 | [-0.0397, +0.0001] | 6-14 | inconclusive |
 
+
+### Reading H2
+
+H2 is **not supported** in the form it was stated. The two metrics split:
+
+- **Calibration goes to R3.** From 400 labels on, R3's log loss is lower at 9 of 11 cuts, and the CI excludes zero at 8 of them. Its probabilities are closer to the truth than R2's, even after R2 is Platt-scaled.
+- **Ranking goes to R2.** From 150 labels on, R2's AUC is higher at every cut, and significantly so at 9 of 18. The feed shows the top of a ranking, so this is the metric that decides what the user sees.
+- **Both are weak here.** All AUCs are between 0.51 and 0.61. The replay histories were logged by R0, so most test images sit far from any planted interest, and the next 100 events hold few positives to rank. This is a hard, low-signal test, not the on-policy one in the R0-R3 study above.
+
+So the "after about 150 labels" crossover did not appear. R3's advantage is that it gives usable probabilities (needed by R4's posterior and by calibration plots), not that it ranks better than kNN on this replay.
