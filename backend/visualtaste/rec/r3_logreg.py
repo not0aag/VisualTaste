@@ -249,6 +249,11 @@ def tune_lambda(
     )
 
 
+#: Liked images named in an explanation, and how many recent likes are searched.
+NEAREST_LIKED = 3
+NEAREST_LIKED_POOL = 500
+
+
 class LogisticRecommender(Recommender):
     """R3: weighted, L2-regularised logistic regression on standardised features."""
 
@@ -284,6 +289,8 @@ class LogisticRecommender(Recommender):
         self._pool_interests: np.ndarray | None = None
         self._train_X: np.ndarray | None = None
         self._train_s: np.ndarray | None = None
+        #: Liked images at fit time, newest last, for "close to these likes".
+        self._liked_ids: list[str] = []
         #: ((image, verdict) history of the last fit, {boundary: InterestTracker}).
         self._interest_snapshots: tuple[list[tuple[str, str]], dict] = ([], {})
 
@@ -298,6 +305,7 @@ class LogisticRecommender(Recommender):
             )
 
         rows = features.positions(labels.image_ids)
+        self._liked_ids = [i for i in labels.positives if features.position(i) is not None]
         # Labels on images no longer in the pool (quarantined later) are
         # dropped, so targets, weights and actions are dropped with them.
         keep = np.array([features.position(i) is not None for i in labels.image_ids], dtype=bool)
@@ -525,8 +533,30 @@ class LogisticRecommender(Recommender):
                     {"dim": int(i), "contribution": round(float(contribution[i]), 4)} for i in top
                 ],
                 "blocks": list(self.blocks),
+                "nearest_liked": self.nearest_liked(features, image_index),
             },
         )
+
+    def nearest_liked(self, features: FeatureBundle, image_index: int) -> list[dict[str, Any]]:
+        """The liked images most like this one (SigLIP cosine), for the explanation.
+
+        Feature dimensions explain the arithmetic; three liked images explain
+        the decision to a person. Searched over the most recent likes only, so
+        the cost stays flat however many labels there are.
+        """
+        recent = [
+            (image_id, position)
+            for image_id in self._liked_ids[-NEAREST_LIKED_POOL:]
+            if (position := features.position(image_id)) is not None and position != image_index
+        ]
+        if not recent:
+            return []
+        rows = np.array([position for _, position in recent])
+        similarity = features.siglip[rows] @ features.siglip[image_index]
+        best = np.argsort(-similarity)[:NEAREST_LIKED]
+        return [
+            {"image_id": recent[i][0], "similarity": round(float(similarity[i]), 3)} for i in best
+        ]
 
     # --- Reporting and persistence -------------------------------------------
 
@@ -565,7 +595,14 @@ class LogisticRecommender(Recommender):
         with (path / "weights.npy").open("wb") as handle:
             np.save(handle, self.w)
         (path / "model.json").write_text(
-            json.dumps({"b": self.b, "lambda": self.lam, "blocks": list(self.blocks)}),
+            json.dumps(
+                {
+                    "b": self.b,
+                    "lambda": self.lam,
+                    "blocks": list(self.blocks),
+                    "liked_ids": self._liked_ids[-NEAREST_LIKED_POOL:],
+                }
+            ),
             encoding="utf-8",
         )
         if self.uses_interests and self.interest_tracker is not None:
@@ -583,6 +620,8 @@ class LogisticRecommender(Recommender):
         self.b = float(meta["b"])
         self.lam = meta.get("lambda")
         self.blocks = tuple(meta.get("blocks", self.blocks))
+        # Absent from artefacts saved before explanations named liked images.
+        self._liked_ids = list(meta.get("liked_ids", []))
         if self.uses_interests:
             from visualtaste.rec.r5_interests import InterestTracker, load_interests
 

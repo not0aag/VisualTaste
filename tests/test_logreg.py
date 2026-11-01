@@ -352,3 +352,41 @@ class TestFeatures:
         features = toy_bundle(n=5)
         with pytest.raises(KeyError, match="dino"):
             design_matrix(features, ("dino",))
+
+
+class TestNearestLiked:
+    """The explanation names the liked images closest to the card (ROADMAP F1)."""
+
+    def test_names_up_to_three_liked_images_closest_first(self):
+        features = toy_bundle()
+        labels = separable_labels(features)
+        model = LogisticRecommender().fit(labels, features)
+
+        nearest = model.explain(features, 150).detail["nearest_liked"]
+
+        assert 1 <= len(nearest) <= 3
+        assert {n["image_id"] for n in nearest} <= set(labels.positives)
+        similarities = [n["similarity"] for n in nearest]
+        assert similarities == sorted(similarities, reverse=True)
+
+    def test_never_names_the_card_itself(self):
+        features = toy_bundle()
+        labels = separable_labels(features)
+        model = LogisticRecommender().fit(labels, features)
+        liked_row = features.position(labels.positives[0])
+
+        nearest = model.explain(features, liked_row).detail["nearest_liked"]
+
+        assert labels.positives[0] not in {n["image_id"] for n in nearest}
+
+    def test_the_liked_images_survive_a_save_and_load(self, tmp_path):
+        features = toy_bundle()
+        model = LogisticRecommender().fit(separable_labels(features), features)
+        model.save(tmp_path / "v1")
+
+        restored = LogisticRecommender().load(tmp_path / "v1")
+
+        assert (
+            restored.explain(features, 150).detail["nearest_liked"]
+            == (model.explain(features, 150).detail["nearest_liked"])
+        )

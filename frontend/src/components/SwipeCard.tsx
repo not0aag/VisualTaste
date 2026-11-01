@@ -20,6 +20,7 @@ import { animate, motion, useMotionValue, useTransform, type MotionValue } from 
 import { useDrag } from '@use-gesture/react'
 import { useEffect } from 'react'
 
+import { api } from '../api/client'
 import type { Action, FeedCard } from '../api/types'
 
 /** Fraction of the viewport width a drag must cross to commit. */
@@ -200,10 +201,42 @@ export function SwipeCard({ card, onCommit, showExplanation, disabled }: SwipeCa
                 score <span className="text-accent">{card.score.toFixed(3)}</span>
               </span>
             </p>
+            {nearestLiked(card).length > 0 && (
+              <div className="mt-3" data-testid="nearest-liked">
+                <p className="eyebrow mb-1.5 text-canvas-400">Close to images you liked</p>
+                <div className="flex gap-2">
+                  {nearestLiked(card).map((n) => (
+                    <figure key={n.image_id} className="w-16">
+                      <img
+                        src={api.thumbUrl(n.image_id)}
+                        alt=""
+                        className="thumb"
+                        onError={(event) => {
+                          event.currentTarget.style.visibility = 'hidden'
+                        }}
+                      />
+                      <figcaption className="readout mt-1 text-center">
+                        {n.similarity.toFixed(2)}
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
     </div>
+  )
+}
+
+/** The liked images R3 named as closest to this card, when the model gave any. */
+export function nearestLiked(card: FeedCard): { image_id: string; similarity: number }[] {
+  const value = card.explanation?.nearest_liked
+  if (!Array.isArray(value)) return []
+  return value.filter(
+    (n): n is { image_id: string; similarity: number } =>
+      typeof n === 'object' && n !== null && typeof n.image_id === 'string' && typeof n.similarity === 'number',
   )
 }
 

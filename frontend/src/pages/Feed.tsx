@@ -34,6 +34,50 @@ import { useDwellTimer } from '../hooks/useDwellTimer'
 import { useFeedQueue } from '../hooks/useFeedQueue'
 import type { Action } from '../api/types'
 
+const ANNOUNCE: Record<Action, string> = {
+  like: 'Liked',
+  dislike: 'Disliked',
+  save: 'Saved',
+  skip: 'Skipped',
+}
+
+const SHORTCUTS: [string, string][] = [
+  ['→  or  L', 'Like'],
+  ['←  or  J', 'Dislike'],
+  ['↓  or  Space', 'Skip'],
+  ['S', 'Save'],
+  ['Z  or  Backspace', 'Undo the last verdict'],
+  ['I', 'Why this image'],
+  ['O', 'Open the original page'],
+  ['?', 'Show or hide this list'],
+]
+
+/** Every shortcut on one card; `?` or Escape closes it. */
+function ShortcutOverlay({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="absolute inset-0 z-40 flex items-center justify-center bg-canvas-950/70 p-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-label="Keyboard shortcuts"
+      data-testid="shortcut-overlay"
+    >
+      <div className="plate w-full max-w-sm animate-fade-up p-5" onClick={(e) => e.stopPropagation()}>
+        <p className="eyebrow mb-3">Keyboard</p>
+        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-sm">
+          {SHORTCUTS.map(([keys, action]) => (
+            <div key={action} className="contents">
+              <dt className="font-mono text-xs text-accent">{keys}</dt>
+              <dd className="text-canvas-200">{action}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-4 text-xs text-canvas-500">Or drag the photo: right likes, left dislikes, up saves.</p>
+      </div>
+    </div>
+  )
+}
+
 /** Labels between online retrains (backend `VT_RETRAIN_EVERY`, config.py). */
 const RETRAIN_EVERY = 20
 
@@ -45,6 +89,9 @@ export function Feed() {
   // The on-screen key that echoes a keystroke, and the edge flash per verdict.
   const [pressed, setPressed] = useState<Action | 'undo' | null>(null)
   const [flash, setFlash] = useState<{ action: Action; n: number } | null>(null)
+  const [showKeys, setShowKeys] = useState(false)
+  // Read out to screen readers after each verdict (an aria-live region).
+  const [announcement, setAnnouncement] = useState('')
   const pressTimer = useRef<number>()
 
   const echo = useCallback((key: Action | 'undo') => {
@@ -77,6 +124,7 @@ export function Feed() {
       const { dwellMs } = dwell.read()
       echo(action)
       setFlash((previous) => ({ action, n: (previous?.n ?? 0) + 1 }))
+      setAnnouncement(`${ANNOUNCE[action]}. Next image.`)
       void feed.swipe(action, dwellMs)
     },
     [current, dwell, feed, echo],
@@ -86,6 +134,7 @@ export function Feed() {
     // `lastSwipe` is cleared on success, so this cannot undo twice.
     if (!feed.lastSwipe) return
     echo('undo')
+    setAnnouncement('Undone. The previous image is back.')
     void feed.undo()
   }, [feed, echo])
 
@@ -140,6 +189,13 @@ export function Feed() {
         case 'O':
           event.preventDefault()
           openSource()
+          break
+        case '?':
+          event.preventDefault()
+          setShowKeys((shown) => !shown)
+          break
+        case 'Escape':
+          setShowKeys(false)
           break
         default:
           break
@@ -224,7 +280,12 @@ export function Feed() {
         </span>
       </header>
 
-      <main className="flex min-h-0 flex-1 items-center justify-center px-3 py-2">
+      <p className="sr-only" aria-live="polite" data-testid="announcer">
+        {announcement}
+      </p>
+      {showKeys && <ShortcutOverlay onClose={() => setShowKeys(false)} />}
+
+      <main className="flex min-h-0 flex-1 items-start justify-center px-3 pt-4 sm:items-center sm:py-2">
         <SwipeCard card={current} onCommit={commit} showExplanation={showExplanation} />
       </main>
 
@@ -271,6 +332,9 @@ export function Feed() {
           </span>
           <span>
             <span className="kbd">Space</span> skip
+          </span>
+          <span>
+            <span className="kbd">?</span> all keys
           </span>
           <span className="hidden sm:inline">or drag the photo: right likes, left dislikes, up saves</span>
         </p>

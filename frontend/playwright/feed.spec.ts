@@ -190,6 +190,28 @@ test.describe('the Feed, end to end', () => {
     await expect(page.getByTestId('explanation-panel')).toBeHidden()
   })
 
+  test('? lists every shortcut, and Escape closes it', async ({ page }) => {
+    await page.goto('/feed')
+    await waitForCard(page)
+
+    await page.keyboard.press('?')
+    await expect(page.getByTestId('shortcut-overlay')).toBeVisible()
+    await expect(page.getByTestId('shortcut-overlay')).toContainText('Undo the last verdict')
+
+    await page.keyboard.press('Escape')
+    await expect(page.getByTestId('shortcut-overlay')).toBeHidden()
+  })
+
+  test('each verdict is announced to screen readers', async ({ page }) => {
+    await page.goto('/feed')
+    await waitForCard(page)
+
+    await page.keyboard.press('ArrowLeft')
+    await expect(page.getByTestId('announcer')).toHaveText('Disliked. Next image.')
+    await page.keyboard.press('z')
+    await expect(page.getByTestId('announcer')).toHaveText('Undone. The previous image is back.')
+  })
+
   test('undo is offered only after a swipe', async ({ page }) => {
     await page.goto('/feed')
     await waitForCard(page)
