@@ -96,6 +96,8 @@ class RungSpec:
         # Phase 15 (ROADMAP D1): fade the temperature, narrow MMR's shortlist.
         "tau_halflife": ("tau_halflife", float),
         "mmr_top": ("mmr_shortlist", int),
+        # Phase 15 (ROADMAP D2): blend R3's ranking with kNN's.
+        "knn": ("knn_blend", float),
         "loss": ("loss", str),
         "minlabels": ("min_labels", int),
         "epochs": ("max_epochs", int),

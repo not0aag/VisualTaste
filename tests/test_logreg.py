@@ -390,3 +390,52 @@ class TestNearestLiked:
             restored.explain(features, 150).detail["nearest_liked"]
             == (model.explain(features, 150).detail["nearest_liked"])
         )
+
+
+class TestKnnBlend:
+    """ROADMAP D2: `r3:knn=w` ranks by a blend of R3's and kNN's ranks."""
+
+    def test_blend_ranks_by_hand(self):
+        from visualtaste.rec.r3_logreg import blend_ranks
+
+        first = np.array([0.9, 0.1, 0.5])  # ranks 2, 0, 1
+        second = np.array([0.0, 1.0, 0.5])  # ranks 0, 2, 1
+        blended = blend_ranks(first, second, 0.5)
+        np.testing.assert_allclose(blended, [0.5, 0.5, 0.5])
+        np.testing.assert_allclose(blend_ranks(first, second, 0.0), [1.0, 0.0, 0.5])
+
+    def test_off_by_default_and_unchanged(self):
+        features = toy_bundle()
+        plain = LogisticRecommender().fit(separable_labels(features), features)
+        assert plain.knn_blend == 0.0 and plain._knn is None
+        scores = plain.score(features, np.arange(len(features)))
+        assert np.all((scores > 0) & (scores < 1))  # still probabilities
+
+    def test_a_blend_fits_knn_and_changes_the_order(self):
+        features = toy_bundle()
+        labels = separable_labels(features)
+        plain = LogisticRecommender().fit(labels, features)
+        hybrid = LogisticRecommender()
+        hybrid.knn_blend = 0.5
+        hybrid.fit(labels, features)
+        everything = np.arange(len(features))
+
+        assert hybrid._knn is not None
+        blended = hybrid.score(features, everything)
+        assert blended.min() >= 0 and blended.max() <= 1
+        assert not np.array_equal(
+            np.argsort(blended), np.argsort(plain.score(features, everything))
+        )
+
+    def test_a_blend_survives_save_and_load(self, tmp_path):
+        features = toy_bundle()
+        hybrid = LogisticRecommender()
+        hybrid.knn_blend = 0.5
+        hybrid.fit(separable_labels(features), features)
+        hybrid.save(tmp_path / "v1")
+
+        restored = LogisticRecommender().load(tmp_path / "v1")
+        everything = np.arange(len(features))
+        np.testing.assert_array_equal(
+            restored.score(features, everything), hybrid.score(features, everything)
+        )

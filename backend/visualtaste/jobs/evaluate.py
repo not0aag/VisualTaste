@@ -502,6 +502,24 @@ PRESETS[EXPLORE_STUDY] = Preset(
 )
 
 
+#: ROADMAP D2: H2 found R3 the better-calibrated model and kNN the better
+#: ranker. Does ranking by a blend of the two beat either? S2 is where
+#: appearance matters and kNN's neighbourhoods should help most.
+HYBRID_STUDY = "phase15_hybrid"
+_HYBRID_VARIANTS = ("r3:knn=0.3", "r3:knn=0.5", "r3:knn=0.7")
+PRESETS[HYBRID_STUDY] = Preset(
+    title="Phase 15: ranking by R3 and kNN together (S1, S2)",
+    variants=(_S1, _S2),
+    specs=("r0", "r2", "r3", *_HYBRID_VARIANTS),
+    comparisons=tuple(
+        (variant, other, "r3", metric, "higher")
+        for variant in (_S1, _S2)
+        for other in (*_HYBRID_VARIANTS, "r2")
+        for metric in ("like_rate", "interests_found", "replay_auc")
+    ),
+)
+
+
 def default_rung_choice(
     results: dict[tuple[str, str], list],
     *,

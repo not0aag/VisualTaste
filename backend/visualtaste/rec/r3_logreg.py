@@ -249,6 +249,19 @@ def tune_lambda(
     )
 
 
+def blend_ranks(first: np.ndarray, second: np.ndarray, weight: float) -> np.ndarray:
+    """(1 - weight) * rank(first) + weight * rank(second), ranks scaled to [0, 1].
+
+    Ranks rather than raw scores, because a probability and a kNN similarity
+    live on unrelated scales.
+    """
+    n = len(first)
+    scale = 1.0 / max(1, n - 1)
+    rank_first = np.argsort(np.argsort(first, kind="stable"), kind="stable") * scale
+    rank_second = np.argsort(np.argsort(second, kind="stable"), kind="stable") * scale
+    return ((1.0 - weight) * rank_first + weight * rank_second).astype(np.float32)
+
+
 #: Liked images named in an explanation, and how many recent likes are searched.
 NEAREST_LIKED = 3
 NEAREST_LIKED_POOL = 500
@@ -274,6 +287,12 @@ class LogisticRecommender(Recommender):
         self.fixed_lam = lam
         self.grid = tuple(grid)
         self.min_per_class = min_per_class
+        #: ROADMAP D2. 0 (the default) is plain R3. Above 0, a kNN model is fitted
+        #: on the same labels and the pool is ranked by
+        #: (1 - knn_blend) * rank(R3) + knn_blend * rank(kNN): H2 found R3 the
+        #: better-calibrated model and kNN the better ranker.
+        self.knn_blend: float = 0.0
+        self._knn = None
 
         # The fitted parameters, named after the maths (see logreg_numpy.py).
         self.w: np.ndarray | None = None
@@ -333,6 +352,11 @@ class LogisticRecommender(Recommender):
             self.lam = self.fixed_lam
 
         self.w, self.b = fit_sklearn(X, y, s, self.lam)
+        if self.knn_blend > 0:
+            from visualtaste.rec.r2_knn import KnnRecommender
+
+            knn = KnnRecommender().fit(labels, features)
+            self._knn = knn if knn.is_fitted else None
         self.train_log_loss = weighted_log_loss(y, expit(X @ self.w + self.b), s)
         logger.info(
             "r3 [%s]: lambda %.0e on %d labels, train log loss %.4f",
@@ -396,8 +420,8 @@ class LogisticRecommender(Recommender):
         assert self.w is not None
         static = design_matrix(features, self.static_blocks)
         interests = self._interest_columns(features) if self.uses_interests else None
-        key = (self.w.tobytes(), self.b, self.blocks)
-        held = (features, static, interests)
+        key = (self.w.tobytes(), self.b, self.blocks, self.knn_blend)
+        held = (features, static, interests, self._knn)
         cached = getattr(self, "_pool_scores", None)
         if (
             cached is None
@@ -405,6 +429,10 @@ class LogisticRecommender(Recommender):
             or any(a is not b for a, b in zip(cached[1], held, strict=True))
         ):
             scores = expit(self.logits(features)).astype(np.float32)
+            if self.knn_blend > 0 and self._knn is not None:
+                # Ranks, not probabilities: the blend is for ordering only.
+                knn = self._knn._score_pool(features.siglip)
+                scores = blend_ranks(scores, knn, self.knn_blend)
             scores.setflags(write=False)
             cached = self._pool_scores = (key, held, scores)
         out = cached[2][candidates]
@@ -601,6 +629,7 @@ class LogisticRecommender(Recommender):
                     "lambda": self.lam,
                     "blocks": list(self.blocks),
                     "liked_ids": self._liked_ids[-NEAREST_LIKED_POOL:],
+                    "knn_blend": self.knn_blend,
                 }
             ),
             encoding="utf-8",
@@ -609,6 +638,9 @@ class LogisticRecommender(Recommender):
             from visualtaste.rec.r5_interests import save_interests
 
             save_interests(path, self.interest_tracker)
+        if self._knn is not None:
+            (path / "knn").mkdir(exist_ok=True)
+            self._knn._save(path / "knn")
 
     def _load(self, path: Path) -> None:
         if not self.is_fitted:
@@ -622,6 +654,12 @@ class LogisticRecommender(Recommender):
         self.blocks = tuple(meta.get("blocks", self.blocks))
         # Absent from artefacts saved before explanations named liked images.
         self._liked_ids = list(meta.get("liked_ids", []))
+        self.knn_blend = float(meta.get("knn_blend", 0.0))
+        if self.knn_blend > 0 and (path / "knn").exists():
+            from visualtaste.rec.r2_knn import KnnRecommender
+
+            self._knn = KnnRecommender()
+            self._knn._load(path / "knn")
         if self.uses_interests:
             from visualtaste.rec.r5_interests import InterestTracker, load_interests
 
