@@ -7,7 +7,8 @@
   <a href="#quick-start"><img alt="PyTorch CUDA" src="https://img.shields.io/badge/pytorch-2.11%20·%20CUDA%2012.8-a594f9?style=flat-square&logo=pytorch&logoColor=white&labelColor=0a0f18"></a>
   <a href="#architecture"><img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-SQLite%20·%20FAISS-3ddc97?style=flat-square&logo=fastapi&logoColor=white&labelColor=0a0f18"></a>
   <a href="#the-interface"><img alt="React + TypeScript" src="https://img.shields.io/badge/React%2018-TypeScript%20·%20Vite-3fd8f0?style=flat-square&logo=react&logoColor=white&labelColor=0a0f18"></a>
-  <a href="#tests-and-quality"><img alt="Tests" src="https://img.shields.io/badge/tests-1%2C000%2B%20pytest%20·%2040%20vitest%20·%2011%20e2e-ffc145?style=flat-square&labelColor=0a0f18"></a>
+  <a href="https://github.com/not0aag/VisualTaste/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/not0aag/VisualTaste/ci.yml?branch=main&style=flat-square&label=CI&labelColor=0a0f18"></a>
+  <a href="#tests-and-quality"><img alt="Tests" src="https://img.shields.io/badge/tests-1%2C000%2B%20pytest%20·%2050%20vitest%20·%2011%20e2e-ffc145?style=flat-square&labelColor=0a0f18"></a>
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-e2eaf3?style=flat-square&labelColor=0a0f18"></a>
 </p>
 
@@ -252,10 +253,10 @@ Other properties:
 | Suite | Count | What it covers |
 | --- | --- | --- |
 | pytest | about 1,000 | every rung's maths against hand-worked examples, NumPy vs scikit-learn agreement, Laplace covariance = H⁻¹, leakage tests, kill-and-resume, restore |
-| Vitest | 40 | feed queue, dwell timer, Model Lab and Profile view models, viewfinder readouts |
+| Vitest | 50 | feed queue, dwell timer, Model Lab and Profile view models, viewfinder readouts, the in-browser demo server |
 | Playwright | 11 | twenty keyboard swipes reaching the database, undo, attribution on every card, a smoke test per page with zero console errors |
 
-`.\scripts\check.ps1` runs ruff, pytest, tsc, Vitest, the production build and Playwright: everything the build gates on.
+`just check` (or `scripts/check.sh` / `scripts/check.ps1`) runs ruff, pytest, tsc, Vitest, the production build and Playwright: everything the build gates on. [CI](https://github.com/not0aag/VisualTaste/actions/workflows/ci.yml) runs the same on Ubuntu for every push, plus a dependency audit.
 
 ---
 
@@ -281,38 +282,41 @@ Images, embeddings and the database are **not** in this repository: they are reg
 
 ## Quick start
 
-> Windows 11 with an NVIDIA GPU was the reference machine. Everything installs without administrator rights.
+Runs on Windows, Linux and macOS, and installs without administrator rights. A CUDA GPU is needed only to **build a collection from scratch** (embedding 80,000 images); everything else, tests included, runs on a CPU. CI runs the full suite on Ubuntu with CPU-only PyTorch on every push.
 
 | Tool | Version | Notes |
 | --- | --- | --- |
-| [uv](https://docs.astral.sh/uv/) | 0.13+ | `irm https://astral.sh/uv/install.ps1 \| iex` |
+| [uv](https://docs.astral.sh/uv/) | 0.13+ | Windows: `irm https://astral.sh/uv/install.ps1 \| iex` · Linux/macOS: `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | Python | 3.12 | installed *by* uv |
 | Node | 22 LTS | for the frontend |
 | pnpm | 11 | `npm install -g pnpm` |
-| NVIDIA driver | CUDA 12.x | check with `nvidia-smi` |
+| NVIDIA driver | CUDA 12.x | only for building a collection; check with `nvidia-smi` |
+| [just](https://github.com/casey/just) | optional | `just dev`, `just check`, `just study <name>` on any platform |
 
-```powershell
+```bash
 git clone https://github.com/not0aag/VisualTaste.git
 cd VisualTaste
 
 uv python install 3.12
 uv venv --python 3.12
 
-# PyTorch from the CUDA index, first and separately
+# PyTorch first and separately: the CUDA build with an NVIDIA GPU...
 uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+# ...or the CPU build without one
+# uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # Everything else (exact measured versions are in requirements.lock)
-uv pip install open_clip_torch timm transformers huggingface_hub faiss-cpu `
-  numpy scipy pandas pyarrow pillow imagehash scikit-learn umap-learn `
-  fastapi uvicorn pydantic pydantic-settings httpx boto3 tqdm typer `
+uv pip install open_clip_torch timm transformers huggingface_hub faiss-cpu \
+  numpy scipy pandas pyarrow pillow imagehash scikit-learn umap-learn \
+  fastapi uvicorn pydantic pydantic-settings httpx boto3 tqdm typer \
   pytest pytest-asyncio ruff jupyter nbconvert matplotlib
 uv pip install -e . --no-deps
 
 # The frontend
-cd frontend; pnpm install; cd ..
-
-.venv\Scripts\python.exe -c "import torch; print(torch.cuda.is_available())"   # True
+cd frontend && pnpm install && cd ..
 ```
+
+On Windows PowerShell, continue lines with a backtick instead of `\`, and the venv's Python is `.venv\Scripts\python.exe` rather than `.venv/bin/python`.
 
 > **Use `uv pip install`, never `uv add`.** `uv add` re-resolves against PyPI and silently swaps the CUDA build of torch for the CPU one, which makes every embedding job about 30× slower.
 
@@ -331,9 +335,11 @@ python -m visualtaste.jobs.project                      # Embedding Map projecti
 
 Then run it:
 
-```powershell
-.\scripts\dev.ps1      # API on 127.0.0.1:8000, app on http://127.0.0.1:5173
+```bash
+just dev                 # or: ./scripts/dev.sh  ·  Windows: .\scripts\dev.ps1
 ```
+
+The API listens on `127.0.0.1:8000` and the app on <http://127.0.0.1:5173>. `just check` (or `scripts/check.sh` / `scripts/check.ps1`) runs every linter and test the build gates on.
 
 The first 30 ratings are cold start. Once there are at least 5 likes and 5 dislikes, the learned model takes over by itself and keeps retraining every 20 ratings.
 
@@ -379,6 +385,8 @@ python -m visualtaste.jobs.backup --restore latest   # stop the API first
 
 A restore snapshots the current database first, so it can be undone, and checks that the restored row counts match.
 
+Backups are not encrypted: they sit on your own disk, next to the database they copy. If `VT_ARCHIVE_ROOT` points at a shared or synced drive, encrypt that drive or folder (BitLocker, FileVault, LUKS), since the event log is a record of your taste.
+
 </details>
 
 <details>
@@ -423,6 +431,14 @@ This makes 500 real `/feed/next` requests per row and appends a p50/p95 table to
 </details>
 
 ---
+
+## Limitations
+
+- **One person, on one machine.** There are no accounts and no multi-user model; the design assumes a single local profile.
+- **Mostly evaluated in simulation.** A planted-taste user has a fixed taste over clusters of the embedding space. People drift, get bored and like things for reasons no embedding captures. The simulator compares models fairly; it is not evidence about any particular person.
+- **The exploration trade-off is open.** R4 finds every interest but costs like rate; the `phase15_explore` study tests ways to narrow that gap.
+- **The collection leans documentary.** Sport, events and archive photographs are common (see the mosaic above); art and design are under-represented.
+- **Building a collection needs a GPU and hours.** Running the app, the tests and the simulator does not.
 
 ## Repository map
 
