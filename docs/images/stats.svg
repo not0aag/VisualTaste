@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 150" width="1280" height="150" role="img" aria-label="50,000 images; 7 recommenders; 1.58 million simulated swipes; 39 ms p95 feed latency; about 1,000 tests">
+  <defs>
+    <pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#94a3b8" stroke-opacity="0.06"/>
+    </pattern>
+    <linearGradient id="edge" x1="0" x2="1">
+      <stop offset="0" stop-color="#3fd8f0" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#3fd8f0" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#3fd8f0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="150" rx="10" fill="#05080d"/>
+  <rect width="1280" height="150" rx="10" fill="url(#g)"/>
+  <rect x="0" y="0" width="1280" height="1.5" fill="url(#edge)"/>
+  <rect x="0" y="148.5" width="1280" height="1.5" fill="url(#edge)"/>
+
+  <g font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" text-anchor="middle">
+    <g transform="translate(128 0)">
+      <text y="80" font-size="46" font-weight="700" fill="#ffffff">50,000</text>
+      <text y="112" font-family="Consolas, Menlo, monospace" font-size="13" letter-spacing="3" fill="#7b8ca5">IMAGES SERVED</text>
+    </g>
+    <g transform="translate(384 0)">
+      <text y="80" font-size="46" font-weight="700" fill="#3fd8f0">7</text>
+      <text y="112" font-family="Consolas, Menlo, monospace" font-size="13" letter-spacing="3" fill="#7b8ca5">RECOMMENDERS, R0 → R6</text>
+    </g>
+    <g transform="translate(640 0)">
+      <text y="80" font-size="46" font-weight="700" fill="#ffffff">1.58M</text>
+      <text y="112" font-family="Consolas, Menlo, monospace" font-size="13" letter-spacing="3" fill="#7b8ca5">SIMULATED SWIPES</text>
+    </g>
+    <g transform="translate(896 0)">
+      <text y="80" font-size="46" font-weight="700" fill="#a594f9">39<tspan font-size="26" dx="4">ms</tspan></text>
+      <text y="112" font-family="Consolas, Menlo, monospace" font-size="13" letter-spacing="3" fill="#7b8ca5">FEED LATENCY · P95</text>
+    </g>
+    <g transform="translate(1152 0)">
+      <text y="80" font-size="46" font-weight="700" fill="#ffffff">1,000+</text>
+      <text y="112" font-family="Consolas, Menlo, monospace" font-size="13" letter-spacing="3" fill="#7b8ca5">AUTOMATED TESTS</text>
+    </g>
+  </g>
+  <g stroke="#1b2433" stroke-width="1.5">
+    <path d="M256 40V112M512 40V112M768 40V112M1024 40V112"/>
+  </g>
+</svg>

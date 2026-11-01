@@ -12,6 +12,10 @@
 </p>
 
 <p align="center">
+  <img src="docs/images/stats.svg" alt="50,000 images served · 7 recommenders · 1.58 million simulated swipes · 39 ms feed latency at p95 · 1,000+ automated tests" width="100%">
+</p>
+
+<p align="center">
   <b>VisualTaste starts out knowing nothing about what you like to look at.</b><br>
   You swipe through photographs; it learns your taste, finds the separate things you like,<br>
   explains every pick, and measures itself honestly. Nothing leaves your machine.
@@ -19,6 +23,10 @@
 
 <p align="center">
   <img src="docs/images/demo.gif" alt="Dragging a photo in the Feed: the LIKE and NOPE stamps fade in with the drag, and the I key opens the explanation panel" width="880">
+</p>
+
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=python,pytorch,sklearn,fastapi,sqlite,react,ts,vite,tailwind&theme=dark" alt="Python, PyTorch, scikit-learn, FastAPI, SQLite, React, TypeScript, Vite, Tailwind">
 </p>
 
 ---
@@ -175,7 +183,7 @@ A recommender that is only ever tried by its author proves nothing. VisualTaste 
 | S5 · drift | taste changes mid-session; can the model notice? |
 | S6 · six interests | twice as many interests to find |
 
-Every comparison is **paired** (the same simulated user meets every model), run over **20 seeds × 1,000 swipes**, and reported with a paired-bootstrap 90% interval and a sign test. The verdict is written down either way.
+Every comparison is **paired** (the same simulated user meets every model), run over **20 seeds × 1,000 swipes**, and reported with a paired-bootstrap 90% interval and a sign test. The verdict is written down either way. So far that is **1,524 simulated sessions and 1.58 million swipes**.
 
 | | Hypothesis | Result |
 | --- | --- | --- |
@@ -185,13 +193,27 @@ Every comparison is **paired** (the same simulated user meets every model), run 
 | **H4** | Interest features improve R4 | ➖ **Inconclusive** on every metric and scenario. Named interests help explain the model, not rank. |
 | **H5** | The neural ranker wins only once labels are plentiful | ⏳ Running: 10 seeds × 5,000 swipes on the GPU. |
 
-### The coverage trap
+### What the simulator shows
 
-The plot below is the reason R4 exists. R3's like rate climbs, and at the same time the share of the collection it ever shows collapses. It earns a better like rate by showing you less and less.
+The pure learner, R3, finds what you like quickly and then stops looking. In a world with six hidden interests it settles on about five and never finds the rest. R4 keeps the reach of a broad sweep while it learns.
 
 <p align="center">
-  <img src="docs/figures/phase10_h3_S6_six_interests_curves.png" alt="Simulated S6: R3's like rate rises while coverage of the last 500 cards falls from 0.8 to 0.4; R0 stays at full coverage" width="100%">
+  <img src="docs/images/chart-discovery.png" alt="Planted interests found against swipes: R0 and R4 reach all six within about 300 swipes; R3 levels off near five" width="100%">
 </p>
+
+Each dot below is one simulated session. R3 buys its like rate by narrowing: in the last 500 cards it shows only 14 to 75% of the collection's clusters. R4 stays near 100%, and that coverage is what lets it find interests R3 never sees.
+
+<p align="center">
+  <img src="docs/images/chart-tradeoff.png" alt="Like rate against coverage for 180 sessions: R3 sits at 47 to 70% likes and 14 to 75% coverage; R4 and R0 sit at 35 to 50% likes and over 93% coverage" width="100%">
+</p>
+
+That reach has a price, and the simulator measures it without flattery. R4's like rate stays near the cold-start baseline, well below R3's.
+
+<p align="center">
+  <img src="docs/images/chart-learning.png" alt="Rolling like rate: R3 climbs from 50% to about 65%; R0 stays near 47%; R4 rises from about 41% to 50% by swipe 1,000" width="100%">
+</p>
+
+Making R4 keep more of R3's gain without losing its reach is the open problem: the exploration quota and the posterior temperature are the levers. The [sensitivity study](docs/EVALUATION.md) maps them.
 
 Every number above, with per-seed tables, confidence intervals and the commands to reproduce it, is in [`docs/EVALUATION.md`](docs/EVALUATION.md). The 28 design decisions and their reasons are in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
