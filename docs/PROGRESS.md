@@ -216,7 +216,10 @@ The Phase 9-11 studies, `phase12_logs` and the sensitivity grid all finished ove
 | --- | --- | --- | --- | --- |
 | 11-01 08:30 | `scripts/run_final_split.ps1 -Database sim_f1` | 23648 | `phase14_final` S1, S2, S3 (20 × 1,000) | `logs/final_a_20261101_083026.log.err` |
 | 11-01 08:30 | `scripts/run_final_split.ps1 -Database sim_f2` | 9760 | `phase14_final` S4, S5, S6 (20 × 1,000) | `logs/final_b_20261101_083026.log.err` |
-| 11-01 08:30 | `scripts/run_studies.ps1 -Database sim_h` | 10576 | `phase12_h5` (10 × 5,000, GPU) | `logs/h5_20261101_083026.log.err` |
+| 11-01 14:02 | `scripts/run_studies.ps1 -Database sim_x` | 31264 | `phase15_explore` (S1, S6; 20 × 1,000) | `logs/explore_20261101_140259.log.err` |
+| 11-01 14:58 | queue: waits for the two final splits | 18696 | then `phase15_hybrid` and `phase15_drift` on `sim_y` | `logs/queue15_20261101_145814.log` |
+
+`phase12_h5` finished at 13:49 (exit 0) and is recorded.
 
 The machine rebooted at 08:27 on 11-01; these were relaunched at 08:30 and resume from their caches.
 
