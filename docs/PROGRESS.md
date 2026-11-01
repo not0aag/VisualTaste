@@ -241,7 +241,7 @@ Chosen from the finished studies: `VT_R4_TAU_POST = 0.1` (#25) and R3's default 
 - [x] Online retrain every 20 labels + atomic hot-swap, tested (old model during retrain, failure keeps old, never two in flight)
 - [x] Notebook 03 executed
 - [x] Studies recorded: `phase9_rungs`, `phase9_skip` (0.25 / 1.0 / exclude, #20), `phase9_ablation` (blocks `sig+dino`, #28)
-- [ ] `phase9_h2` recorded (run finished 11-01 08:26, exit 0; write-up in EVALUATION.md to do)
+- [x] `phase9_h2` recorded: not supported for ranking (R2 wins AUC, R3 wins log loss); see EVALUATION.md
 
 ## Phase 10 — R4 exploration
 
