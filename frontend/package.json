@@ -17,7 +17,7 @@
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@fontsource/chakra-petch": "^5.3.0",
     "@use-gesture/react": "^10.3.1",
-    "framer-motion": "^11.11.17",
+    "framer-motion": "^14.8.0",
     "plotly.js-basic-dist-min": "2.35.2",
     "plotly.js-gl2d-dist-min": "2.35.2",
     "react": "^18.3.1",
