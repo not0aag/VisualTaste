@@ -130,3 +130,28 @@ class TestDescribedInterest:
 
     def test_r0_carries_the_option_without_using_it(self):
         assert ColdStartRecommender().describe_interests == 0
+
+
+class TestSimilarTo:
+    def test_more_like_a_group_excludes_the_group_itself(self, client):  # noqa: F811
+        state = deps.get_state()
+        group = state.features.image_ids[:3]
+        body = client.get("/api/similar-to", params={"ids": ",".join(group), "k": 5}).json()
+        returned = [r["image"]["image_id"] for r in body["results"]]
+        assert len(returned) == 5
+        assert not set(returned) & set(group)
+        scores = [r["similarity"] for r in body["results"]]
+        assert scores == sorted(scores, reverse=True)
+
+    def test_rated_images_are_left_out(self, client):  # noqa: F811
+        state = deps.get_state()
+        card = client.get("/api/feed/next", params={"n": 1}).json()["cards"][0]
+        swipe(client, card, "like")
+        group = [i for i in state.features.image_ids[:3] if i != card["image"]["image_id"]]
+        body = client.get("/api/similar-to", params={"ids": ",".join(group), "k": 20}).json()
+        assert card["image"]["image_id"] not in {r["image"]["image_id"] for r in body["results"]}
+
+    def test_malformed_ids_are_rejected(self, client):  # noqa: F811
+        assert (
+            client.get("/api/similar-to", params={"ids": "../../etc/passwd!!"}).status_code == 422
+        )

@@ -257,6 +257,12 @@ export const api = {
   search: (query: string, k = 24) =>
     request<SearchResponse>(`/api/search?${new URLSearchParams({ q: query, k: String(k) })}`),
 
+  /** Unrated pool images nearest the centre of a group (Profile's "more of this"). */
+  similarTo: (imageIds: string[], k = 12) =>
+    request<SearchResponse>(
+      `/api/similar-to?${new URLSearchParams({ ids: imageIds.join(','), k: String(k) })}`,
+    ),
+
   seedText: () => request<SeedTextResponse>('/api/profile/seed-text'),
 
   setSeedText: (text: string) =>

@@ -126,3 +126,51 @@ def clear_seed_text(
 ) -> SeedTextResponse:
     text_search.clear_seed(state.settings.data, _profile(connection, state))
     return SeedTextResponse(text=None)
+
+
+@router.get("/similar-to", response_model=SearchResponse)
+def similar_to_images(
+    ids: Annotated[str, Query(min_length=16, max_length=16 * 12 + 11)],
+    connection: Annotated[sqlite3.Connection, Depends(get_db)],
+    state: Annotated[AppState, Depends(get_state)],
+    k: Annotated[int, Query(ge=1, le=100)] = 12,
+) -> SearchResponse:
+    """More like a group of images: the centre of `ids` (comma-separated), then
+    its nearest pool images that the profile has not rated yet.
+
+    The Profile page uses it for "more of this interest", with the interest's
+    central images as the group.
+    """
+    import re
+
+    import numpy as np
+
+    from visualtaste.rec.labels import seen_image_ids
+
+    wanted = ids.split(",")
+    if not all(re.fullmatch(r"[0-9a-f]{16}", i) for i in wanted):
+        raise HTTPException(status_code=422, detail="ids must be 16 lowercase hex characters each")
+    features = _features(state)
+    rows = [p for i in wanted if (p := features.position(i)) is not None]
+    if not rows:
+        raise HTTPException(status_code=404, detail="none of those images is in the pool")
+
+    centre = features.siglip[rows].mean(axis=0)
+    centre = centre / np.linalg.norm(centre)
+    seen = seen_image_ids(connection, _profile(connection, state))
+    exclude = set(rows) | {p for i in seen if (p := features.position(i)) is not None}
+    hits = text_search.search(features.siglip, centre, k, exclude=exclude)
+
+    found = [features.image_ids[row] for row, _ in hits]
+    by_id = {
+        row["image_id"]: row
+        for row in connection.execute(
+            f"SELECT * FROM images WHERE image_id IN ({','.join('?' for _ in found)})", found
+        )
+    }
+    results = [
+        SimilarImage(image=summary_from_row(by_id[i]), similarity=round(score, 4))
+        for i, (_, score) in zip(found, hits, strict=True)
+        if i in by_id
+    ]
+    return SearchResponse(query=f"{len(rows)} images", results=results)

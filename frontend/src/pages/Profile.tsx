@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { ApiError, api } from '../api/client'
-import type { ProfileResponse, TasteResponse } from '../api/types'
+import type { ProfileResponse, SearchResponse, TasteResponse } from '../api/types'
 import {
   describeHistory,
   describeInterval,
@@ -120,6 +120,7 @@ export function Profile() {
                   </div>
                   <p className="mt-2 font-mono text-[11px] text-canvas-400">{describeInterval(card.like_rate)}</p>
                 </div>
+                <MoreOfInterest imageIds={card.central_image_ids} />
               </article>
             )
           })}
@@ -149,6 +150,48 @@ export function Profile() {
         )}
       </div>
     </main>
+  )
+}
+
+/** Unrated images near this interest's centre, on request. */
+function MoreOfInterest({ imageIds }: { imageIds: string[] }) {
+  const [results, setResults] = useState<SearchResponse['results'] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  if (imageIds.length === 0) return null
+
+  const load = async () => {
+    setBusy(true)
+    try {
+      setResults((await api.similarTo(imageIds, 12)).results)
+    } catch (cause) {
+      setError(cause instanceof ApiError ? cause.detail : String(cause))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!results) {
+    return (
+      <div className="mt-3 flex items-center gap-3">
+        <button className="btn btn-sm" onClick={() => void load()} disabled={busy}>
+          {busy ? 'Finding…' : 'Show more like this'}
+        </button>
+        {error && <span className="font-mono text-[11px] text-dislike">{error}</span>}
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-3" data-testid="more-of-interest">
+      <p className="eyebrow mb-1.5 text-canvas-400">Not yet rated, closest to this interest</p>
+      <div className="grid grid-cols-6 gap-1.5">
+        {results.map(({ image }) => (
+          <img key={image.image_id} src={image.thumb_url} alt="" loading="lazy" className="thumb" />
+        ))}
+      </div>
+    </div>
   )
 }
 
