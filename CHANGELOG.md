@@ -9,14 +9,24 @@ Work toward 1.0.0, following [`docs/ROADMAP.md`](docs/ROADMAP.md).
 ### Evaluation
 - H2, H3, H4 and H5 all have recorded verdicts. H5: the neural ranker did not
   beat R3+R5 at up to 4,900 labels.
-- `phase15_explore`: does fading the Thompson temperature, or narrowing the
-  MMR shortlist, let R4 keep more of R3's like-rate gain? (Running.)
-- `phase14_final`: every serving rung on all six scenarios, and the
-  `DEFAULT_RUNG` choice. (Running.)
+- `phase14_final`: every serving rung on all six scenarios, 840 sessions.
+  The default rung is now **R4+R5** (DECISIONS #29), with results by rung in
+  EVALUATION.md.
+- `phase15_text`: a described taste raises the cold-start like rate and costs
+  the interests it does not mention; the app aims 20% of cold-start cards at
+  it (DECISIONS #30).
+- Doubly robust off-policy estimator beside SNIPS, checked against the
+  simulator's ground truth.
+- Studies for the remaining research options (`phase15_explore`, `_hybrid`,
+  `_drift`, `_tuning`, `_alloc`), recorded as they finish.
 
 ### Recommenders
-- R4 options `tau_halflife` and `mmr_top` (off by default; results unchanged
-  unless named).
+- New options, all off by default so cached results stay unchanged unless
+  named: R4 `tau_halflife` and `mmr_top`; R3 `knn` (blend in kNN's ranking),
+  `decay` (older labels fade) and `tune_every` (re-tune lambda on every k-th
+  fit, 2.2× faster on one seed); R4+R5 `alloc` (share each batch among the
+  known interests).
+- R0 can be aimed by a description in words (SigLIP 2 text embedding).
 - Explanations name the three liked images a card most resembles.
 - R2 and R3 cache whole-pool scores per fit, and Beta interval widths are
   memoised: R2 sessions about 2.5× faster, bit-identical results.
@@ -25,6 +35,11 @@ Work toward 1.0.0, following [`docs/ROADMAP.md`](docs/ROADMAP.md).
 - Viewfinder interface: ambient light from each photo, size, aspect and
   palette readouts, a learning ring, keyboard echo, verdict flashes.
 - `?` lists every shortcut; each verdict is announced to screen readers.
+- Search by words; "describe what you like" on an empty Feed; a Saves page;
+  "more of this interest" on the Profile page.
+- Every page passes an axe accessibility audit in Playwright; card sizing
+  fits phones.
+- Plotly loads as two partial bundles instead of the full library.
 - A demo mode that answers every request in the browser from a recorded
   session, for the GitHub Pages demo.
 
@@ -42,7 +57,10 @@ Work toward 1.0.0, following [`docs/ROADMAP.md`](docs/ROADMAP.md).
 ### Docs
 - README with screenshots, a demo GIF, result charts drawn from the
   simulator caches, a stat strip and a social preview image.
-- Dataset card, including a review of 100 safety-screen removals.
+- Dataset card, including a review of 100 safety-screen removals and a
+  200-image Megalith licence check.
+- `docs/WRITEUP.md`: the project's findings in one read.
+- Notebook `01_vectors_and_cosine.ipynb`.
 - Contributing guide, citation file, issue templates.
 
 ### Fixed
