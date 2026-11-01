@@ -40,13 +40,41 @@ The brief's §7.7 names five, to be reported honestly whether or not they hold:
 
 ## Results by rung
 
-_Filled in from Phase 8 onwards: like-rate curve, AUC and log loss via
-time-ordered replay, recall of the planted interests, intra-batch diversity,
-cluster coverage._
+From the final study (`phase14_final`, below): every serving rung on all six
+scenarios, 20 seeds × 1,000 swipes each, **SIMULATED**. Means across seeds;
+the per-scenario tables further down give the spread, replay AUC, log loss and
+calibration.
 
-| Rung | Labels | Like rate | AUC | Log loss | NDCG@10 | Interests recalled |
+**Like rate** (share of served cards the simulated user liked):
+
+| rung | S1 | S2 | S3 | S4 | S5 | S6 |
 | --- | --- | --- | --- | --- | --- | --- |
-| _(pending Phase 8)_ | | | | | | |
+| `r0` | 0.467 | 0.482 | 0.436 | 0.469 | 0.448 | 0.463 |
+| `r1` | 0.557 | 0.576 | 0.472 | 0.510 | 0.528 | 0.573 |
+| `r2` | 0.550 | 0.547 | 0.474 | 0.502 | 0.535 | 0.564 |
+| `r3` | 0.637 | 0.709 | 0.495 | 0.530 | 0.599 | 0.603 |
+| `r3+r5` | 0.645 | 0.705 | 0.497 | 0.526 | 0.620 | 0.599 |
+| `r4` | 0.535 | 0.656 | 0.461 | 0.454 | 0.511 | 0.521 |
+| `r4+r5` | 0.543 | 0.654 | 0.465 | 0.459 | 0.522 | 0.526 |
+
+**Seeds that found every planted interest** (5 likes each; S3 plants two,
+S6 six, the others three):
+
+| rung | S1 | S2 | S3 | S4 | S5 | S6 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 100% | 100% | 100% | 100% | 100% | 100% |
+| `r1` | 10% | 50% | 100% | 15% | 15% | 0% |
+| `r2` | 20% | 60% | 95% | 20% | 10% | 0% |
+| `r3` | 85% | 85% | 100% | 100% | 45% | 15% |
+| `r3+r5` | 75% | 85% | 100% | 100% | 40% | 20% |
+| `r4` | 100% | 100% | 100% | 100% | 100% | 100% |
+| `r4+r5` | 100% | 100% | 100% | 100% | 100% | 100% |
+
+The pattern: R3 and R3+R5 have the highest like rate in every scenario; R4
+and R4+R5 find every interest in every seed, as R0 does, at a lower like
+rate. R1 and R2 fall in between on like rate, but outside S3's two colour
+interests they rarely find them all: they keep serving the first thing liked. The default (R4+R5) and how it was chosen are under
+"Choosing DEFAULT_RUNG" below.
 
 ---
 
