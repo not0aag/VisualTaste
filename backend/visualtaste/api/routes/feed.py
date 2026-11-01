@@ -75,7 +75,7 @@ def next_batch(
         # R0 covers the collection until the active rung has enough labels to
         # be fitted. Without this, activating R1 on a fresh profile would make
         # the first request fail instead of starting the ladder.
-        bootstrap=state.require_bootstrap(),
+        bootstrap=_bootstrap(state, profile_id),
     )
 
     if batch.shape is not None:
@@ -125,3 +125,16 @@ def _estimate_propensities(state: AppState, model, features, batch) -> None:
         logger.exception("propensity estimate failed for batch %s", batch.batch_id)
     finally:
         connection.close()
+
+
+def _bootstrap(state: AppState, profile_id: int):
+    """R0, aimed at the profile's described taste when there is one (D4)."""
+    base = state.require_bootstrap()
+    from visualtaste.search.text import load_seed
+
+    seed = load_seed(state.settings.data, profile_id)
+    if seed is None:
+        return base
+    from visualtaste.rec.r0_text import TextSeededColdStart
+
+    return TextSeededColdStart(base, *seed)

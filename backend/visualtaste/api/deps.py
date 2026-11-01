@@ -45,6 +45,7 @@ from visualtaste.db import repo
 from visualtaste.rec.base import FeatureBundle
 from visualtaste.rec.labels import label_count
 from visualtaste.rec.r0_coldstart import ColdStartRecommender
+from visualtaste.search.text import TextEncoder
 from visualtaste.vision.encoders import DINOV2_KEY, SIGLIP2_KEY
 from visualtaste.vision.store import EmbeddingStore
 
@@ -85,6 +86,10 @@ class AppState:
     #: fresh instance every request would restart at cluster 0 and show the
     #: same corner of the collection forever.
     bootstrap: Recommender | None = None
+
+    #: SigLIP 2's text tower for search and described tastes; it loads the
+    #: model on its first use, not here (search/text.py).
+    text_encoder: TextEncoder = field(default_factory=lambda: TextEncoder())
 
     #: Held for the whole of an online retrain, acquired without blocking, so
     #: two retrains can never be in flight at once (api/training.py).

@@ -35,6 +35,8 @@ import type {
   Projection,
   ReviewItem,
   ScoreDistribution,
+  SearchResponse,
+  SeedTextResponse,
   SimilarResponse,
   StatsSummary,
   TastePath,
@@ -249,4 +251,20 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ decision }),
     }),
+
+  // --- Words: search and a described taste ----------------------------------
+
+  search: (query: string, k = 24) =>
+    request<SearchResponse>(`/api/search?${new URLSearchParams({ q: query, k: String(k) })}`),
+
+  seedText: () => request<SeedTextResponse>('/api/profile/seed-text'),
+
+  setSeedText: (text: string) =>
+    request<SeedTextResponse>('/api/profile/seed-text', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
+
+  clearSeedText: () =>
+    request<SeedTextResponse>('/api/profile/seed-text', { method: 'DELETE' }),
 }

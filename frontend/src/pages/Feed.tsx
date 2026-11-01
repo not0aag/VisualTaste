@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { AttributionLine } from '../components/AttributionLine'
+import { DescribeTaste } from '../components/DescribeTaste'
 import {
   AmbientLight,
   AnimatedNumber,
@@ -284,6 +285,12 @@ export function Feed() {
         {announcement}
       </p>
       {showKeys && <ShortcutOverlay onClose={() => setShowKeys(false)} />}
+
+      {(feed.rung === 'r0' || feed.rung === 'r0+text') && (
+        <div className="px-4 pt-3">
+          <DescribeTaste />
+        </div>
+      )}
 
       <main className="flex min-h-0 flex-1 items-start justify-center px-3 pt-4 sm:items-center sm:py-2">
         <SwipeCard card={current} onCommit={commit} showExplanation={showExplanation} />

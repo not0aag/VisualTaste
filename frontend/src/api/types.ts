@@ -353,3 +353,14 @@ export interface EvalRunResponse {
   command: string
   log_path: string
 }
+
+/** `GET /api/search`: images closest to a description, best first. */
+export interface SearchResponse {
+  query: string
+  results: SimilarImage[]
+}
+
+/** `/api/profile/seed-text`: the described taste, or null when there is none. */
+export interface SeedTextResponse {
+  text: string | null
+}

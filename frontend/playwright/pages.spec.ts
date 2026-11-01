@@ -13,6 +13,7 @@ const PAGES = [
   { path: '/feed', testId: 'swipe-card' },
   { path: '/history', testId: 'history' },
   { path: '/saves', testId: 'saves' },
+  { path: '/search', testId: 'search' },
   { path: '/profile', heading: 'Your taste' },
   { path: '/lab', testId: 'model-lab' },
   { path: '/map', testId: 'embedding-map' },

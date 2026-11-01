@@ -17,6 +17,7 @@ The five reason codes (§7.6)
     interest:<k>      matches one of several interests (names it)
     explore           chosen to find out something, not because it scored well
     model_confident   the classifier gives it a high probability
+    text_seed         close to the taste the person described in words (D4)
 
 What the sentences avoid
 ------------------------
@@ -45,6 +46,7 @@ REASON_CODES = (
     "similar_likes",
     "explore",
     "model_confident",
+    "text_seed",
 )
 
 #: `interest:<k>` is dynamic, so it is matched by prefix.
@@ -92,6 +94,12 @@ def sentence_for(reason: str, detail: dict[str, Any] | None = None) -> str:
         if isinstance(probability, (int, float)):
             return f"The model puts this at about a {round(probability * 100)}% chance of a like."
         return "The model scored this highly."
+
+    if reason == "text_seed":
+        text = detail.get("text")
+        if text:
+            return f'Close to what you described: "{text}".'
+        return "Close to the taste you described."
 
     # An unknown code should still produce something readable rather than an
     # empty card, but it is a bug worth logging.

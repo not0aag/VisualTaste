@@ -46,6 +46,7 @@ from visualtaste.api.routes import (
     models,
     profile,
     review,
+    search,
     stats,
     viz,
 )
@@ -170,6 +171,7 @@ for module in (
     viz,
     review,
     eval,
+    search,
 ):
     app.include_router(module.router, prefix="/api")
 

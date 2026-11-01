@@ -208,6 +208,8 @@ test.describe('the Feed, end to end', () => {
 
     await page.keyboard.press('ArrowLeft')
     await expect(page.getByTestId('announcer')).toHaveText('Disliked. Next image.')
+    // Undo is offered once the verdict has been saved.
+    await expect(page.getByTestId('btn-undo')).toBeEnabled()
     await page.keyboard.press('z')
     await expect(page.getByTestId('announcer')).toHaveText('Undone. The previous image is back.')
   })
