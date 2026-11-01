@@ -482,3 +482,35 @@ class TestLabelDecay:
             return model.w[1] - model.w[0]
 
         assert lean(fading) > lean(plain)
+
+
+class TestTuneEvery:
+    """ROADMAP E1: `tune_every=k` re-tunes lambda on every k-th fit only."""
+
+    def test_default_tunes_every_fit(self, monkeypatch):
+        import visualtaste.rec.r3_logreg as r3
+
+        calls = []
+        real = r3.tune_lambda
+        monkeypatch.setattr(r3, "tune_lambda", lambda *a, **k: calls.append(1) or real(*a, **k))
+        features = toy_bundle()
+        model = LogisticRecommender()
+        for n in (40, 60, 80):
+            model.fit(separable_labels(features, n), features)
+        assert len(calls) == 3
+
+    def test_every_third_fit_tunes_and_the_others_reuse_lambda(self, monkeypatch):
+        import visualtaste.rec.r3_logreg as r3
+
+        calls = []
+        real = r3.tune_lambda
+        monkeypatch.setattr(r3, "tune_lambda", lambda *a, **k: calls.append(1) or real(*a, **k))
+        features = toy_bundle()
+        model = LogisticRecommender()
+        model.tune_every = 3
+        lambdas = []
+        for n in (40, 50, 60, 70, 80, 90, 100):
+            model.fit(separable_labels(features, n), features)
+            lambdas.append(model.lam)
+        assert len(calls) == 3  # fits 1, 4 and 7
+        assert lambdas[1] == lambdas[0] and lambdas[2] == lambdas[0]

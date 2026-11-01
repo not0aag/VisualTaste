@@ -102,6 +102,8 @@ class RungSpec:
         "decay": ("label_halflife", float),
         # Phase 15 (ROADMAP D4): the simulated user describes an interest.
         "describe": ("describe_interests", int),
+        # ROADMAP E1: re-tune lambda only on every k-th fit.
+        "tune_every": ("tune_every", int),
         "loss": ("loss", str),
         "minlabels": ("min_labels", int),
         "epochs": ("max_epochs", int),

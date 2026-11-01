@@ -559,6 +559,21 @@ PRESETS[TEXT_STUDY] = Preset(
 )
 
 
+#: ROADMAP E1: re-tuning lambda on every third fit is about 2x faster. Does it
+#: change the outcome? Paired seeds, S1, R3 and R4.
+TUNING_STUDY = "phase15_tuning"
+PRESETS[TUNING_STUDY] = Preset(
+    title="Phase 15: tuning lambda on every third fit (S1)",
+    variants=(_S1,),
+    specs=("r3", "r3:tune_every=3", "r4", "r4:tune_every=3"),
+    comparisons=tuple(
+        (_S1, f"{rung}:tune_every=3", rung, metric, "higher")
+        for rung in ("r3", "r4")
+        for metric in ("like_rate", "interests_found", "replay_auc")
+    ),
+)
+
+
 def default_rung_choice(
     results: dict[tuple[str, str], list],
     *,

@@ -303,6 +303,12 @@ class LogisticRecommender(Recommender):
         #: has drifted away fades from the fit (S5). Applied before the
         #: posterior, so R4's uncertainty matches what R3 fits.
         self.label_halflife: float | None = None
+        #: ROADMAP E1. Tune lambda on every k-th fit and reuse the last choice
+        #: in between. 1 (the default) tunes every fit, as every recorded study
+        #: did; tuning is most of R3's fitting time, so k = 3 is roughly 3x
+        #: faster at the cost of a lambda up to 2 refits stale.
+        self.tune_every: int = 1
+        self._fits = 0
         self._knn = None
 
         # The fitted parameters, named after the maths (see logreg_numpy.py).
@@ -359,8 +365,11 @@ class LogisticRecommender(Recommender):
             raise InsufficientSignal("all usable labels are one class")
 
         if self.fixed_lam is None:
-            self.tuning = tune_lambda(X, y, s, grid=self.grid)
-            self.lam = self.tuning.lam
+            reuse = self.tune_every > 1 and self._fits % self.tune_every != 0
+            if not (reuse and self.lam is not None):
+                self.tuning = tune_lambda(X, y, s, grid=self.grid)
+                self.lam = self.tuning.lam
+            self._fits += 1
         else:
             self.tuning = None
             self.lam = self.fixed_lam
