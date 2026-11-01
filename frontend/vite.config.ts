@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  // `/VisualTaste/` for the GitHub Pages demo build; `/` everywhere else.
+  base: process.env.VITE_BASE ?? '/',
   server: {
     // Loopback only, like the backend. Nothing in this project binds to 0.0.0.0.
     host: '127.0.0.1',

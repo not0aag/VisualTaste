@@ -5,6 +5,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { NavLink, Navigate, Route, Routes, BrowserRouter, useLocation } from 'react-router-dom'
 
+import { DEMO } from './api/client'
 import { EmbeddingMap } from './pages/EmbeddingMap'
 import { Feed } from './pages/Feed'
 import { History } from './pages/History'
@@ -39,7 +40,8 @@ const PAGES = [
 
 export function App() {
   return (
-    <BrowserRouter>
+    // On GitHub Pages the app lives under /VisualTaste/; locally under /.
+    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
       <Shell />
     </BrowserRouter>
   )
@@ -51,6 +53,7 @@ function Shell() {
 
   return (
     <div className="flex h-full flex-col">
+      {DEMO && <DemoBanner />}
       <nav className="relative z-20 flex shrink-0 items-center gap-0.5 overflow-x-auto border-b border-white/[0.06] bg-canvas-950/75 px-3 py-2 backdrop-blur-xl sm:px-5">
         <span className="mr-5 flex shrink-0 items-center gap-2.5">
           <LogoMark />
@@ -127,6 +130,25 @@ function Shell() {
           </motion.div>
         </AnimatePresence>
       </div>
+    </div>
+  )
+}
+
+/** Says plainly what the Pages demo is, on every page. */
+function DemoBanner() {
+  return (
+    <div
+      role="status"
+      className="flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-violet/30 bg-violet/10 px-4 py-1.5 text-center text-xs text-canvas-200"
+    >
+      <span className="eyebrow text-violet">Demo</span>
+      <span>
+        A replay of a recorded session with a simulated user, running entirely in your
+        browser. Swipe away; nothing is sent anywhere.
+      </span>
+      <a className="link" href="https://github.com/not0aag/VisualTaste#quick-start">
+        Run the real thing locally
+      </a>
     </div>
   )
 }

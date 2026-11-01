@@ -66,6 +66,8 @@ DEFAULT_BATCH_SIZES = {
     "siglip2_b16_224": 128,
     "dinov2_b14": 256,
 }
+#: On CPU a large batch only costs memory: there is no parallel hardware to fill.
+CPU_BATCH_SIZE = 16
 
 # DataLoader worker processes. These decode WebP files, which is the real
 # bottleneck, so there are more of them than there are spare cores.
@@ -182,7 +184,10 @@ def embed_model(
 
     settings.apply_hf_env()
     device = pick_device()
-    batch = batch_size or DEFAULT_BATCH_SIZES.get(model_key, 64)
+    default_batch = (
+        DEFAULT_BATCH_SIZES.get(model_key, 64) if device.type == "cuda" else CPU_BATCH_SIZE
+    )
+    batch = batch_size or default_batch
 
     logger.info(
         "%s: embedding %d images (%d already done) on %s, batch %d",

@@ -119,7 +119,13 @@ def pick_device() -> torch.device:
     roughly 30x slower, which is fine for a few hundred fixture images and
     hopeless for 80,000.
     """
-    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    logger.warning(
+        "No CUDA device: running on CPU, roughly 30x slower. Fine for tests and "
+        "the demo pack; embedding a full collection needs an NVIDIA GPU."
+    )
+    return torch.device("cpu")
 
 
 class ImageEncoder:

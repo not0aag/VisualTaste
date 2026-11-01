@@ -128,11 +128,11 @@ class TestArchiveLadder:
 
         monkeypatch.setattr(config_module, "_candidate_drives", lambda: [("D", 500.0)])
         # Rule 2 probes `D:/VisualTasteArchive`; redirect that probe to tmp_path.
+        # Compared as paths, not strings, so the probe matches on any platform.
+        probe = Path("D:/VisualTasteArchive")
         real_is_dir = Path.is_dir
         monkeypatch.setattr(
-            Path,
-            "is_dir",
-            lambda self: True if str(self) == "D:\\VisualTasteArchive" else real_is_dir(self),
+            Path, "is_dir", lambda self: True if self == probe else real_is_dir(self)
         )
 
         path, rule = resolve_archive_root(tmp_path)

@@ -42,6 +42,10 @@ import type {
   TrainResponse,
   UndoResponse,
 } from './types'
+import { demoServer, type DemoError } from '../demo/server'
+
+/** The GitHub Pages build answers from bundled fixtures; see src/demo/server.ts. */
+export const DEMO = import.meta.env.VITE_DEMO === '1'
 
 /** `?profile_id=` when a specific (e.g. simulated) profile is being viewed. */
 const forProfile = (profileId?: number | null, extra: Record<string, string> = {}) => {
@@ -72,6 +76,16 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (DEMO) {
+    const server = await demoServer()
+    try {
+      return server.handle(path, init) as T
+    } catch (cause) {
+      const { status, detail } = cause as DemoError
+      throw new ApiError(status ?? 500, detail ?? String(cause))
+    }
+  }
+
   let response: Response
   try {
     response = await fetch(path, {
@@ -146,7 +160,10 @@ export const api = {
 
   taste: () => request<TasteResponse>('/api/profile/taste'),
 
-  thumbUrl: (imageId: string) => `/api/images/${imageId}/thumb`,
+  thumbUrl: (imageId: string) =>
+    DEMO
+      ? `${import.meta.env.BASE_URL}demo/thumb/${imageId}.webp`
+      : `/api/images/${imageId}/thumb`,
 
   resetProfile: () =>
     request<ResetResponse>('/api/profile/reset', { method: 'POST' }),

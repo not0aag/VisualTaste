@@ -277,7 +277,13 @@ def _drive_type(letter: str) -> int:
 
 
 def _candidate_drives() -> list[tuple[str, float]]:
-    """Attached non-system fixed/removable drives, as (letter, free GB) pairs."""
+    """Attached non-system fixed/removable drives, as (letter, free GB) pairs.
+
+    Drive letters exist only on Windows. Elsewhere there is nothing to scan, so
+    the ladder goes straight to the in-repo fallback (or `VT_ARCHIVE_ROOT`).
+    """
+    if os.name != "nt":
+        return []
     system_drive = os.environ.get("SYSTEMDRIVE", "C:")
     system_letter = system_drive.rstrip(":\\/").upper()[:1] or "C"
     found: list[tuple[str, float]] = []
