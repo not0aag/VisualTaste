@@ -244,3 +244,33 @@ class TestPhase15Options:
 
         assert model.tau_halflife == 200.0
         assert model.mmr_shortlist == 50
+
+
+class TestInterestAllocation:
+    """ROADMAP D3: `alloc=1` gives each known interest a turn."""
+
+    def test_round_robin_over_interests_best_first(self):
+        from visualtaste.rec.r4_thompson import allocate_by_interest
+
+        # Offsets 0-5; interests: 0,0,0,1,1,2. Scores favour interest 0 heavily.
+        nearest = np.array([0, 0, 0, 1, 1, 2])
+        sampled = np.array([0.9, 0.8, 0.7, 0.5, 0.4, 0.1])
+        picks = allocate_by_interest(nearest, sampled, 4, taken=set())
+        assert picks == [0, 3, 5, 1]
+
+    def test_probes_are_never_picked_twice(self):
+        from visualtaste.rec.r4_thompson import allocate_by_interest
+
+        nearest = np.array([0, 1, 1])
+        sampled = np.array([0.9, 0.8, 0.7])
+        assert 0 not in allocate_by_interest(nearest, sampled, 2, taken={0})
+
+    def test_an_exhausted_interest_is_skipped(self):
+        from visualtaste.rec.r4_thompson import allocate_by_interest
+
+        nearest = np.array([0, 1, 1, 1])
+        sampled = np.array([0.9, 0.8, 0.7, 0.6])
+        assert allocate_by_interest(nearest, sampled, 4, taken=set()) == [0, 1, 2, 3]
+
+    def test_off_by_default(self):
+        assert ThompsonRecommender().interest_alloc is False

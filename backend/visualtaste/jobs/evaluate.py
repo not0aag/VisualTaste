@@ -575,6 +575,21 @@ PRESETS[TUNING_STUDY] = Preset(
 )
 
 
+#: ROADMAP D3: interest features did not help ranking (H4). Do interests help
+#: as a unit of allocation instead, giving each known interest a slot?
+ALLOC_STUDY = "phase15_alloc"
+PRESETS[ALLOC_STUDY] = Preset(
+    title="Phase 15: sharing each batch among the known interests (S1, S6)",
+    variants=(_S1, _S6),
+    specs=("r0", "r3", "r4+r5", "r4+r5:alloc=1"),
+    comparisons=tuple(
+        (variant, "r4+r5:alloc=1", "r4+r5", metric, "higher")
+        for variant in (_S1, _S6)
+        for metric in ("like_rate", "interests_found", "coverage_last_500")
+    ),
+)
+
+
 def default_rung_choice(
     results: dict[tuple[str, str], list],
     *,

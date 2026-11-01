@@ -105,6 +105,8 @@ class RungSpec:
         "share": ("describe_share", float),
         # ROADMAP E1: re-tune lambda only on every k-th fit.
         "tune_every": ("tune_every", int),
+        # ROADMAP D3: share each batch among the known interests.
+        "alloc": ("interest_alloc", lambda v: bool(int(v))),
         "loss": ("loss", str),
         "minlabels": ("min_labels", int),
         "epochs": ("max_epochs", int),

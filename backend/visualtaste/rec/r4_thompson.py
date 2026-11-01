@@ -123,6 +123,33 @@ def sample_weights(
     return w[:, None] + np.sqrt(tau) * deviation
 
 
+def allocate_by_interest(
+    nearest: np.ndarray, sampled: np.ndarray, slots: int, taken: set[int]
+) -> list[int]:
+    """`slots` candidate offsets, one interest at a time (ROADMAP D3).
+
+    Interests are visited best first, by the highest sampled score among
+    their candidates; each turn takes that interest's best remaining
+    candidate. An interest with nothing left is skipped.
+    """
+    order = np.argsort(-sampled, kind="stable")
+    by_interest: dict[int, list[int]] = {}
+    for offset in order.tolist():
+        if offset not in taken:
+            by_interest.setdefault(int(nearest[offset]), []).append(offset)
+    queue = list(by_interest)  # already in order of each interest's best score
+    picks: list[int] = []
+    while len(picks) < slots and queue:
+        for interest in list(queue):
+            if len(picks) == slots:
+                break
+            if by_interest[interest]:
+                picks.append(by_interest[interest].pop(0))
+            else:
+                queue.remove(interest)
+    return picks
+
+
 class ThompsonRecommender(LogisticRecommender):
     """R4: R3's model, a Laplace posterior over it, and an exploring batch builder."""
 
@@ -153,6 +180,12 @@ class ThompsonRecommender(LogisticRecommender):
         self.tau_halflife = tau_halflife
         #: How many top sampled scores MMR diversifies over.
         self.mmr_shortlist = mmr_shortlist
+        #: ROADMAP D3 (R4+R5 only). Off by default. On, a batch's non-probe
+        #: slots go to the interests in turn, best-sampled interest first, so
+        #: every known interest is represented instead of the strongest one
+        #: taking the whole batch.
+        self.interest_alloc = False
+        self._nearest_interest: tuple[tuple, np.ndarray] | None = None
 
         self.L: np.ndarray | None = None  # Cholesky factor of H, lower-triangular
         #: cluster -> (likes, dislikes) at fit time, for the exploration quota.
@@ -213,7 +246,7 @@ class ThompsonRecommender(LogisticRecommender):
         rng: np.random.Generator,
     ) -> tuple[list[int], list[int]]:
         """Steps 2-4 for one draw. Returns (mmr offsets, explore offsets) into candidates."""
-        return explore_batch(
+        mmr, explore = explore_batch(
             features,
             candidates,
             sampled,
@@ -224,6 +257,24 @@ class ThompsonRecommender(LogisticRecommender):
             mmr_lambda=self.mmr_lambda,
             shortlist=self.mmr_shortlist,
         )
+        if self.interest_alloc:
+            nearest = self._pool_nearest_interest(features)
+            if nearest is not None:
+                mmr = allocate_by_interest(nearest[candidates], sampled, len(mmr), set(explore))
+        return mmr, explore
+
+    def _pool_nearest_interest(self, features: FeatureBundle) -> np.ndarray | None:
+        """Each pool row's nearest interest, cached per fit; None below two interests."""
+        from visualtaste.rec.r5_interests import tracker_of
+
+        tracker = tracker_of(self)
+        if tracker is None or tracker.state.k < 2:
+            return None
+        key = (id(features), id(tracker.state), tracker.state.k)
+        if self._nearest_interest is None or self._nearest_interest[0] != key:
+            nearest = np.argmax(tracker.state.similarities(features.siglip), axis=1)
+            self._nearest_interest = (key, nearest)
+        return self._nearest_interest[1]
 
     def rerank(
         self, features: FeatureBundle, candidates: np.ndarray, scores: np.ndarray, n: int
