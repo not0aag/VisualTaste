@@ -439,3 +439,46 @@ class TestKnnBlend:
         np.testing.assert_array_equal(
             restored.score(features, everything), hybrid.score(features, everything)
         )
+
+
+class TestLabelDecay:
+    """ROADMAP D6: `decay=H` lets old labels fade."""
+
+    def test_weights_halve_every_halflife(self):
+        from visualtaste.rec.r3_logreg import decay_weights
+
+        np.testing.assert_allclose(
+            decay_weights(5, 2.0), [0.25, 0.3536, 0.5, 0.7071, 1.0], atol=1e-4
+        )
+
+    def test_off_by_default(self):
+        assert LogisticRecommender().label_halflife is None
+
+    def test_decay_follows_a_change_of_taste(self):
+        # Early likes point along axis 0, later likes along axis 1. With decay
+        # the fit leans to the recent direction.
+        features = toy_bundle(n=400)
+        ids = features.image_ids
+        early = [i for i in range(200) if features.siglip[i, 0] > 0.15][:25]
+        early_no = [i for i in range(200) if features.siglip[i, 0] < -0.15][:25]
+        late = [i for i in range(200, 400) if features.siglip[i, 1] > 0.15][:25]
+        late_no = [i for i in range(200, 400) if features.siglip[i, 1] < -0.15][:25]
+        order = early + early_no + late + late_no
+        actions = (
+            ["like"] * len(early)
+            + ["dislike"] * len(early_no)
+            + ["like"] * len(late)
+            + ["dislike"] * len(late_no)
+        )
+        assert min(map(len, (early, early_no, late, late_no))) >= 15
+        labels = labels_from([ids[i] for i in order], actions)
+
+        plain = LogisticRecommender().fit(labels, features)
+        fading = LogisticRecommender()
+        fading.label_halflife = 20.0
+        fading.fit(labels, features)
+
+        def lean(model):  # how much more weight on the new direction than the old
+            return model.w[1] - model.w[0]
+
+        assert lean(fading) > lean(plain)

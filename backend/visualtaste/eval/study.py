@@ -98,6 +98,8 @@ class RungSpec:
         "mmr_top": ("mmr_shortlist", int),
         # Phase 15 (ROADMAP D2): blend R3's ranking with kNN's.
         "knn": ("knn_blend", float),
+        # Phase 15 (ROADMAP D6): let old labels fade.
+        "decay": ("label_halflife", float),
         "loss": ("loss", str),
         "minlabels": ("min_labels", int),
         "epochs": ("max_epochs", int),

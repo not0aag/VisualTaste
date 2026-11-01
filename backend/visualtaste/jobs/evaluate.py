@@ -520,6 +520,27 @@ PRESETS[HYBRID_STUDY] = Preset(
 )
 
 
+#: ROADMAP D6: in S5 the planted taste changes mid-session, and every label
+#: still counts forever. Does letting old labels fade speed up recovery?
+DRIFT_STUDY = "phase15_drift"
+_DRIFT_VARIANTS = ("r3:decay=150", "r3:decay=400", "r4:decay=150", "r4:decay=400")
+PRESETS[DRIFT_STUDY] = Preset(
+    title="Phase 15: letting old labels fade after a change of taste (S5)",
+    variants=(_S5,),
+    specs=("r0", "r3", "r4", *_DRIFT_VARIANTS),
+    comparisons=tuple(
+        (_S5, other, base, metric, expect)
+        for other, base in (
+            ("r3:decay=150", "r3"),
+            ("r3:decay=400", "r3"),
+            ("r4:decay=150", "r4"),
+            ("r4:decay=400", "r4"),
+        )
+        for metric, expect in (("drift_recovery", "lower"), ("like_rate", "higher"))
+    ),
+)
+
+
 def default_rung_choice(
     results: dict[tuple[str, str], list],
     *,

@@ -249,6 +249,12 @@ def tune_lambda(
     )
 
 
+def decay_weights(count: int, halflife: float) -> np.ndarray:
+    """0.5 ** (age / halflife), age counted in labels, newest label age 0."""
+    age = np.arange(count - 1, -1, -1, dtype=np.float64)
+    return np.power(0.5, age / halflife)
+
+
 def blend_ranks(first: np.ndarray, second: np.ndarray, weight: float) -> np.ndarray:
     """(1 - weight) * rank(first) + weight * rank(second), ranks scaled to [0, 1].
 
@@ -292,6 +298,11 @@ class LogisticRecommender(Recommender):
         #: (1 - knn_blend) * rank(R3) + knn_blend * rank(kNN): H2 found R3 the
         #: better-calibrated model and kNN the better ranker.
         self.knn_blend: float = 0.0
+        #: ROADMAP D6. None (the default) weighs every label alike. A number H
+        #: halves a label's weight for every H newer labels, so a taste that
+        #: has drifted away fades from the fit (S5). Applied before the
+        #: posterior, so R4's uncertainty matches what R3 fits.
+        self.label_halflife: float | None = None
         self._knn = None
 
         # The fitted parameters, named after the maths (see logreg_numpy.py).
@@ -339,6 +350,9 @@ class LogisticRecommender(Recommender):
             self._refresh_pool_interests(features, rows, actions)
 
         # Kept for R4, whose posterior curvature needs exactly this matrix.
+        if self.label_halflife is not None:
+            s = s * decay_weights(len(s), self.label_halflife)
+
         self._train_X, self._train_s = X, s
 
         if len(np.unique(y)) < 2:
