@@ -12,8 +12,12 @@ How a label count is produced: a simulated profile (flagged `is_simulated`, so
 it never mixes with real data) gets N events on random pool images, with
 verdicts from a planted-taste user so both classes are present. The rung is
 fitted on them and swapped in as the serving model; then the requests run.
-Background work (R4's propensity estimate) runs inside `TestClient` after each
-response, so it is *excluded* from the timed interval, as it is in production.
+Background work (R4's propensity estimate, about a second) runs after the
+response in production. `TestClient` runs it before returning, so it is timed
+on its own and subtracted, and reported in a separate column.
+
+The benchmark runs on a temporary copy of the database, so its simulated
+profiles never reach the real one.
 
 Results append to `docs/BENCHMARKS.md` with the command, date and machine.
 """
@@ -26,6 +30,7 @@ import platform
 import sys
 import time
 from datetime import UTC, datetime
+from pathlib import Path
 
 import numpy as np
 
@@ -56,16 +61,28 @@ def _seed_profile(state, connection, labels: int, seed: int) -> int:
     return profile_id
 
 
-def measure(rung: str, labels: int, requests: int, seed: int) -> dict[str, float]:
+def measure(rung: str, labels: int, requests: int, seed: int, settings=None) -> dict[str, float]:
     from fastapi.testclient import TestClient
 
     from visualtaste.api import deps
     from visualtaste.api.deps import AppState, load_rung
     from visualtaste.api.main import app
+    from visualtaste.api.routes import feed as feed_route
     from visualtaste.config import get_settings
     from visualtaste.rec.labels import build_label_set, label_weights
 
-    settings = get_settings()
+    settings = settings or get_settings()
+    background_ms: list[float] = []
+    background: list[float] = []
+    estimate = feed_route._estimate_propensities
+
+    def timed_estimate(*args, **kwargs):
+        started = time.perf_counter()
+        try:
+            return estimate(*args, **kwargs)
+        finally:
+            background_ms.append((time.perf_counter() - started) * 1_000)
+
     state = AppState(settings)
     deps.set_state(state)
     with TestClient(app) as client:
@@ -87,16 +104,25 @@ def measure(rung: str, labels: int, requests: int, seed: int) -> dict[str, float
 
         client.get("/api/feed/next")  # warm-up: first-request allocations
         timings = []
-        for _ in range(requests):
-            started = time.perf_counter()
-            response = client.get("/api/feed/next")
-            timings.append((time.perf_counter() - started) * 1_000)
-            if response.status_code != 200:
-                raise RuntimeError(f"{rung} at {labels} labels: HTTP {response.status_code}")
+        feed_route._estimate_propensities = timed_estimate
+        try:
+            for _ in range(requests):
+                background_ms.clear()
+                started = time.perf_counter()
+                response = client.get("/api/feed/next")
+                elapsed = (time.perf_counter() - started) * 1_000
+                timings.append(elapsed - sum(background_ms))
+                if response.status_code != 200:
+                    raise RuntimeError(f"{rung} at {labels} labels: HTTP {response.status_code}")
+                if background_ms:
+                    background.append(sum(background_ms))
+        finally:
+            feed_route._estimate_propensities = estimate
         served = response.json()["rung"]
 
     array = np.array(timings)
     return {
+        "background": float(np.median(background)) if background else 0.0,
         "p50": float(np.percentile(array, 50)),
         "p95": float(np.percentile(array, 95)),
         "max": float(array.max()),
@@ -113,17 +139,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--print-only", action="store_true")
     args = parser.parse_args(argv)
 
+    import shutil
+    import tempfile
+
     from visualtaste.config import get_settings
+
+    settings = get_settings()
+    scratch = Path(tempfile.mkdtemp(prefix="vt_latency_"))
+    copy = scratch / "visualtaste.db"
+    shutil.copy2(settings.db_path, copy)
+    settings = settings.model_copy(update={"db_file": copy})
 
     rows = []
     for rung in [r.strip() for r in args.rungs.split(",") if r.strip()]:
         for labels in [int(n) for n in args.labels.split(",")]:
-            result = measure(rung, labels, args.requests, seed=1729 + labels)
+            result = measure(rung, labels, args.requests, seed=1729 + labels, settings=settings)
             exempt = rung == "r2"
             ok = result["p95"] < BUDGET_MS
             rows.append(
                 f"| `{rung}` | {labels:,} | `{result['served']}` | {result['p50']:.1f} "
                 f"| {result['p95']:.1f} | {result['max']:.1f} "
+                f"| {result['background']:.0f} "
                 f"| {'exempt (F3)' if exempt else 'yes' if ok else '**no**'} |"
             )
             print(rows[-1], flush=True)
@@ -142,12 +178,14 @@ def main(argv: list[str] | None = None) -> int:
             f'Python {platform.python_version()}. "served" is the rung that actually served '
             "the batches (below its label minimum a rung falls back to R0). Budget: p95 < 50 ms.",
             "",
-            "| rung | labels | served | p50 ms | p95 ms | max ms | within budget |",
-            "| --- | --- | --- | --- | --- | --- | --- |",
+            "| rung | labels | served | p50 ms | p95 ms | max ms | after response, p50 ms "
+            "| within budget |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- |",
             *rows,
             "",
         ]
     )
+    shutil.rmtree(scratch, ignore_errors=True)
     if args.print_only:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         print(section)
