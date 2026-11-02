@@ -237,7 +237,7 @@ That reach has a price, and the simulator measures it without flattery. R4's lik
   <img src="docs/images/chart-learning.png" alt="Rolling like rate: R3 climbs from 50% to about 65%; R0 stays near 47%; R4 rises from about 41% to 50% by swipe 1,000" width="100%">
 </p>
 
-Making R4 keep more of R3's gain without losing its reach is the open problem: the exploration quota and the posterior temperature are the levers. The [sensitivity study](docs/EVALUATION.md) maps them.
+Making R4 keep more of R3's gain without losing its reach was the open problem. A follow-up study closes most of it: fading the sampling temperature over the session, narrowing the diversity shortlist and weighting relevance more (`r4:tau_halflife=200,mmr_top=50,mmr=0.9`) keeps **70% of R3's gain on S1 and 80% on S6 while still finding every interest in every seed**, at the cost of some coverage. It is not yet the default: it has been tested on R4 alone, on two scenarios ([EVALUATION.md](docs/EVALUATION.md)).
 
 Every number above, with per-seed tables, confidence intervals and the commands to reproduce it, is in [`docs/EVALUATION.md`](docs/EVALUATION.md). The 30 design decisions and their reasons are in [`docs/DECISIONS.md`](docs/DECISIONS.md). For the story in one read, what held, what did not and why, see [`docs/WRITEUP.md`](docs/WRITEUP.md).
 
