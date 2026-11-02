@@ -335,6 +335,19 @@ cd frontend && pnpm install && cd ..
 
 On Windows PowerShell, continue lines with a backtick instead of `\`, and the venv's Python is `.venv\Scripts\python.exe` rather than `.venv/bin/python`.
 
+### Fastest path: the demo pack (no GPU, about five minutes)
+
+The full app on a ready-made, openly licensed 2,000-image collection, with the
+embeddings and indexes already computed:
+
+```bash
+python -m visualtaste.jobs.demo --download   # ~180 MB, SHA-256 checked
+just dev                                     # or scripts/dev.sh, scripts/dev.ps1
+```
+
+Then open http://127.0.0.1:5173. To only look around, the
+[live demo](https://not0aag.github.io/VisualTaste/) needs no install at all.
+
 > **Use `uv pip install`, never `uv add`.** `uv add` re-resolves against PyPI and silently swaps the CUDA build of torch for the CPU one, which makes every embedding job about 30× slower.
 
 Build the collection once (hours, mostly downloading; every step resumes if interrupted):
