@@ -601,8 +601,10 @@ VisualTaste is finished when:
 | Green CI on `main` | done |
 | Default rung chosen by the final study (R4+R5, DECISIONS #29) | done |
 | D1 trade-off | mostly closed on R4: 0.70 (S1) and 0.80 (S6) of R3's gain with every interest found; not yet tested on R4+R5 or S2–S5 |
-| D2 hybrid, D3 interest allocation, D6 label decay | studies running; results append to EVALUATION.md when they finish |
+| D2 hybrid, D3 interest allocation, D6 label decay | done: D2 and D6 do not help (options stay off); D3 lifts R4+R5's like rate (+0.029 S1, +0.015 S6) with every interest found. Next default study: D1's combination plus D3 on all six scenarios |
 | D4 describe your taste, D5 doubly robust OPE, E1, E2, E4, F1–F9, G1–G3, H2, H4, H6, H7, I1–I4 | done (E4 and F8 decided against, with reasons) |
-| Try it without a GPU (demo pack, live demo) | live demo done: https://not0aag.github.io/VisualTaste/ (rebuilds on frontend changes); demo-pack release after its rebuild |
-| A3 latency with an idle CPU, A6 fresh-clone check, H5 video | after the studies finish |
+| Try it without a GPU (demo pack, live demo) | live demo done: https://not0aag.github.io/VisualTaste/ (rebuilds on frontend changes); demo pack rebuilt and install-tested, waiting on the owner to publish the `demo-pack` release |
+| A3 latency | benchmark fixed (R4's after-response work was being counted); recommender path 10–25 ms at up to 3,000 labels; full end-to-end run appends to BENCHMARKS.md |
+| A6 fresh clone | covered by CI, which checks out `main` fresh and runs every test on Ubuntu on each push, plus a clean demo-pack install |
+| H5 video | not done: the live demo and README GIF cover it |
 | G4 new image source | future work, not attempted |
