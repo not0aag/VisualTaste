@@ -1319,3 +1319,169 @@ difference to R3 (like rate −0.005 [−0.018, +0.008]). For R4 it costs a
 small but consistent −0.011 [−0.020, −0.003] of like rate. The option stays
 opt-in and off: it is useful for quick exploratory studies, not for results
 that will be compared with existing ones (BENCHMARKS.md).
+
+---
+
+## Phase 15: ranking by R3 and kNN together (S1, S2) (2026-11-02 01:42 UTC)
+
+```
+python -m visualtaste.jobs.evaluate --study phase15_hybrid --seeds 20 --swipes 1000
+```
+
+**SIMULATED.** Variants and their calibration: `backend/visualtaste/eval/sim.py`. Every number is mean ± sd across seeds; comparisons are paired by seed (Part 2 §4.1). An interest counts as found at 5 likes.
+
+### S1_semantic
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.467 ± 0.014 | 3.00 ± 0.00 | 1.00 ± 0.00 | 62 ± 22 | -- | -- | 1.00 ± 0.00 | 0.484 ± 0.004 | 0.261 ± 0.002 | -- | 0.655 ± 0.021 | -- | -- |
+| `r2` | 20 | 0.550 ± 0.076 | 1.95 ± 0.67 | 0.20 ± 0.40 | 899 ± 235 | -- | -- | 0.17 ± 0.06 | 0.222 ± 0.021 | 0.100 ± 0.012 | 0.493 ± 0.021 | 0.602 ± 0.043 | 0.692 ± 0.018 | -- |
+| `r3` | 20 | 0.637 ± 0.046 | 2.85 ± 0.36 | 0.85 ± 0.36 | 265 ± 331 | -- | -- | 0.33 ± 0.12 | 0.291 ± 0.032 | 0.155 ± 0.023 | 0.513 ± 0.017 | 0.649 ± 0.025 | 0.643 ± 0.033 | 0.054 ± 0.023 |
+| `r3:knn=0.3` | 20 | 0.634 ± 0.067 | 2.45 ± 0.59 | 0.50 ± 0.50 | 572 ± 465 | -- | -- | 0.26 ± 0.09 | 0.262 ± 0.026 | 0.132 ± 0.018 | 0.504 ± 0.029 | 0.628 ± 0.039 | 1.481 ± 0.213 | 0.280 ± 0.074 |
+| `r3:knn=0.5` | 20 | 0.636 ± 0.062 | 2.40 ± 0.66 | 0.50 ± 0.50 | 596 ± 449 | -- | -- | 0.20 ± 0.06 | 0.254 ± 0.021 | 0.127 ± 0.016 | 0.508 ± 0.027 | 0.622 ± 0.031 | 1.472 ± 0.241 | 0.276 ± 0.068 |
+| `r3:knn=0.7` | 20 | 0.618 ± 0.070 | 2.35 ± 0.65 | 0.45 ± 0.50 | 620 ± 446 | -- | -- | 0.22 ± 0.11 | 0.250 ± 0.019 | 0.120 ± 0.014 | 0.507 ± 0.026 | 0.609 ± 0.038 | 1.524 ± 0.280 | 0.297 ± 0.078 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 33 | 0 of 60 |
+| `r2` | 25 | 21 of 60 |
+| `r3` | 31 | 3 of 60 |
+| `r3:knn=0.3` | 28 | 11 of 60 |
+| `r3:knn=0.5` | 28 | 12 of 60 |
+| `r3:knn=0.7` | 28 | 13 of 60 |
+
+### S2_appearance
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.482 ± 0.018 | 3.00 ± 0.00 | 1.00 ± 0.00 | 57 ± 16 | -- | -- | 1.00 ± 0.00 | 0.484 ± 0.004 | 0.261 ± 0.002 | -- | 0.613 ± 0.015 | -- | -- |
+| `r2` | 20 | 0.547 ± 0.108 | 2.50 ± 0.67 | 0.60 ± 0.49 | 504 ± 452 | -- | -- | 0.16 ± 0.05 | 0.228 ± 0.025 | 0.106 ± 0.012 | 0.504 ± 0.029 | 0.626 ± 0.070 | 0.687 ± 0.033 | -- |
+| `r3` | 20 | 0.709 ± 0.041 | 2.85 ± 0.36 | 0.85 ± 0.36 | 215 ± 334 | -- | -- | 0.41 ± 0.14 | 0.326 ± 0.027 | 0.174 ± 0.017 | 0.502 ± 0.034 | 0.718 ± 0.039 | 0.592 ± 0.047 | 0.041 ± 0.017 |
+| `r3:knn=0.3` | 20 | 0.684 ± 0.078 | 2.70 ± 0.46 | 0.70 ± 0.46 | 399 ± 440 | -- | -- | 0.27 ± 0.10 | 0.278 ± 0.021 | 0.139 ± 0.011 | 0.517 ± 0.031 | 0.703 ± 0.048 | 1.234 ± 0.315 | 0.220 ± 0.089 |
+| `r3:knn=0.5` | 20 | 0.682 ± 0.078 | 2.70 ± 0.56 | 0.75 ± 0.43 | 345 ± 421 | -- | -- | 0.23 ± 0.09 | 0.269 ± 0.021 | 0.134 ± 0.010 | 0.515 ± 0.025 | 0.698 ± 0.047 | 1.214 ± 0.298 | 0.222 ± 0.090 |
+| `r3:knn=0.7` | 20 | 0.680 ± 0.075 | 2.65 ± 0.57 | 0.70 ± 0.46 | 386 ± 437 | -- | -- | 0.23 ± 0.09 | 0.268 ± 0.028 | 0.131 ± 0.014 | 0.521 ± 0.024 | 0.701 ± 0.050 | 1.198 ± 0.260 | 0.224 ± 0.086 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 34 | 0 of 60 |
+| `r2` | 26 | 10 of 60 |
+| `r3` | 33 | 3 of 60 |
+| `r3:knn=0.3` | 32 | 6 of 60 |
+| `r3:knn=0.5` | 32 | 6 of 60 |
+| `r3:knn=0.7` | 31 | 7 of 60 |
+
+### Comparisons
+
+| variant | comparison | metric | mean diff | 90% CI | sign test (W-L) | losing seeds | seeds | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| S1_semantic | `r3:knn=0.3` vs `r3` | like_rate | -0.0028 | [-0.0233, +0.0169] | 12-8 (p = 0.503) | 1730, 1732, 1735, 1739, 1742, 1743, 1747, 1748 | 20 | **inconclusive** |
+| S1_semantic | `r3:knn=0.3` vs `r3` | interests_found | -0.4000 | [-0.6000, -0.2000] | 0-7 (p = 0.0156) | 1729, 1735, 1736, 1738, 1739, 1743, 1747 | 20 | **not supported** |
+| S1_semantic | `r3:knn=0.3` vs `r3` | replay_auc | -0.0085 | [-0.0180, +0.0014] | 6-14 (p = 0.115) | 1730, 1733, 1734, 1735, 1736, 1738, 1739, 1740, 1741, 1742, 1745, 1746, 1747, 1748 | 20 | **inconclusive** |
+| S1_semantic | `r3:knn=0.5` vs `r3` | like_rate | -0.0004 | [-0.0210, +0.0193] | 10-10 (p = 1) | 1730, 1732, 1733, 1735, 1738, 1739, 1742, 1743, 1747, 1748 | 20 | **inconclusive** |
+| S1_semantic | `r3:knn=0.5` vs `r3` | interests_found | -0.4500 | [-0.7000, -0.2000] | 0-7 (p = 0.0156) | 1729, 1735, 1736, 1739, 1740, 1742, 1743 | 20 | **not supported** |
+| S1_semantic | `r3:knn=0.5` vs `r3` | replay_auc | -0.0045 | [-0.0143, +0.0051] | 10-10 (p = 1) | 1730, 1732, 1733, 1737, 1740, 1741, 1742, 1745, 1746, 1747 | 20 | **inconclusive** |
+| S1_semantic | `r3:knn=0.7` vs `r3` | like_rate | -0.0187 | [-0.0382, -0.0002] | 10-10 (p = 1) | 1730, 1732, 1735, 1739, 1742, 1743, 1744, 1746, 1747, 1748 | 20 | **not supported** |
+| S1_semantic | `r3:knn=0.7` vs `r3` | interests_found | -0.5000 | [-0.7500, -0.2500] | 1-9 (p = 0.0215) | 1729, 1735, 1738, 1739, 1740, 1742, 1743, 1744, 1747 | 20 | **not supported** |
+| S1_semantic | `r3:knn=0.7` vs `r3` | replay_auc | -0.0055 | [-0.0140, +0.0033] | 6-14 (p = 0.115) | 1730, 1732, 1733, 1734, 1735, 1736, 1737, 1738, 1739, 1740, 1741, 1742, 1745, 1747 | 20 | **inconclusive** |
+| S1_semantic | `r2` vs `r3` | like_rate | -0.0870 | [-0.1158, -0.0599] | 2-18 (p = 0.000402) | 1729, 1730, 1731, 1732, 1733, 1735, 1736, 1737, 1738, 1739, 1741, 1742, 1743, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S1_semantic | `r2` vs `r3` | interests_found | -0.9000 | [-1.1000, -0.7000] | 0-15 (p = 6.1e-05) | 1729, 1730, 1731, 1733, 1734, 1735, 1736, 1737, 1738, 1739, 1741, 1742, 1743, 1745, 1748 | 20 | **not supported** |
+| S1_semantic | `r2` vs `r3` | replay_auc | -0.0197 | [-0.0275, -0.0120] | 3-17 (p = 0.00258) | 1729, 1730, 1731, 1732, 1733, 1735, 1736, 1737, 1738, 1739, 1740, 1741, 1742, 1743, 1745, 1746, 1747 | 20 | **not supported** |
+| S2_appearance | `r3:knn=0.3` vs `r3` | like_rate | -0.0244 | [-0.0511, -0.0037] | 7-13 (p = 0.263) | 1729, 1731, 1732, 1734, 1735, 1736, 1737, 1738, 1739, 1740, 1741, 1742, 1747 | 20 | **not supported** |
+| S2_appearance | `r3:knn=0.3` vs `r3` | interests_found | -0.1500 | [-0.3500, +0.0000] | 1-4 (p = 0.375) | 1731, 1732, 1744, 1745 | 20 | **inconclusive** |
+| S2_appearance | `r3:knn=0.3` vs `r3` | replay_auc | +0.0152 | [+0.0056, +0.0253] | 14-6 (p = 0.115) | 1730, 1733, 1736, 1743, 1744, 1745 | 20 | **supported** |
+| S2_appearance | `r3:knn=0.5` vs `r3` | like_rate | -0.0266 | [-0.0540, -0.0069] | 4-16 (p = 0.0118) | 1729, 1730, 1731, 1732, 1734, 1735, 1736, 1737, 1738, 1739, 1740, 1741, 1742, 1744, 1746, 1747 | 20 | **not supported** |
+| S2_appearance | `r3:knn=0.5` vs `r3` | interests_found | -0.1500 | [-0.4000, +0.0500] | 1-3 (p = 0.625) | 1742, 1745, 1748 | 20 | **inconclusive** |
+| S2_appearance | `r3:knn=0.5` vs `r3` | replay_auc | +0.0131 | [+0.0032, +0.0233] | 13-7 (p = 0.263) | 1730, 1731, 1733, 1743, 1744, 1745, 1748 | 20 | **supported** |
+| S2_appearance | `r3:knn=0.7` vs `r3` | like_rate | -0.0282 | [-0.0555, -0.0089] | 4-16 (p = 0.0118) | 1729, 1730, 1731, 1732, 1734, 1735, 1736, 1737, 1738, 1739, 1740, 1741, 1742, 1743, 1746, 1747 | 20 | **not supported** |
+| S2_appearance | `r3:knn=0.7` vs `r3` | interests_found | -0.2000 | [-0.4000, -0.0500] | 0-3 (p = 0.25) | 1742, 1745, 1748 | 20 | **not supported** |
+| S2_appearance | `r3:knn=0.7` vs `r3` | replay_auc | +0.0185 | [+0.0079, +0.0300] | 14-6 (p = 0.115) | 1729, 1730, 1734, 1743, 1744, 1746 | 20 | **supported** |
+| S2_appearance | `r2` vs `r3` | like_rate | -0.1619 | [-0.1948, -0.1291] | 0-20 (p = 1.91e-06) | 1729, 1730, 1731, 1732, 1733, 1734, 1735, 1736, 1737, 1738, 1739, 1740, 1741, 1742, 1743, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S2_appearance | `r2` vs `r3` | interests_found | -0.3500 | [-0.6000, -0.1000] | 1-7 (p = 0.0703) | 1731, 1734, 1735, 1740, 1742, 1743, 1744 | 20 | **not supported** |
+| S2_appearance | `r2` vs `r3` | replay_auc | +0.0023 | [-0.0134, +0.0181] | 9-11 (p = 0.824) | 1729, 1730, 1731, 1732, 1733, 1734, 1735, 1736, 1743, 1746, 1748 | 20 | **inconclusive** |
+
+**Like-rate gain kept** (H3 needs R4 to keep >= 70% of R3's gain over R0): (R4 - R0) / (R3 - R0), paired bootstrap 90% CI over seeds.
+
+| variant | spec | gain kept | 90% CI | meets 70%? |
+| --- | --- | --- | --- | --- |
+
+### Reading the hybrid study (ROADMAP D2)
+
+Blending kNN's ranking into R3's does not pay. On S1 every blend finds fewer
+interests (−0.40 to −0.50) with no gain in like rate; on S2 the blends rank a
+little better on replay (AUC +0.013 to +0.019) but serve a lower like rate
+(−0.024 to −0.028). H2's split verdict (kNN ranks well, R3 calibrates well)
+does not turn into a better feed when the two are averaged. The option stays
+off.
+
+---
+
+## Phase 15: sharing each batch among the known interests (S1, S6) (2026-11-02 02:06 UTC)
+
+```
+python -m visualtaste.jobs.evaluate --study phase15_alloc --seeds 20 --swipes 1000
+```
+
+**SIMULATED.** Variants and their calibration: `backend/visualtaste/eval/sim.py`. Every number is mean ± sd across seeds; comparisons are paired by seed (Part 2 §4.1). An interest counts as found at 5 likes.
+
+### S1_semantic
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.467 ± 0.014 | 3.00 ± 0.00 | 1.00 ± 0.00 | 62 ± 22 | -- | -- | 1.00 ± 0.00 | 0.484 ± 0.004 | 0.261 ± 0.002 | -- | 0.655 ± 0.021 | -- | -- |
+| `r3` | 20 | 0.637 ± 0.046 | 2.85 ± 0.36 | 0.85 ± 0.36 | 265 ± 331 | -- | -- | 0.33 ± 0.12 | 0.291 ± 0.032 | 0.155 ± 0.023 | 0.513 ± 0.017 | 0.649 ± 0.025 | 0.643 ± 0.033 | 0.054 ± 0.023 |
+| `r4+r5` | 20 | 0.543 ± 0.046 | 3.00 ± 0.00 | 1.00 ± 0.00 | 63 ± 22 | -- | 1.00 ± 0.00 | 0.77 ± 0.08 | 0.518 ± 0.025 | 0.229 ± 0.022 | 0.602 ± 0.026 | 0.705 ± 0.026 | 0.669 ± 0.020 | 0.035 ± 0.009 |
+| `r4+r5:alloc=1` | 20 | 0.572 ± 0.046 | 3.00 ± 0.00 | 1.00 ± 0.00 | 63 ± 22 | -- | 1.00 ± 0.00 | 0.68 ± 0.15 | 0.456 ± 0.030 | 0.210 ± 0.018 | 0.586 ± 0.027 | 0.697 ± 0.030 | 0.663 ± 0.024 | 0.033 ± 0.011 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 33 | 0 of 60 |
+| `r3` | 31 | 3 of 60 |
+| `r4+r5` | 33 | 0 of 60 |
+| `r4+r5:alloc=1` | 33 | 0 of 60 |
+
+### S6_six_interests
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.463 ± 0.012 | 6.00 ± 0.00 | 1.00 ± 0.00 | 130 ± 34 | -- | -- | 1.00 ± 0.00 | 0.484 ± 0.004 | 0.261 ± 0.002 | -- | 0.649 ± 0.021 | -- | -- |
+| `r3` | 20 | 0.603 ± 0.037 | 4.75 ± 0.77 | 0.15 ± 0.36 | 910 ± 219 | -- | -- | 0.38 ± 0.11 | 0.295 ± 0.026 | 0.156 ± 0.020 | 0.501 ± 0.025 | 0.645 ± 0.024 | 0.671 ± 0.022 | 0.054 ± 0.017 |
+| `r4+r5` | 20 | 0.526 ± 0.025 | 6.00 ± 0.00 | 1.00 ± 0.00 | 171 ± 73 | -- | 1.00 ± 0.01 | 0.80 ± 0.06 | 0.529 ± 0.016 | 0.228 ± 0.014 | 0.593 ± 0.019 | 0.699 ± 0.019 | 0.683 ± 0.011 | 0.030 ± 0.009 |
+| `r4+r5:alloc=1` | 20 | 0.541 ± 0.028 | 6.00 ± 0.00 | 1.00 ± 0.00 | 177 ± 93 | -- | 1.00 ± 0.00 | 0.77 ± 0.08 | 0.469 ± 0.024 | 0.210 ± 0.015 | 0.579 ± 0.027 | 0.672 ± 0.024 | 0.685 ± 0.011 | 0.031 ± 0.011 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 66 | 0 of 120 |
+| `r3` | 57 | 25 of 120 |
+| `r4+r5` | 68 | 0 of 120 |
+| `r4+r5:alloc=1` | 68 | 0 of 120 |
+
+### Comparisons
+
+| variant | comparison | metric | mean diff | 90% CI | sign test (W-L) | losing seeds | seeds | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| S1_semantic | `r4+r5:alloc=1` vs `r4+r5` | like_rate | +0.0286 | [+0.0188, +0.0391] | 17-3 (p = 0.00258) | 1730, 1735, 1743 | 20 | **supported** |
+| S1_semantic | `r4+r5:alloc=1` vs `r4+r5` | interests_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S1_semantic | `r4+r5:alloc=1` vs `r4+r5` | coverage_last_500 | -0.0891 | [-0.1484, -0.0305] | 6-14 (p = 0.115) | 1729, 1730, 1731, 1733, 1734, 1735, 1736, 1740, 1741, 1742, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S6_six_interests | `r4+r5:alloc=1` vs `r4+r5` | like_rate | +0.0153 | [+0.0067, +0.0239] | 14-6 (p = 0.115) | 1730, 1736, 1738, 1745, 1746, 1747 | 20 | **supported** |
+| S6_six_interests | `r4+r5:alloc=1` vs `r4+r5` | interests_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S6_six_interests | `r4+r5:alloc=1` vs `r4+r5` | coverage_last_500 | -0.0297 | [-0.0633, +0.0047] | 7-12 (p = 0.359) | 1729, 1731, 1732, 1733, 1734, 1735, 1739, 1740, 1741, 1742, 1744, 1748 | 20 | **inconclusive** |
+
+**Like-rate gain kept** (H3 needs R4 to keep >= 70% of R3's gain over R0): (R4 - R0) / (R3 - R0), paired bootstrap 90% CI over seeds.
+
+| variant | spec | gain kept | 90% CI | meets 70%? |
+| --- | --- | --- | --- | --- |
+| S1_semantic | `r4+r5` | 0.45 | [0.34, 0.55] | no |
+| S1_semantic | `r4+r5:alloc=1` | 0.62 | [0.52, 0.71] | inconclusive |
+| S6_six_interests | `r4+r5` | 0.45 | [0.37, 0.54] | no |
+| S6_six_interests | `r4+r5:alloc=1` | 0.56 | [0.47, 0.65] | no |
+
+### Reading the allocation study (ROADMAP D3)
+
+Sharing each batch's non-probe slots among the known interests raises R4+R5's
+like rate by +0.029 [+0.019, +0.039] on S1 and +0.015 [+0.007, +0.024] on S6,
+finds every interest in every seed as before, and keeps more of R3's gain
+(0.45 to 0.62 on S1, 0.45 to 0.56 on S6). It costs some coverage on S1
+(−0.089). It is the first R5 mechanism that changes what R4+R5 serves for the
+better; H4 found interest *features* did not. Like the D1 combination, it
+has been tested on two scenarios only, so the default is unchanged and the
+two together are the next default study.
