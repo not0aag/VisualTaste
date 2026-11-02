@@ -92,9 +92,34 @@ Image sizes: width 256 to 10,328 px, mean about 1,270 × 1,150.
   plainly harmless images, so about 700 safe images were lost, mostly sport,
   swimwear at pools and beaches, and bare skin. Removed images are recorded
   in the `removals` table and never deleted from disk.
-- **Collection-level provenance for Megalith.** Its public-domain status comes
-  from the dataset's curation of Flickr's public-domain marks, not from a
-  per-image check by this project.
+- **Collection-level provenance for Megalith, mostly confirmed.** Its
+  public-domain status comes from the dataset's curation of Flickr's
+  public-domain marks. A check of 200 random selected images against their
+  Flickr pages today (below) confirmed 95.5%; about 1.5% now carry other
+  licences, most likely changed after the dataset's snapshot.
+
+## Megalith provenance check (2026-11-01)
+
+200 of the 18,825 selected Megalith images were drawn at random
+(`random.Random(1729)`) and their Flickr pages fetched, reading the licence
+code Flickr embeds in each page.
+
+| Flickr licence today | Images |
+| --- | --- |
+| Public Domain Mark 1.0 | 121 |
+| CC0 1.0 | 58 |
+| US Government work | 8 |
+| No known copyright restrictions (Flickr Commons) | 4 |
+| Page unavailable (404 or 403: deleted or made private) | 6 |
+| All rights reserved | 2 (both from one uploader) |
+| CC BY 2.0 | 1 |
+
+191 of 200 (95.5%) are confirmed public domain, and 191 of the 194 still
+reachable (98.5%). Extrapolated, roughly 280 selected Megalith images (1.5%)
+may now be under another licence. The local app keeps them, credited to
+their source page. **Everything this project redistributes** (the demo pack
+and the online demo) was checked image by image, and any Megalith image not
+confirmed public domain today was left out.
 
 ## Safety screen review (2026-11-01)
 
