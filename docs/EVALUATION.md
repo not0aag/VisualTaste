@@ -1485,3 +1485,68 @@ finds every interest in every seed as before, and keeps more of R3's gain
 better; H4 found interest *features* did not. Like the D1 combination, it
 has been tested on two scenarios only, so the default is unchanged and the
 two together are the next default study.
+
+---
+
+## Phase 15: letting old labels fade after a change of taste (S5) (2026-11-02 03:36 UTC)
+
+```
+python -m visualtaste.jobs.evaluate --study phase15_drift --seeds 20 --swipes 1000
+```
+
+**SIMULATED.** Variants and their calibration: `backend/visualtaste/eval/sim.py`. Every number is mean ± sd across seeds; comparisons are paired by seed (Part 2 §4.1). An interest counts as found at 5 likes.
+
+### S5_drift
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.448 ± 0.022 | 3.00 ± 0.00 | 1.00 ± 0.00 | 532 ± 22 | 32 ± 22 | -- | 1.00 ± 0.00 | 0.484 ± 0.004 | 0.261 ± 0.002 | -- | 0.672 ± 0.021 | -- | -- |
+| `r3` | 20 | 0.599 ± 0.066 | 2.45 ± 0.50 | 0.45 ± 0.50 | 842 ± 205 | 298 ± 218 | -- | 0.42 ± 0.20 | 0.297 ± 0.031 | 0.157 ± 0.019 | 0.506 ± 0.023 | 0.677 ± 0.035 | 0.671 ± 0.050 | 0.063 ± 0.032 |
+| `r4` | 20 | 0.511 ± 0.041 | 3.00 ± 0.00 | 1.00 ± 0.00 | 570 ± 66 | 70 ± 66 | -- | 0.82 ± 0.08 | 0.528 ± 0.017 | 0.236 ± 0.019 | 0.614 ± 0.030 | 0.730 ± 0.019 | 0.681 ± 0.019 | 0.045 ± 0.012 |
+| `r3:decay=150` | 20 | 0.596 ± 0.060 | 2.45 ± 0.50 | 0.45 ± 0.50 | 809 ± 227 | 260 ± 233 | -- | 0.40 ± 0.15 | 0.292 ± 0.031 | 0.159 ± 0.019 | 0.505 ± 0.028 | 0.686 ± 0.037 | 0.672 ± 0.040 | 0.053 ± 0.019 |
+| `r3:decay=400` | 20 | 0.619 ± 0.059 | 2.40 ± 0.66 | 0.50 ± 0.50 | 836 ± 208 | 321 ± 219 | -- | 0.37 ± 0.18 | 0.293 ± 0.036 | 0.160 ± 0.023 | 0.504 ± 0.024 | 0.683 ± 0.035 | 0.659 ± 0.045 | 0.050 ± 0.021 |
+| `r4:decay=150` | 20 | 0.476 ± 0.040 | 3.00 ± 0.00 | 1.00 ± 0.00 | 572 ± 64 | 72 ± 64 | -- | 0.91 ± 0.04 | 0.539 ± 0.013 | 0.258 ± 0.013 | 0.625 ± 0.035 | 0.722 ± 0.022 | 0.683 ± 0.014 | 0.056 ± 0.008 |
+| `r4:decay=400` | 20 | 0.496 ± 0.036 | 3.00 ± 0.00 | 1.00 ± 0.00 | 563 ± 45 | 63 ± 45 | -- | 0.88 ± 0.05 | 0.533 ± 0.017 | 0.247 ± 0.014 | 0.615 ± 0.028 | 0.722 ± 0.019 | 0.683 ± 0.013 | 0.048 ± 0.009 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 64 | 0 of 60 |
+| `r3` | 51 | 11 of 60 |
+| `r4` | 58 | 0 of 60 |
+| `r3:decay=150` | 52 | 11 of 60 |
+| `r3:decay=400` | 50 | 12 of 60 |
+| `r4:decay=150` | 60 | 0 of 60 |
+| `r4:decay=400` | 60 | 0 of 60 |
+
+### Comparisons
+
+| variant | comparison | metric | mean diff | 90% CI | sign test (W-L) | losing seeds | seeds | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| S5_drift | `r3:decay=150` vs `r3` | drift_recovery | -37.5500 | [-119.0525, +39.5500] | 8-4 (p = 0.388) | 1738, 1739, 1740, 1742 | 20 | **inconclusive** |
+| S5_drift | `r3:decay=150` vs `r3` | like_rate | -0.0028 | [-0.0202, +0.0127] | 12-7 (p = 0.359) | 1729, 1730, 1731, 1733, 1735, 1736, 1747 | 20 | **inconclusive** |
+| S5_drift | `r3:decay=400` vs `r3` | drift_recovery | +22.9500 | [-62.0500, +105.0000] | 6-8 (p = 0.791) | 1732, 1733, 1734, 1738, 1739, 1740, 1742, 1745 | 20 | **inconclusive** |
+| S5_drift | `r3:decay=400` vs `r3` | like_rate | +0.0201 | [+0.0025, +0.0384] | 14-5 (p = 0.0636) | 1730, 1731, 1738, 1740, 1747 | 20 | **supported** |
+| S5_drift | `r4:decay=150` vs `r4` | drift_recovery | +1.6000 | [-16.0000, +16.8000] | 10-10 (p = 1) | 1729, 1732, 1736, 1737, 1739, 1740, 1741, 1743, 1744, 1746 | 20 | **inconclusive** |
+| S5_drift | `r4:decay=150` vs `r4` | like_rate | -0.0353 | [-0.0505, -0.0200] | 5-15 (p = 0.0414) | 1729, 1730, 1732, 1733, 1734, 1735, 1736, 1738, 1739, 1741, 1742, 1744, 1745, 1746, 1747 | 20 | **not supported** |
+| S5_drift | `r4:decay=400` vs `r4` | drift_recovery | -6.9000 | [-23.4000, +7.4500] | 10-9 (p = 1) | 1731, 1736, 1739, 1741, 1742, 1743, 1744, 1746, 1747 | 20 | **inconclusive** |
+| S5_drift | `r4:decay=400` vs `r4` | like_rate | -0.0150 | [-0.0277, -0.0019] | 4-15 (p = 0.0192) | 1729, 1730, 1732, 1733, 1734, 1735, 1736, 1738, 1739, 1741, 1743, 1744, 1746, 1747, 1748 | 20 | **not supported** |
+
+**Like-rate gain kept** (H3 needs R4 to keep >= 70% of R3's gain over R0): (R4 - R0) / (R3 - R0), paired bootstrap 90% CI over seeds.
+
+| variant | spec | gain kept | 90% CI | meets 70%? |
+| --- | --- | --- | --- | --- |
+| S5_drift | `r4` | 0.42 | [0.31, 0.54] | no |
+| S5_drift | `r4:decay=150` | 0.18 | [0.09, 0.28] | no |
+| S5_drift | `r4:decay=400` | 0.32 | [0.22, 0.43] | no |
+
+### Reading the drift study (ROADMAP D6)
+
+Letting old labels fade does not make either model recover faster after the
+taste changes: no difference in recovery time is detectable at either
+half-life. For R3, a slow fade (half-life 400 labels) raises the like rate by
++0.020 [+0.003, +0.038]; a fast one (150) does nothing. For R4 both cost like
+rate (−0.035 and −0.015), because fading shrinks the effective label count and
+widens the posterior, so R4 explores more (coverage 0.82 to 0.91). The option
+stays off: the one gain is small, on R3 only, and in the one scenario built
+for it. H4's finding stands: under drift, R3+R5's interest features (+0.021)
+help about as much as the best fade.
