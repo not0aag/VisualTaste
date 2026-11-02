@@ -200,3 +200,70 @@ Numeric drift, from `phase15_tuning` (20 paired seeds, EVALUATION.md): no
 detectable change for R3 (like rate -0.005 [-0.018, +0.008]); -0.011
 [-0.020, -0.003] for R4. So the option is for quick exploratory studies;
 results meant to be compared with the cached ones keep the default.
+
+## `/feed/next` latency (2026-11-02 03:55 UTC)
+
+```
+python -m visualtaste.jobs.latency --rungs r0,r1,r3,r4,r4+r5 --labels 0,100,1000,3000 --requests 200
+```
+
+200 requests per row through `TestClient`, end to end, after one warm-up request. Machine: AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD, Python 3.12.16. "served" is the rung that actually served the batches (below its label minimum a rung falls back to R0). Budget: p95 < 50 ms.
+
+| rung | labels | served | p50 ms | p95 ms | max ms | after response, p50 ms | within budget |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 0 | `r0` | 34.4 | 42.8 | 66.9 | 0 | yes |
+| `r0` | 100 | `r0` | 35.8 | 46.2 | 120.5 | 0 | yes |
+| `r0` | 1,000 | `r0` | 38.5 | 48.5 | 115.3 | 0 | yes |
+| `r0` | 3,000 | `r0` | 48.6 | 60.0 | 90.5 | 0 | **no** |
+| `r1` | 0 | `r0` | 35.3 | 43.3 | 108.3 | 0 | yes |
+| `r1` | 100 | `r1` | 29.6 | 32.1 | 128.2 | 0 | yes |
+| `r1` | 1,000 | `r1` | 33.3 | 36.7 | 115.5 | 0 | yes |
+| `r1` | 3,000 | `r1` | 41.3 | 46.4 | 131.4 | 0 | yes |
+| `r3` | 0 | `r0` | 33.2 | 43.6 | 74.8 | 0 | yes |
+| `r3` | 100 | `r3` | 24.1 | 27.5 | 71.5 | 0 | yes |
+| `r3` | 1,000 | `r3` | 31.6 | 36.3 | 115.9 | 0 | yes |
+| `r3` | 3,000 | `r3` | 41.6 | 49.2 | 103.2 | 0 | yes |
+| `r4` | 0 | `r0` | 36.7 | 48.1 | 87.7 | 0 | yes |
+| `r4` | 100 | `r4` | 44.0 | 52.3 | 62.6 | 685 | **no** |
+| `r4` | 1,000 | `r4` | 50.4 | 62.4 | 77.8 | 639 | **no** |
+| `r4` | 3,000 | `r4` | 56.7 | 71.3 | 88.4 | 567 | **no** |
+| `r4+r5` | 0 | `r0` | 34.7 | 42.6 | 163.3 | 0 | yes |
+| `r4+r5` | 100 | `r4+r5` | 44.3 | 54.8 | 146.8 | 713 | **no** |
+| `r4+r5` | 1,000 | `r4+r5` | 51.4 | 64.5 | 772.2 | 671 | **no** |
+| `r4+r5` | 3,000 | `r4+r5` | 57.0 | 72.4 | 83.7 | 603 | **no** |
+
+### Reading it (2026-11-02)
+
+R4's "after response" column is its propensity estimate (200 replayed
+posterior draws, 0.6-0.7 s). Production runs it after the reply is sent;
+earlier runs of this benchmark counted it as request time, which is why R4
+once read as 1 s. That was a measuring bug, fixed in `jobs/latency.py`.
+
+What is left: R4 and R4+R5 miss the 50 ms p95 budget by 3-16 ms, and every
+rung slows as labels pile up (R0 too, at 60 ms with 3,000 labels). A profile
+of one R4 request at 3,000 labels:
+
+- the recommender's own work (sampling, MMR, exploration) is 10-25 ms;
+- "nearest liked images" in the explanation cost 7.5 ms per batch, gathering
+  the same vectors five times. Now gathered once per fit: p95 at 3,000
+  labels went from 71.3 to 64.8 ms (R4) and 72.4 to 66.4 ms (R4+R5);
+- candidate gathering (excluding seen images) is about 10 ms and grows with
+  labels, which is what slows R0;
+- the rest is the request itself: database connection, impression writes,
+  JSON, and `TestClient`'s thread hand-off, which a real server does not pay.
+
+Re-measured after the nearest-liked change (200 requests per row):
+
+| rung | labels | p50 ms | p95 ms | within budget |
+| --- | --- | --- | --- | --- |
+| `r0` | 1,000 | 37.5 | 46.5 | yes |
+| `r0` | 3,000 | 43.5 | 56.5 | no |
+| `r4` | 1,000 | 46.2 | 53.4 | no |
+| `r4` | 3,000 | 53.2 | 64.8 | no |
+| `r4+r5` | 1,000 | 47.4 | 61.1 | no |
+| `r4+r5` | 3,000 | 52.4 | 66.4 | no |
+
+The next step is the candidate set (keep a seen-mask per profile instead of
+re-reading every seen id), since it is shared by every rung. A person
+swiping does not notice a 15 ms overshoot, but the budget is the stated
+target and is reported as missed.

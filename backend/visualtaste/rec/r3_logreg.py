@@ -595,19 +595,28 @@ class LogisticRecommender(Recommender):
         the decision to a person. Searched over the most recent likes only, so
         the cost stays flat however many labels there are.
         """
-        recent = [
-            (image_id, position)
-            for image_id in self._liked_ids[-NEAREST_LIKED_POOL:]
-            if (position := features.position(image_id)) is not None and position != image_index
-        ]
-        if not recent:
+        # The recent likes and their vectors change only on a refit, but a
+        # batch asks five times: gather them once per (fit, bundle).
+        key = (id(features), id(self._liked_ids), len(self._liked_ids))
+        cached = self.__dict__.get("_nearest_cache")
+        if cached is None or cached[0] != key:
+            recent = [
+                (image_id, position)
+                for image_id in self._liked_ids[-NEAREST_LIKED_POOL:]
+                if (position := features.position(image_id)) is not None
+            ]
+            positions = np.array([position for _, position in recent], dtype=np.int64)
+            vectors = features.siglip[positions] if recent else None
+            cached = (key, recent, positions, vectors)
+            self._nearest_cache = cached
+        _, recent, positions, vectors = cached
+        keep = positions != image_index
+        if not keep.any():
             return []
-        rows = np.array([position for _, position in recent])
-        similarity = features.siglip[rows] @ features.siglip[image_index]
+        ids = [image_id for (image_id, _), k in zip(recent, keep, strict=True) if k]
+        similarity = (vectors @ features.siglip[image_index])[keep]
         best = np.argsort(-similarity)[:NEAREST_LIKED]
-        return [
-            {"image_id": recent[i][0], "similarity": round(float(similarity[i]), 3)} for i in best
-        ]
+        return [{"image_id": ids[i], "similarity": round(float(similarity[i]), 3)} for i in best]
 
     # --- Reporting and persistence -------------------------------------------
 
