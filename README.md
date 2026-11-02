@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/stats.svg" alt="50,000 images served · 7 recommenders · 1.58 million simulated swipes · 39 ms feed latency at p95 · 1,000+ automated tests" width="100%">
+  <img src="docs/images/stats.svg" alt="50,000 images served · 7 recommenders · 1.58 million simulated swipes · 66 ms feed latency at p95 for the default model · 1,000+ automated tests" width="100%">
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@
 > | **Learning** | logistic regression lifts the like rate from **0.47 to 0.64–0.71** within 1,000 swipes |
 > | **Neural ranker** | did **not** beat the linear model at up to 4,900 labels; reported as a negative result |
 > | **Describe your taste** | typing a few words raises the cold-start like rate by **+0.05**, with no interest lost at the chosen 20% share |
-> | **Speed** | feed p95 **39 ms**; every speed-up verified **bit-identical** against a golden set |
+> | **Speed** | feed p95 **28–66 ms** across models and up to 3,000 labels (the default misses its 50 ms target by up to 16 ms, [measured and profiled](docs/BENCHMARKS.md)); every speed-up verified **bit-identical** against a golden set |
 >
 > The full story, including what failed: [**docs/WRITEUP.md**](docs/WRITEUP.md)
 
@@ -173,7 +173,7 @@ flowchart LR
 2. **Clean.** Each image is fully decoded and checked (minimum size, aspect ratio, EXIF rotation, animated frames), then de-duplicated by perceptual hash and again by embedding similarity. A zero-shot safety screen, calibrated on 200 hand-checked images, quarantines borderline images for review.
 3. **Embed.** Both encoders run on the GPU into float16 shards, then merge into unit-norm float32 matrices. Every job is incremental and survives being killed.
 4. **Select.** k-means over 400 clusters caps any one look at 187 images, giving a balanced pool of 50,000 across 398 clusters.
-5. **Serve.** Each request scores the whole pool in one matrix product, reranks for diversity and exploration, records impressions with their propensities, and returns five cards with explanations, in **39 ms at p95**.
+5. **Serve.** Each request scores the whole pool in one matrix product, reranks for diversity and exploration, records impressions with their propensities, and returns five cards with explanations, in **28–66 ms at p95** depending on the model and how many labels it has ([BENCHMARKS.md](docs/BENCHMARKS.md)).
 6. **Learn.** Every 20 labels a background task retrains, validates and atomically swaps the serving model.
 
 The full component diagram, the request path and the table-writer map are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).

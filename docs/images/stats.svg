@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 150" width="1280" height="150" role="img" aria-label="50,000 images; 7 recommenders; 1.58 million simulated swipes; 39 ms p95 feed latency; about 1,000 tests">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 150" width="1280" height="150" role="img" aria-label="50,000 images; 7 recommenders; 1.58 million simulated swipes; 66 ms feed latency at p95 for the default model; about 1,000 tests">
   <defs>
     <pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse">
       <path d="M40 0H0V40" fill="none" stroke="#94a3b8" stroke-opacity="0.06"/>
@@ -28,8 +28,8 @@
       <text y="112" font-family="Consolas, Menlo, monospace" font-size="13" letter-spacing="3" fill="#7b8ca5">SIMULATED SWIPES</text>
     </g>
     <g transform="translate(896 0)">
-      <text y="80" font-size="46" font-weight="700" fill="#a594f9">39<tspan font-size="26" dx="4">ms</tspan></text>
-      <text y="112" font-family="Consolas, Menlo, monospace" font-size="13" letter-spacing="3" fill="#7b8ca5">FEED LATENCY · P95</text>
+      <text y="80" font-size="46" font-weight="700" fill="#a594f9">66<tspan font-size="26" dx="4">ms</tspan></text>
+      <text y="112" font-family="Consolas, Menlo, monospace" font-size="13" letter-spacing="3" fill="#7b8ca5">FEED P95 · DEFAULT</text>
     </g>
     <g transform="translate(1152 0)">
       <text y="80" font-size="46" font-weight="700" fill="#ffffff">1,000+</text>
