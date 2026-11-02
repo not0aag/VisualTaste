@@ -22,6 +22,10 @@
   explains every pick, and measures itself honestly. Nothing leaves your machine.
 </p>
 
+<p align="center">
+  <a href="https://not0aag.github.io/VisualTaste/"><b>Try the live demo</b></a>: a recorded session replayed in your browser, no install
+</p>
+
 > [!TIP]
 > **The findings at a glance** (simulated users, 20 paired seeds per comparison, every number reproducible from one command):
 >
