@@ -1160,3 +1160,162 @@ python -m visualtaste.jobs.evaluate --study phase15_text --seeds 20 --swipes 100
 | S6_six_interests | `r0:describe=1,share=0.4` vs `r0` | interests_found | -1.3000 | [-1.7000, -0.9000] | 1-17 (p = 0.000145) | 1729, 1730, 1732, 1733, 1734, 1735, 1736, 1738, 1739, 1740, 1741, 1742, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
 | S6_six_interests | `r0:describe=1,share=0.2` vs `r0` | like_rate | +0.0255 | [+0.0150, +0.0360] | 13-4 (p = 0.049) | 1732, 1742, 1743, 1746 | 20 | **supported** |
 | S6_six_interests | `r0:describe=1,share=0.2` vs `r0` | interests_found | -0.9000 | [-1.3500, -0.4500] | 2-11 (p = 0.0225) | 1729, 1730, 1732, 1734, 1735, 1736, 1737, 1738, 1745, 1746, 1747 | 20 | **not supported** |
+
+---
+
+## Phase 15: closing R4's like-rate gap (S1, S6) (2026-11-01 23:39 UTC)
+
+```
+python -m visualtaste.jobs.evaluate --study phase15_explore --seeds 20 --swipes 1000
+```
+
+**SIMULATED.** Variants and their calibration: `backend/visualtaste/eval/sim.py`. Every number is mean ± sd across seeds; comparisons are paired by seed (Part 2 §4.1). An interest counts as found at 5 likes.
+
+### S1_semantic
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.467 ± 0.014 | 3.00 ± 0.00 | 1.00 ± 0.00 | 62 ± 22 | -- | -- | 1.00 ± 0.00 | 0.484 ± 0.004 | 0.261 ± 0.002 | -- | 0.655 ± 0.021 | -- | -- |
+| `r3` | 20 | 0.637 ± 0.046 | 2.85 ± 0.36 | 0.85 ± 0.36 | 265 ± 331 | -- | -- | 0.33 ± 0.12 | 0.291 ± 0.032 | 0.155 ± 0.023 | 0.513 ± 0.017 | 0.649 ± 0.025 | 0.643 ± 0.033 | 0.054 ± 0.023 |
+| `r4` | 20 | 0.535 ± 0.036 | 3.00 ± 0.00 | 1.00 ± 0.00 | 65 ± 28 | -- | -- | 0.80 ± 0.08 | 0.529 ± 0.018 | 0.233 ± 0.018 | 0.607 ± 0.027 | 0.713 ± 0.024 | 0.675 ± 0.021 | 0.035 ± 0.014 |
+| `r4:tau=0.05` | 20 | 0.554 ± 0.045 | 3.00 ± 0.00 | 1.00 ± 0.00 | 70 ± 32 | -- | -- | 0.71 ± 0.10 | 0.516 ± 0.020 | 0.221 ± 0.015 | 0.595 ± 0.030 | 0.705 ± 0.026 | 0.665 ± 0.019 | 0.033 ± 0.012 |
+| `r4:tau_halflife=200` | 20 | 0.565 ± 0.029 | 3.00 ± 0.00 | 1.00 ± 0.00 | 68 ± 31 | -- | -- | 0.67 ± 0.08 | 0.513 ± 0.023 | 0.217 ± 0.014 | 0.586 ± 0.024 | 0.709 ± 0.018 | 0.665 ± 0.017 | 0.029 ± 0.012 |
+| `r4:mmr_top=50` | 20 | 0.554 ± 0.038 | 3.00 ± 0.00 | 1.00 ± 0.00 | 73 ± 43 | -- | -- | 0.74 ± 0.10 | 0.476 ± 0.034 | 0.224 ± 0.020 | 0.583 ± 0.029 | 0.698 ± 0.028 | 0.672 ± 0.027 | 0.038 ± 0.011 |
+| `r4:mmr=0.9` | 20 | 0.567 ± 0.048 | 3.00 ± 0.00 | 1.00 ± 0.00 | 68 ± 33 | -- | -- | 0.65 ± 0.14 | 0.440 ± 0.039 | 0.213 ± 0.021 | 0.566 ± 0.025 | 0.694 ± 0.022 | 0.663 ± 0.026 | 0.037 ± 0.015 |
+| `r4:tau_halflife=200,mmr_top=50,mmr=0.9` | 20 | 0.586 ± 0.039 | 3.00 ± 0.00 | 1.00 ± 0.00 | 74 ± 42 | -- | -- | 0.55 ± 0.14 | 0.418 ± 0.035 | 0.200 ± 0.017 | 0.556 ± 0.026 | 0.690 ± 0.033 | 0.662 ± 0.023 | 0.039 ± 0.015 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 33 | 0 of 60 |
+| `r3` | 31 | 3 of 60 |
+| `r4` | 33 | 0 of 60 |
+| `r4:tau=0.05` | 33 | 0 of 60 |
+| `r4:tau_halflife=200` | 33 | 0 of 60 |
+| `r4:mmr_top=50` | 33 | 0 of 60 |
+| `r4:mmr=0.9` | 33 | 0 of 60 |
+| `r4:tau_halflife=200,mmr_top=50,mmr=0.9` | 33 | 0 of 60 |
+
+### S6_six_interests
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.463 ± 0.012 | 6.00 ± 0.00 | 1.00 ± 0.00 | 130 ± 34 | -- | -- | 1.00 ± 0.00 | 0.484 ± 0.004 | 0.261 ± 0.002 | -- | 0.649 ± 0.021 | -- | -- |
+| `r3` | 20 | 0.603 ± 0.037 | 4.75 ± 0.77 | 0.15 ± 0.36 | 910 ± 219 | -- | -- | 0.38 ± 0.11 | 0.295 ± 0.026 | 0.156 ± 0.020 | 0.501 ± 0.025 | 0.645 ± 0.024 | 0.671 ± 0.022 | 0.054 ± 0.017 |
+| `r4` | 20 | 0.521 ± 0.026 | 6.00 ± 0.00 | 1.00 ± 0.00 | 189 ± 85 | -- | -- | 0.81 ± 0.06 | 0.533 ± 0.011 | 0.232 ± 0.011 | 0.588 ± 0.023 | 0.699 ± 0.017 | 0.684 ± 0.016 | 0.033 ± 0.011 |
+| `r4:tau=0.05` | 20 | 0.535 ± 0.021 | 5.95 ± 0.22 | 0.95 ± 0.22 | 234 ± 184 | -- | -- | 0.76 ± 0.06 | 0.518 ± 0.018 | 0.216 ± 0.011 | 0.595 ± 0.021 | 0.696 ± 0.022 | 0.679 ± 0.014 | 0.034 ± 0.010 |
+| `r4:tau_halflife=200` | 20 | 0.537 ± 0.035 | 5.95 ± 0.22 | 0.95 ± 0.22 | 239 ± 222 | -- | -- | 0.70 ± 0.09 | 0.519 ± 0.022 | 0.216 ± 0.016 | 0.577 ± 0.031 | 0.691 ± 0.020 | 0.680 ± 0.019 | 0.037 ± 0.012 |
+| `r4:mmr_top=50` | 20 | 0.540 ± 0.030 | 6.00 ± 0.00 | 1.00 ± 0.00 | 191 ± 71 | -- | -- | 0.71 ± 0.09 | 0.468 ± 0.036 | 0.216 ± 0.017 | 0.582 ± 0.024 | 0.687 ± 0.026 | 0.678 ± 0.014 | 0.035 ± 0.011 |
+| `r4:mmr=0.9` | 20 | 0.548 ± 0.034 | 6.00 ± 0.00 | 1.00 ± 0.00 | 218 ± 133 | -- | -- | 0.71 ± 0.12 | 0.443 ± 0.032 | 0.213 ± 0.017 | 0.568 ± 0.026 | 0.686 ± 0.027 | 0.678 ± 0.018 | 0.036 ± 0.012 |
+| `r4:tau_halflife=200,mmr_top=50,mmr=0.9` | 20 | 0.575 ± 0.023 | 6.00 ± 0.00 | 1.00 ± 0.00 | 222 ± 98 | -- | -- | 0.53 ± 0.12 | 0.404 ± 0.029 | 0.194 ± 0.013 | 0.557 ± 0.030 | 0.676 ± 0.021 | 0.672 ± 0.019 | 0.045 ± 0.015 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 66 | 0 of 120 |
+| `r3` | 57 | 25 of 120 |
+| `r4` | 71 | 0 of 120 |
+| `r4:tau=0.05` | 68 | 1 of 120 |
+| `r4:tau_halflife=200` | 67 | 1 of 120 |
+| `r4:mmr_top=50` | 67 | 0 of 120 |
+| `r4:mmr=0.9` | 73 | 0 of 120 |
+| `r4:tau_halflife=200,mmr_top=50,mmr=0.9` | 70 | 0 of 120 |
+
+### Comparisons
+
+| variant | comparison | metric | mean diff | 90% CI | sign test (W-L) | losing seeds | seeds | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| S1_semantic | `r4:tau=0.05` vs `r4` | like_rate | +0.0195 | [+0.0086, +0.0298] | 15-5 (p = 0.0414) | 1732, 1742, 1743, 1746, 1747 | 20 | **supported** |
+| S1_semantic | `r4:tau=0.05` vs `r4` | all_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S1_semantic | `r4:tau_halflife=200` vs `r4` | like_rate | +0.0303 | [+0.0216, +0.0392] | 17-3 (p = 0.00258) | 1738, 1741, 1747 | 20 | **supported** |
+| S1_semantic | `r4:tau_halflife=200` vs `r4` | all_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S1_semantic | `r4:mmr_top=50` vs `r4` | like_rate | +0.0195 | [+0.0075, +0.0307] | 17-3 (p = 0.00258) | 1730, 1740, 1746 | 20 | **supported** |
+| S1_semantic | `r4:mmr_top=50` vs `r4` | all_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S1_semantic | `r4:mmr=0.9` vs `r4` | like_rate | +0.0321 | [+0.0193, +0.0452] | 15-5 (p = 0.0414) | 1732, 1733, 1738, 1739, 1740 | 20 | **supported** |
+| S1_semantic | `r4:mmr=0.9` vs `r4` | all_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S1_semantic | `r4:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4` | like_rate | +0.0513 | [+0.0422, +0.0603] | 19-1 (p = 4.01e-05) | 1739 | 20 | **supported** |
+| S1_semantic | `r4:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4` | all_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S6_six_interests | `r4:tau=0.05` vs `r4` | like_rate | +0.0143 | [+0.0059, +0.0229] | 15-5 (p = 0.0414) | 1730, 1734, 1739, 1741, 1748 | 20 | **supported** |
+| S6_six_interests | `r4:tau=0.05` vs `r4` | all_found | -0.0500 | [-0.1500, +0.0000] | 0-1 (p = 1) | 1742 | 20 | **inconclusive** |
+| S6_six_interests | `r4:tau_halflife=200` vs `r4` | like_rate | +0.0156 | [+0.0043, +0.0271] | 12-8 (p = 0.503) | 1733, 1734, 1738, 1739, 1740, 1742, 1745, 1747 | 20 | **supported** |
+| S6_six_interests | `r4:tau_halflife=200` vs `r4` | all_found | -0.0500 | [-0.1500, +0.0000] | 0-1 (p = 1) | 1743 | 20 | **inconclusive** |
+| S6_six_interests | `r4:mmr_top=50` vs `r4` | like_rate | +0.0188 | [+0.0055, +0.0328] | 15-5 (p = 0.0414) | 1734, 1737, 1738, 1739, 1741 | 20 | **supported** |
+| S6_six_interests | `r4:mmr_top=50` vs `r4` | all_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S6_six_interests | `r4:mmr=0.9` vs `r4` | like_rate | +0.0270 | [+0.0136, +0.0402] | 14-6 (p = 0.115) | 1729, 1730, 1731, 1733, 1734, 1737 | 20 | **supported** |
+| S6_six_interests | `r4:mmr=0.9` vs `r4` | all_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S6_six_interests | `r4:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4` | like_rate | +0.0541 | [+0.0437, +0.0648] | 20-0 (p = 1.91e-06) | none | 20 | **supported** |
+| S6_six_interests | `r4:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4` | all_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+
+**Like-rate gain kept** (H3 needs R4 to keep >= 70% of R3's gain over R0): (R4 - R0) / (R3 - R0), paired bootstrap 90% CI over seeds.
+
+| variant | spec | gain kept | 90% CI | meets 70%? |
+| --- | --- | --- | --- | --- |
+| S1_semantic | `r4` | 0.40 | [0.32, 0.48] | no |
+| S1_semantic | `r4:tau=0.05` | 0.52 | [0.43, 0.60] | no |
+| S1_semantic | `r4:tau_halflife=200` | 0.58 | [0.51, 0.65] | no |
+| S1_semantic | `r4:mmr_top=50` | 0.52 | [0.44, 0.59] | no |
+| S1_semantic | `r4:mmr=0.9` | 0.59 | [0.50, 0.68] | no |
+| S1_semantic | `r4:tau_halflife=200,mmr_top=50,mmr=0.9` | 0.70 | [0.61, 0.79] | inconclusive |
+| S6_six_interests | `r4` | 0.41 | [0.35, 0.48] | no |
+| S6_six_interests | `r4:tau=0.05` | 0.52 | [0.46, 0.58] | no |
+| S6_six_interests | `r4:tau_halflife=200` | 0.53 | [0.43, 0.63] | no |
+| S6_six_interests | `r4:mmr_top=50` | 0.55 | [0.46, 0.64] | no |
+| S6_six_interests | `r4:mmr=0.9` | 0.61 | [0.50, 0.72] | inconclusive |
+| S6_six_interests | `r4:tau_halflife=200,mmr_top=50,mmr=0.9` | 0.80 | [0.72, 0.90] | yes |
+
+---
+
+### Reading the exploration study (ROADMAP D1)
+
+Each of the four settings alone raises R4's like rate (+0.014 to +0.032) and
+none costs a found interest. Together (`tau_halflife=200,mmr_top=50,mmr=0.9`)
+they raise it by +0.051 on S1 and +0.054 on S6, keep 0.70 [0.61, 0.79] and
+0.80 [0.72, 0.90] of R3's gain, and still find every interest in every seed.
+That meets ROADMAP D1's bar (at least 70% of the gain, all interests in at
+least 80% of seeds) on S6 and reaches it at the point estimate on S1. The
+cost is coverage (0.80 to 0.55 on S1) and batch diversity (0.53 to 0.42).
+The combination has not been tested on R4+R5 or on S2–S5, so the default is
+unchanged; it is the first candidate for the next default study.
+
+---
+
+## Phase 15: tuning lambda on every third fit (S1) (2026-11-02 00:26 UTC)
+
+```
+python -m visualtaste.jobs.evaluate --study phase15_tuning --seeds 20 --swipes 1000
+```
+
+**SIMULATED.** Variants and their calibration: `backend/visualtaste/eval/sim.py`. Every number is mean ± sd across seeds; comparisons are paired by seed (Part 2 §4.1). An interest counts as found at 5 likes.
+
+### S1_semantic
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r3` | 20 | 0.637 ± 0.046 | 2.85 ± 0.36 | 0.85 ± 0.36 | 265 ± 331 | -- | -- | 0.33 ± 0.12 | 0.291 ± 0.032 | 0.155 ± 0.023 | 0.513 ± 0.017 | 0.649 ± 0.025 | 0.643 ± 0.033 | 0.054 ± 0.023 |
+| `r3:tune_every=3` | 20 | 0.631 ± 0.052 | 2.80 ± 0.40 | 0.80 ± 0.40 | 308 ± 372 | -- | -- | 0.33 ± 0.16 | 0.299 ± 0.031 | 0.159 ± 0.021 | 0.510 ± 0.023 | 0.645 ± 0.031 | 0.650 ± 0.038 | 0.056 ± 0.023 |
+| `r4` | 20 | 0.535 ± 0.036 | 3.00 ± 0.00 | 1.00 ± 0.00 | 65 ± 28 | -- | -- | 0.80 ± 0.08 | 0.529 ± 0.018 | 0.233 ± 0.018 | 0.607 ± 0.027 | 0.713 ± 0.024 | 0.675 ± 0.021 | 0.035 ± 0.014 |
+| `r4:tune_every=3` | 20 | 0.524 ± 0.033 | 3.00 ± 0.00 | 1.00 ± 0.00 | 65 ± 29 | -- | -- | 0.81 ± 0.08 | 0.531 ± 0.012 | 0.236 ± 0.013 | 0.598 ± 0.022 | 0.701 ± 0.018 | 0.679 ± 0.013 | 0.035 ± 0.012 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r3` | 31 | 3 of 60 |
+| `r3:tune_every=3` | 30 | 4 of 60 |
+| `r4` | 33 | 0 of 60 |
+| `r4:tune_every=3` | 33 | 0 of 60 |
+
+### Comparisons
+
+| variant | comparison | metric | mean diff | 90% CI | sign test (W-L) | losing seeds | seeds | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| S1_semantic | `r3:tune_every=3` vs `r3` | like_rate | -0.0054 | [-0.0182, +0.0075] | 8-11 (p = 0.648) | 1730, 1731, 1732, 1733, 1735, 1737, 1738, 1739, 1742, 1743, 1747 | 20 | **inconclusive** |
+| S1_semantic | `r3:tune_every=3` vs `r3` | interests_found | -0.0500 | [-0.2000, +0.1000] | 1-2 (p = 1) | 1736, 1743 | 20 | **inconclusive** |
+| S1_semantic | `r3:tune_every=3` vs `r3` | replay_auc | -0.0029 | [-0.0114, +0.0055] | 9-11 (p = 0.824) | 1729, 1730, 1733, 1734, 1735, 1737, 1740, 1741, 1742, 1745, 1747 | 20 | **inconclusive** |
+| S1_semantic | `r4:tune_every=3` vs `r4` | like_rate | -0.0113 | [-0.0200, -0.0029] | 5-15 (p = 0.0414) | 1729, 1730, 1732, 1733, 1734, 1736, 1737, 1738, 1740, 1742, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S1_semantic | `r4:tune_every=3` vs `r4` | interests_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S1_semantic | `r4:tune_every=3` vs `r4` | replay_auc | -0.0093 | [-0.0217, +0.0016] | 9-11 (p = 0.824) | 1729, 1730, 1732, 1734, 1735, 1737, 1739, 1740, 1741, 1747, 1748 | 20 | **inconclusive** |
+
+### Reading the tuning study (ROADMAP E1)
+
+Re-tuning lambda on every third fit instead of every fit makes no detectable
+difference to R3 (like rate −0.005 [−0.018, +0.008]). For R4 it costs a
+small but consistent −0.011 [−0.020, −0.003] of like rate. The option stays
+opt-in and off: it is useful for quick exploratory studies, not for results
+that will be compared with existing ones (BENCHMARKS.md).

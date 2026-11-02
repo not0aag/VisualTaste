@@ -185,3 +185,18 @@ that runs one API process, the saving is about 300 MB of RAM and only while a
 study runs alongside. That does not pay for a second source of truth. Each
 study process holds 330–460 MB in total (measured with three studies running),
 which 16 GB of RAM covers.
+
+## Re-tuning lambda less often (ROADMAP E1)
+
+**Date:** 2026-11-01. **Option:** `r3:tune_every=3` (also `r4:`), off by default.
+
+R3 picks its regularisation strength on time-ordered splits at every refit
+(every 20 labels), and that search dominates a simulated session's cost.
+Re-tuning on every third refit, and reusing the last choice in between, made
+one S1 seed of 1,000 swipes about 2.2x faster (one seed, measured while other
+studies ran, so indicative only).
+
+Numeric drift, from `phase15_tuning` (20 paired seeds, EVALUATION.md): no
+detectable change for R3 (like rate -0.005 [-0.018, +0.008]); -0.011
+[-0.020, -0.003] for R4. So the option is for quick exploratory studies;
+results meant to be compared with the cached ones keep the default.
