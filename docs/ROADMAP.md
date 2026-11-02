@@ -605,4 +605,4 @@ VisualTaste is finished when:
 | D4 describe your taste, D5 doubly robust OPE, E1, E2, E4, F1–F9, G1–G3, H2, H4, H6, H7, I1–I4 | done (E4 and F8 decided against, with reasons) |
 | Try it without a GPU (demo pack, live demo) | built; waiting on the owner to publish the releases and enable Pages |
 | A3 latency with an idle CPU, A6 fresh-clone check, H5 video | after the studies finish |
-| G4 new image source | future work: no clearly licensed art source found |
+| G4 new image source | future work, not attempted |
