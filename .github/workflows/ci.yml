@@ -52,7 +52,7 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
       - uses: actions/setup-node@v5
@@ -80,7 +80,7 @@ jobs:
           uv pip install torch torchvision --index-url "$TORCH_INDEX"
           uv pip install $PY_DEPS
           uv pip install -e . --no-deps
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
       - uses: actions/setup-node@v5
@@ -114,7 +114,7 @@ jobs:
         # cannot resolve, so a failure here is shown as a warning, not hidden.
         continue-on-error: true
         run: uvx pip-audit --requirement requirements.lock --progress-spinner off --disable-pip --no-deps
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
       - name: pnpm audit (production dependencies)

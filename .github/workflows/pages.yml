@@ -35,7 +35,7 @@ jobs:
           gh release download demo-assets --pattern demo-assets.tar.gz --dir /tmp
           mkdir -p frontend/public/demo
           tar -xzf /tmp/demo-assets.tar.gz -C frontend/public/demo
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
       - uses: actions/setup-node@v5
