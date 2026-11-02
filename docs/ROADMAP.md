@@ -592,3 +592,17 @@ VisualTaste is finished when:
 - the default rung is chosen by the final study and documented;
 - the known trade-off is either closed (D1) or mapped as a Pareto front and
   stated as a limitation.
+
+## Status (2026-11-02)
+
+| Item | State |
+| --- | --- |
+| H1–H5 verdicts recorded; README and EVALUATION.md agree | done |
+| Green CI on `main` | done |
+| Default rung chosen by the final study (R4+R5, DECISIONS #29) | done |
+| D1 trade-off | mostly closed on R4: 0.70 (S1) and 0.80 (S6) of R3's gain with every interest found; not yet tested on R4+R5 or S2–S5 |
+| D2 hybrid, D3 interest allocation, D6 label decay | studies running; results append to EVALUATION.md when they finish |
+| D4 describe your taste, D5 doubly robust OPE, E1, E2, E4, F1–F9, G1–G3, H2, H4, H6, H7, I1–I4 | done (E4 and F8 decided against, with reasons) |
+| Try it without a GPU (demo pack, live demo) | built; waiting on the owner to publish the releases and enable Pages |
+| A3 latency with an idle CPU, A6 fresh-clone check, H5 video | after the studies finish |
+| G4 new image source | future work: no clearly licensed art source found |
