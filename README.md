@@ -27,11 +27,11 @@
 >
 > | | |
 > | --- | --- |
-> | 🎯 **Default recommender** | R4+R5 (Thompson sampling + interest tracking) finds **every** planted interest in **100% of seeds** across all six scenarios; the best pure-accuracy model (R3) manages 15% when there are six interests |
-> | 📈 **Learning** | logistic regression lifts the like rate from **0.47 to 0.64–0.71** within 1,000 swipes |
-> | 🧠 **Neural ranker** | did **not** beat the linear model at up to 4,900 labels; reported as a negative result |
-> | 💬 **Describe your taste** | typing a few words raises the cold-start like rate by **+0.05**, with no interest lost at the chosen 20% share |
-> | ⚡ **Speed** | feed p95 **39 ms**; every speed-up verified **bit-identical** against a golden set |
+> | **Default recommender** | R4+R5 (Thompson sampling + interest tracking) finds **every** planted interest in **100% of seeds** across all six scenarios; the best pure-accuracy model (R3) manages 15% when there are six interests |
+> | **Learning** | logistic regression lifts the like rate from **0.47 to 0.64–0.71** within 1,000 swipes |
+> | **Neural ranker** | did **not** beat the linear model at up to 4,900 labels; reported as a negative result |
+> | **Describe your taste** | typing a few words raises the cold-start like rate by **+0.05**, with no interest lost at the chosen 20% share |
+> | **Speed** | feed p95 **39 ms**; every speed-up verified **bit-identical** against a golden set |
 >
 > The full story, including what failed: [**docs/WRITEUP.md**](docs/WRITEUP.md)
 
@@ -211,11 +211,11 @@ Every comparison is **paired** (the same simulated user meets every model), run 
 
 | | Hypothesis | Result |
 | --- | --- | --- |
-| **H1** | Rocchio and kNN beat cold start | ✅ **Supported.** +0.138 and +0.161 like rate. Both find only 2 of 3 planted interests, though. |
-| **H2** | Logistic regression beats kNN after about 150 labels | ❌ **Not supported for ranking.** R3 is better calibrated (lower log loss at every cut from 400 labels), but kNN ranks better (higher AUC at every cut from 150). |
-| **H3** | Thompson sampling finds all interests faster than R3 | ⚖️ **Supported for discovery, at a price.** With six interests, the share of seeds where R4 finds all six rises by 85 points, it finds them about 770 swipes sooner, and it covers 58 points more of the collection. But it gives up 0.19 of like rate, failing the pre-registered bar of keeping 70% of R3's gain. |
-| **H4** | Interest features (R5) improve the classifier | ➖ **Only when taste drifts.** R3+R5 beats R3 by +0.021 like rate when the planted taste changes mid-session (S5); in the five other scenarios, and on top of R4, no difference. Named interests mainly help explain the model. |
-| **H5** | The neural ranker wins only once labels are plentiful | ❌ **Not supported.** Up to 4,900 labels, R6 never ranked better than R3+R5 (it was worse at 3,000 labels in both scenarios tested), and won on log loss only once. At this scale a neural ranker did not earn its cost. |
+| **H1** | Rocchio and kNN beat cold start | **Supported.** +0.138 and +0.161 like rate. Both find only 2 of 3 planted interests, though. |
+| **H2** | Logistic regression beats kNN after about 150 labels | **Not supported for ranking.** R3 is better calibrated (lower log loss at every cut from 400 labels), but kNN ranks better (higher AUC at every cut from 150). |
+| **H3** | Thompson sampling finds all interests faster than R3 | **Supported for discovery, at a price.** With six interests, the share of seeds where R4 finds all six rises by 85 points, it finds them about 770 swipes sooner, and it covers 58 points more of the collection. But it gives up 0.19 of like rate, failing the pre-registered bar of keeping 70% of R3's gain. |
+| **H4** | Interest features (R5) improve the classifier | **Only when taste drifts.** R3+R5 beats R3 by +0.021 like rate when the planted taste changes mid-session (S5); in the five other scenarios, and on top of R4, no difference. Named interests mainly help explain the model. |
+| **H5** | The neural ranker wins only once labels are plentiful | **Not supported.** Up to 4,900 labels, R6 never ranked better than R3+R5 (it was worse at 3,000 labels in both scenarios tested), and won on log loss only once. At this scale a neural ranker did not earn its cost. |
 
 ### What the simulator shows
 
