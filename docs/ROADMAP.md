@@ -603,6 +603,6 @@ VisualTaste is finished when:
 | D1 trade-off | mostly closed on R4: 0.70 (S1) and 0.80 (S6) of R3's gain with every interest found; not yet tested on R4+R5 or S2–S5 |
 | D2 hybrid, D3 interest allocation, D6 label decay | studies running; results append to EVALUATION.md when they finish |
 | D4 describe your taste, D5 doubly robust OPE, E1, E2, E4, F1–F9, G1–G3, H2, H4, H6, H7, I1–I4 | done (E4 and F8 decided against, with reasons) |
-| Try it without a GPU (demo pack, live demo) | built; waiting on the owner to publish the releases and enable Pages |
+| Try it without a GPU (demo pack, live demo) | live demo done: https://not0aag.github.io/VisualTaste/ (rebuilds on frontend changes); demo-pack release after its rebuild |
 | A3 latency with an idle CPU, A6 fresh-clone check, H5 video | after the studies finish |
 | G4 new image source | future work, not attempted |
