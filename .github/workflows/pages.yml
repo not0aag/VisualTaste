@@ -4,9 +4,14 @@ name: Demo (GitHub Pages)
 # in the browser from fixtures captured by scripts/capture_demo.py, which live
 # in the `demo-assets` release so the repository stays small.
 #
-# Manual for now: it needs the `demo-assets` release and Pages set to
-# "GitHub Actions". Once both exist, add `push: branches: [main]` below.
+# Rebuilds when the frontend changes on main, or by hand. Needs the
+# `demo-assets` release and Pages set to "GitHub Actions" (both in place).
 on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
