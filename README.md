@@ -23,7 +23,10 @@
 </p>
 
 <p align="center">
-  <a href="https://not0aag.github.io/VisualTaste/"><b>Try the live demo</b></a>: a recorded session replayed in your browser, no install
+  <a href="https://not0aag.github.io/VisualTaste/"><img alt="Try the live demo" src="https://img.shields.io/badge/Try_the_live_demo-in_your_browser-3fd8f0?style=for-the-badge&labelColor=0a0f18"></a>
+  <a href="#quick-start"><img alt="Run it locally" src="https://img.shields.io/badge/Run_it_locally-Windows_·_Linux_·_macOS-a594f9?style=for-the-badge&labelColor=0a0f18"></a>
+  <a href="docs/WRITEUP.md"><img alt="Read the write-up" src="https://img.shields.io/badge/Read_the_write--up-what_held_and_what_did_not-3ddc97?style=for-the-badge&labelColor=0a0f18"></a><br>
+  <sub>The demo replays a recorded session entirely in your browser; nothing is sent anywhere.</sub>
 </p>
 
 > [!TIP]
