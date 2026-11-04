@@ -52,6 +52,14 @@
 </p>
 
 <p align="center">
+  <img src="docs/images/interests-found.png" alt="One session's six hidden interests, each found by the default recommender: flowers at swipe 30, ceremonies at 57, ships at 65, sport at 78, herbarium prints at 99 and engraved portraits at 129, each with nine of the liked photos" width="100%">
+</p>
+
+<p align="center">
+  <sub>Six separate tastes in one simulated user, all found by swipe 129. Each row is one hidden interest with the photos it liked from it, the three words the model's vocabulary puts closest, and when it was found. Drawn from the cached session by <code>scripts/readme_interests.py</code>, which first checks the rebuilt user against all 1,000 recorded swipes.</sub>
+</p>
+
+<p align="center">
   <img src="https://skillicons.dev/icons?i=python,pytorch,sklearn,fastapi,sqlite,react,ts,vite,tailwind&theme=dark" alt="Python, PyTorch, scikit-learn, FastAPI, SQLite, React, TypeScript, Vite, Tailwind">
 </p>
 
@@ -115,6 +123,12 @@ These screenshots follow a **simulated user with six planted interests**, replay
   <tr>
     <td><b>Embedding Map.</b> All 50,000 images as UMAP points in both embedding spaces, coloured by cluster, source or current score. Your likes and dislikes are overlaid, and a slider walks your taste vector through time.</td>
     <td><b>History.</b> Every verdict as a contact sheet, with each tile's edge coloured by verdict. Change a verdict without rewriting the past (the old event is marked superseded), or ask for "more like this".</td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/search.jpg" alt="Search: the 24 photographs closest to the words 'a lighthouse on a rocky coast', found by SigLIP 2's text tower"></td>
+  </tr>
+  <tr>
+    <td colspan="2"><b>Search.</b> Type what you want to see and SigLIP 2 ranks all 50,000 photographs by how close they sit to your words, with no captions or tags involved. The same trick seeds the cold start: describe what you like in a few words and one card in five starts there.</td>
   </tr>
 </table>
 
@@ -221,27 +235,35 @@ Every comparison is **paired** (the same simulated user meets every model), run 
 | **H4** | Interest features (R5) improve the classifier | **Only when taste drifts.** R3+R5 beats R3 by +0.021 like rate when the planted taste changes mid-session (S5); in the five other scenarios, and on top of R4, no difference. Named interests mainly help explain the model. |
 | **H5** | The neural ranker wins only once labels are plentiful | **Not supported.** Up to 4,900 labels, R6 never ranked better than R3+R5 (it was worse at 3,000 labels in both scenarios tested), and won on log loss only once. At this scale a neural ranker did not earn its cost. |
 
+<p align="center">
+  <img src="docs/images/chart-scoreboard.png" alt="Grid of like rate and share of seeds that found every interest, for seven recommenders on six scenarios: R3 has the highest like rate everywhere (0.50 to 0.71); R0, R4 and R4+R5 find every interest in 100% of seeds; R1 and R2 rarely do" width="100%">
+</p>
+
 ### What the simulator shows
 
 The pure learner, R3, finds what you like quickly and then stops looking. In a world with six hidden interests it settles on about five and never finds the rest. R4 keeps the reach of a broad sweep while it learns.
 
 <p align="center">
-  <img src="docs/images/chart-discovery.png" alt="Planted interests found against swipes: R0 and R4 reach all six within about 300 swipes; R3 levels off near five" width="100%">
+  <img src="docs/images/chart-discovery.png" alt="Planted interests found against swipes: R0 reaches all six by about 230 swipes and R4 by about 390; R3 levels off below five" width="100%">
 </p>
 
-Each dot below is one simulated session. R3 buys its like rate by narrowing: in the last 500 cards it shows only 14 to 75% of the collection's clusters. R4 stays near 100%, and that coverage is what lets it find interests R3 never sees.
+Each dot below is one simulated session. R3 buys its like rate by narrowing: in the last 500 cards it shows only 12 to 81% of the collection's clusters. R4 keeps 62 to 97% in view, and that coverage is what lets it find interests R3 never sees.
 
 <p align="center">
-  <img src="docs/images/chart-tradeoff.png" alt="Like rate against coverage for 180 sessions: R3 sits at 47 to 70% likes and 14 to 75% coverage; R4 and R0 sit at 35 to 50% likes and over 93% coverage" width="100%">
+  <img src="docs/images/chart-tradeoff.png" alt="Like rate against coverage for 180 sessions: R3 sits at 47 to 72% likes and 12 to 81% coverage; R4 at 44 to 59% likes and 62 to 97% coverage; R0 at 41 to 50% likes and full coverage" width="100%">
 </p>
 
-That reach has a price, and the simulator measures it without flattery. R4's like rate stays near the cold-start baseline, well below R3's.
+That reach has a price, and the simulator measures it without flattery. R4 starts below the cold start while it explores, then climbs to about 61% by swipe 1,000; R3 gets to 66% and stays there.
 
 <p align="center">
-  <img src="docs/images/chart-learning.png" alt="Rolling like rate: R3 climbs from 50% to about 65%; R0 stays near 47%; R4 rises from about 41% to 50% by swipe 1,000" width="100%">
+  <img src="docs/images/chart-learning.png" alt="Rolling like rate: R3 climbs from 51% to about 66%; R0 stays near 47%; R4 dips to about 42%, then rises to about 61% by swipe 1,000" width="100%">
 </p>
 
 Making R4 keep more of R3's gain without losing its reach was the open problem. A follow-up study closes most of it: fading the sampling temperature over the session, narrowing the diversity shortlist and weighting relevance more (`r4:tau_halflife=200,mmr_top=50,mmr=0.9`) keeps **70% of R3's gain on S1 and 80% on S6 while still finding every interest in every seed**, at the cost of some coverage. It is not yet the default: it has been tested on R4 alone, on two scenarios ([EVALUATION.md](docs/EVALUATION.md)).
+
+<p align="center">
+  <img src="docs/images/chart-explore.png" alt="Like rate against coverage for R0, R3, R4, four single R4 settings and the three combined: the combination moves R4 from 0.53 to 0.59 like rate on S1 and from 0.52 to 0.58 on S6, giving up coverage" width="100%">
+</p>
 
 Every number above, with per-seed tables, confidence intervals and the commands to reproduce it, is in [`docs/EVALUATION.md`](docs/EVALUATION.md). The 30 design decisions and their reasons are in [`docs/DECISIONS.md`](docs/DECISIONS.md). For the story in one read, what held, what did not and why, see [`docs/WRITEUP.md`](docs/WRITEUP.md).
 
