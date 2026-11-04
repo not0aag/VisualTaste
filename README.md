@@ -52,7 +52,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/interests-found.png" alt="One session's six hidden interests, each found by the default recommender: flowers at swipe 30, ceremonies at 57, ships at 65, sport at 78, herbarium prints at 99 and engraved portraits at 129, each with nine of the liked photos" width="100%">
+  <img src="docs/images/interests-found.jpg" alt="One session's six hidden interests, each found by the default recommender: flowers at swipe 30, ceremonies at 57, ships at 65, sport at 78, herbarium prints at 99 and engraved portraits at 129, each with nine of the liked photos" width="100%">
 </p>
 
 <p align="center">

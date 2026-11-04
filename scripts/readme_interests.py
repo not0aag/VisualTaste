@@ -1,4 +1,4 @@
-"""Render docs/images/interests-found.png: what one session discovered.
+"""Render docs/images/interests-found.jpg: what one session discovered.
 
 One recorded session from the final study (S6: six hidden interests, served
 by the default R4+R5). The simulated user is rebuilt from its seed, and the
@@ -138,8 +138,8 @@ def main() -> None:
         font=SANS(14),
         fill=MUTED,
     )
-    canvas.save(OUT / "interests-found.png", optimize=True)
-    print("wrote", OUT / "interests-found.png", canvas.size)
+    canvas.save(OUT / "interests-found.jpg", quality=88, optimize=True)
+    print("wrote", OUT / "interests-found.jpg", canvas.size)
 
 
 if __name__ == "__main__":
