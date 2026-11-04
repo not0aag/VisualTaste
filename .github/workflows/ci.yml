@@ -6,9 +6,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Every push to main runs to the end, so the README badge always shows a
+# real result (a cancelled run reads as "failing"). Other branches cancel.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}-${{ github.ref == 'refs/heads/main' && github.sha || 'branch' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   # The tests never load a model, so CPU torch is enough and far smaller.
