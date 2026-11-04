@@ -165,6 +165,7 @@ flowchart LR
         F["/feed/next<br/>score → rerank → explain"]
         EV["/events"] --> RT[background retrain<br/>every 20 labels · atomic hot-swap]
         RT --> F
+        SR["/search<br/>words → SigLIP 2 text → nearest photos"]
     end
 
     subgraph store["Local storage"]
@@ -172,7 +173,7 @@ flowchart LR
         NP[(NumPy features<br/>FAISS indexes)]
     end
 
-    UI[React app<br/>Feed · History · Profile · Model Lab · Map · Review]
+    UI[React app<br/>Feed · History · Saves · Search · Profile · Model Lab · Map · Review]
 
     S --> NP
     P --> NP
@@ -181,6 +182,17 @@ flowchart LR
     EV <--> DB
     UI <--> F
     UI <--> EV
+    UI <--> SR
+    NP --> SR
+
+    classDef job fill:#0e3a44,stroke:#3fd8f0,color:#e2eaf3
+    classDef serve fill:#2a2350,stroke:#a594f9,color:#e2eaf3
+    classDef keep fill:#3a2e0e,stroke:#ffc145,color:#e2eaf3
+    classDef face fill:#0f3a2a,stroke:#3ddc97,color:#e2eaf3
+    class A,I,E,S,P job
+    class F,EV,RT,SR serve
+    class DB,NP keep
+    class UI face
 ```
 
 1. **Collect.** About 80,000 openly licensed images come from four sources. The licence gate is strict: an image with no licence URL is never written to disk. Originals are write-once.
