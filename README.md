@@ -55,11 +55,11 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/interests-found.jpg" alt="One session's six hidden interests, each found by the default recommender: flowers at swipe 30, ceremonies at 57, ships at 65, sport at 78, herbarium prints at 99 and engraved portraits at 129, each with nine of the liked photos" width="100%">
+  <img src="docs/images/interests-found.gif" alt="Animation of one session: at swipe 0 no interests are known; rows fill with liked photos as the session runs, and the six hidden interests are found at swipes 30, 57, 65, 78, 99 and 129 (flowers, ceremonies, ships, sport, herbarium prints, engraved portraits)" width="100%">
 </p>
 
 <p align="center">
-  <sub>Six separate tastes in one simulated user, all found by swipe 129. Each row is one hidden interest with the photos it liked from it, the three words the model's vocabulary puts closest, and when it was found. Drawn from the cached session by <code>scripts/readme_interests.py</code>, which first checks the rebuilt user against all 1,000 recorded swipes.</sub>
+  <sub>Watch it learn six separate tastes at once. Each row is one hidden interest of a simulated user, filling with the photos it liked from it, the three words the model's vocabulary puts closest, and when it was found. Drawn from the cached session by <code>scripts/readme_interests.py</code>, which first checks the rebuilt user against all 1,000 recorded swipes.</sub>
 </p>
 
 <p align="center">
@@ -255,6 +255,10 @@ Every comparison is **paired** (the same simulated user meets every model), run 
 </p>
 
 ### What the simulator shows
+
+<p align="center">
+  <img src="docs/images/interests-found.jpg" alt="The same session at swipe 1,000: six rows of nine liked photos each, one per hidden interest" width="100%">
+</p>
 
 The pure learner, R3, finds what you like quickly and then stops looking. In a world with six hidden interests it settles on about five and never finds the rest. R4 keeps the reach of a broad sweep while it learns.
 

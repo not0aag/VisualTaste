@@ -140,6 +140,95 @@ def main() -> None:
     )
     canvas.save(OUT / "interests-found.jpg", quality=88, optimize=True)
     print("wrote", OUT / "interests-found.jpg", canvas.size)
+    animation(features, session, user, rows, concepts, concept_vectors)
+
+
+#: Swipes at which the animation takes a frame.
+FRAMES = (0, 10, 20, 30, 45, 57, 65, 78, 99, 129, 300, 600, 1000)
+
+
+def animation(features, session, user, rows, concepts, concept_vectors) -> None:
+    """interests-found.gif: the same six rows, filling up as the session runs."""
+    actions = session["actions"]
+    liked_at = [
+        (swipe, row, image_id)
+        for swipe, (row, image_id, action) in enumerate(
+            zip(rows, session["image_ids"], actions, strict=True), start=1
+        )
+        if action in ("like", "save")
+    ]
+    owner = user.best_interest(features.siglip[np.array([r for _, r, _ in liked_at])])
+    found = {int(k): int(v) for k, v in session["discovery"].items()}
+    order = sorted(found, key=found.get)
+    words = {
+        k: ", ".join(concepts[i] for i in np.argsort(-(concept_vectors @ user.centroids[k]))[:3])
+        for k in order
+    }
+
+    size, gap, pad, label_w = 80, 6, 30, 250
+    width = pad * 2 + label_w + PER_ROW * size + (PER_ROW - 1) * gap
+    row_h = size + 14
+    height = pad + 70 + len(order) * row_h + 10
+    tiles: dict[str, Image.Image] = {}
+    frames = []
+    for t in FRAMES:
+        canvas = Image.new("RGB", (width, height), SURFACE)
+        draw = ImageDraw.Draw(canvas)
+        seen = [(i, item) for i, item in enumerate(liked_at) if item[0] <= t]
+        n_found = sum(1 for k in order if found[k] <= t)
+        spaced(draw, (pad, pad - 6), f"SWIPE {t:,} OF 1,000", MONO(13), MUTED, 3)
+        draw.text(
+            (pad, pad + 12),
+            f"{n_found} of 6 hidden interests found · {len(seen)} likes so far",
+            font=SANS_B(22),
+            fill=TEXT,
+        )
+        y = pad + 70
+        for rank, k in enumerate(order):
+            is_found = found[k] <= t
+            accent = ACCENTS[rank % len(ACCENTS)] if is_found else MUTED
+            draw.rounded_rectangle((pad, y + 4, pad + 4, y + size - 4), 2, fill=accent)
+            mine = [item for i, item in seen if owner[i] == k]
+            label = words[k] if is_found else "not found yet"
+            fnt = SANS_B(16)
+            while draw.textlength(label, font=fnt) > label_w - 26 and fnt.size > 11:
+                fnt = SANS_B(fnt.size - 1)
+            draw.text((pad + 14, y + 10), label, font=fnt, fill=TEXT if is_found else TEXT_2)
+            status = f"found at swipe {found[k]}" if is_found else f"{len(mine)} of 5 likes"
+            draw.text((pad + 14, y + 36), status, font=SANS(13), fill=accent if is_found else MUTED)
+            x = pad + label_w
+            if mine:
+                vectors = features.siglip[np.array([r for _, r, _ in mine])]
+                mine = [mine[i] for i in np.argsort(-(vectors @ user.centroids[k]))]
+            for _, _, image_id in mine[:PER_ROW]:
+                if image_id not in tiles:
+                    tiles[image_id] = rounded(thumb(image_id, size), 8)
+                canvas.paste(tiles[image_id], (x, y), tiles[image_id])
+                x += size + gap
+            y += row_h
+        frames.append(canvas)
+    # One palette for every frame, seeded with the exact accents, so a row's
+    # colour does not drift between frames.
+    swatch = Image.new("RGB", (width, height + 40), SURFACE)
+    swatch.paste(frames[-1], (0, 0))
+    for i, colour in enumerate((*ACCENTS, MUTED, TEXT, TEXT_2)):
+        ImageDraw.Draw(swatch).rectangle((i * 40, height, i * 40 + 39, height + 39), fill=colour)
+    palette = swatch.quantize(colors=250, method=Image.Quantize.MEDIANCUT)
+    frames = [f.quantize(palette=palette, dither=Image.Dither.NONE) for f in frames]
+    durations = [900] * (len(frames) - 1) + [3500]
+    frames[0].save(
+        OUT / "interests-found.gif",
+        save_all=True,
+        append_images=frames[1:],
+        duration=durations,
+        loop=0,
+        optimize=True,
+    )
+    print(
+        "wrote",
+        OUT / "interests-found.gif",
+        f"{(OUT / 'interests-found.gif').stat().st_size / 1e6:.1f} MB",
+    )
 
 
 if __name__ == "__main__":
