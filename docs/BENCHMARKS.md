@@ -267,3 +267,39 @@ The next step is the candidate set (keep a seen-mask per profile instead of
 re-reading every seen id), since it is shared by every rung. A person
 swiping does not notice a 15 ms overshoot, but the budget is the stated
 target and is reported as missed.
+
+### The shared candidate set, and where the rest goes (2026-11-04)
+
+`candidate_positions` now keeps each profile's "not yet seen" mask between
+requests and reads only new events (`tests/test_seen_cache.py` checks it
+against a rebuild after new events, a restore and a new bundle; the golden
+seeds on r2, r3+r5, r4 and r4+r5 are byte-identical). Re-measured, 200
+requests per row:
+
+| rung | labels | p50 ms | p95 ms | within budget |
+| --- | --- | --- | --- | --- |
+| `r0` | 1,000 | 35.9 | 42.6 | yes |
+| `r0` | 3,000 | 38.1 | 46.5 | yes (was 56.5) |
+| `r4` | 1,000 | 43.2 | 58.9 | no |
+| `r4` | 3,000 | 47.6 | 64.9 | no |
+| `r4+r5` | 1,000 | 45.4 | 59.7 | no |
+
+The same R4 requests through a real uvicorn server and HTTP client (one
+request every 0.9 s, as a person swipes) give p50 39-40 ms and p95 56-60 ms,
+so the test client is not what inflates them.
+
+Per R4 request at 3,000 labels, about 20 ms is SQLite on Windows: opening
+the connection and its first read (about 5 ms), seven statements (about 5 ms),
+the commit, and the WAL checkpoint when the request's connection closes
+(about 8 ms). The recommender's own work is 10-15 ms. Two attempts that did
+not help, recorded so they are not tried again:
+
+- skipping the checkpoint on close (`SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE`): the
+  close got 7 ms faster and the reads 12 ms slower, as the log grew;
+- setting `journal_mode` only when it is not already WAL: the 2.5 ms is the
+  connection's first touch of the file, not the pragma.
+
+What would close the gap: one long-lived connection for the API instead of
+one per request (it changes the threading model, see `db/repo.py`), or
+moving impression writes after the response. Both are larger changes than
+a 10-15 ms overshoot that a person swiping does not notice.

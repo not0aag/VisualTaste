@@ -52,7 +52,10 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+import threading
 import uuid
+import weakref
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -132,22 +135,86 @@ def candidate_positions(
     measured at a 245 ms p95 against the brief's 50 ms budget. Now the only
     per-request work is proportional to the number of images already *seen*, a
     few thousand at most even after months of use, plus one array write.
-    """
-    seen = seen_image_ids(connection, profile_id)
-    if not seen:
-        return np.arange(len(features), dtype=np.int64)
 
-    seen_positions = [
+    Since 2026-11 the seen set is also kept between requests, per profile:
+    each request reads only the events added since the last one (events are
+    append-only). Re-reading every seen id cost about 10 ms per request at
+    3,000 labels. The result is the same array.
+    """
+    database = connection.execute("PRAGMA database_list").fetchone()[2]
+    if not database:  # an in-memory database: no stable identity to cache by
+        available = np.ones(len(features), dtype=bool)
+        _mark_seen(available, features, seen_image_ids(connection, profile_id))
+        return np.flatnonzero(available).astype(np.int64)
+    key = (database, id(features), profile_id)
+    head = connection.execute(
+        "SELECT COALESCE(MAX(event_id), 0), COUNT(*) FROM events WHERE profile_id = ?",
+        (profile_id,),
+    ).fetchone()
+    last_id, count = int(head[0]), int(head[1])
+
+    with _SEEN_LOCK:
+        cached = _SEEN_CACHE.get(key)
+    if (
+        cached is not None
+        and cached.features() is features
+        and last_id >= cached.last_id
+        and count >= cached.count
+    ):
+        available = cached.available
+        if last_id > cached.last_id:
+            available = available.copy()
+            _mark_seen(
+                available,
+                features,
+                (
+                    row[0]
+                    for row in connection.execute(
+                        "SELECT image_id FROM events WHERE profile_id = ? AND event_id > ?",
+                        (profile_id, cached.last_id),
+                    )
+                ),
+            )
+    else:
+        # First request for this profile, or the database went backwards (a
+        # restore): build from scratch.
+        available = np.ones(len(features), dtype=bool)
+        _mark_seen(available, features, seen_image_ids(connection, profile_id))
+
+    with _SEEN_LOCK:
+        _SEEN_CACHE[key] = _SeenState(weakref.ref(features), last_id, count, available)
+        _SEEN_CACHE.move_to_end(key)
+        while len(_SEEN_CACHE) > _SEEN_CACHE_SIZE:
+            _SEEN_CACHE.popitem(last=False)
+    return np.flatnonzero(available).astype(np.int64)
+
+
+@dataclass(frozen=True)
+class _SeenState:
+    #: The bundle the mask indexes; a weak reference, so a freed bundle whose
+    #: id() is reused by a new one is never mistaken for it.
+    features: weakref.ref
+    last_id: int
+    count: int
+    #: True where the pool row has not been acted on. Never written in place
+    #: once cached: an update copies it, so a concurrent reader is unaffected.
+    available: np.ndarray
+
+
+#: Profiles kept; the simulator runs hundreds of profiles in one process.
+_SEEN_CACHE_SIZE = 8
+_SEEN_CACHE: OrderedDict[tuple[str, int, int], _SeenState] = OrderedDict()
+_SEEN_LOCK = threading.Lock()
+
+
+def _mark_seen(available: np.ndarray, features: FeatureBundle, image_ids) -> None:
+    positions = [
         position
-        for position in (features.position(image_id) for image_id in seen)
+        for position in (features.position(image_id) for image_id in image_ids)
         if position is not None
     ]
-    if not seen_positions:
-        return np.arange(len(features), dtype=np.int64)
-
-    available = np.ones(len(features), dtype=bool)
-    available[np.asarray(seen_positions, dtype=np.int64)] = False
-    return np.flatnonzero(available).astype(np.int64)
+    if positions:
+        available[np.asarray(positions, dtype=np.int64)] = False
 
 
 def build_batch(
