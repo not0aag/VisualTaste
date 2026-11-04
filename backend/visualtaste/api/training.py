@@ -77,7 +77,7 @@ def retrain(state: AppState, *, rung: str | None = None, activate: bool = True) 
         if state.profile_id is None or state.features is None:
             return RetrainOutcome(status="no_profile", rung=rung, detail="nothing to train on")
 
-        from visualtaste.api.deps import load_rung
+        from visualtaste.api.deps import serving_rung
 
         connection = state.connect()
         labels = build_label_set(
@@ -85,7 +85,7 @@ def retrain(state: AppState, *, rung: str | None = None, activate: bool = True) 
             state.profile_id,
             weights=label_weights(state.settings.skip_weight),
         )
-        model = load_rung(rung, state.settings)
+        model = serving_rung(rung, state.settings)
         model.fit(labels, state.features)
 
         if not model.is_fitted:

@@ -88,6 +88,13 @@ class Settings(BaseSettings):
     # Part 2 specifies 1.0; the value used is chosen from phase10_sensitivity
     # on the H3 criterion and recorded in docs/DECISIONS.md #25.
     r4_tau_post: float = 0.1
+    # Extra R4 / R4+R5 settings for the app, in the simulator's spec syntax:
+    # fade the temperature over the first labels, a narrower MMR shortlist,
+    # more weight on relevance. Chosen by `phase16_default` under the same
+    # rule that chose the default rung (docs/DECISIONS.md #31). Applied only
+    # where the app builds a model (`api/deps.serving_rung`), never in the
+    # simulator, so cached studies keep their meaning. Empty turns it off.
+    r4_options: str = "tau_halflife=200,mmr_top=50,mmr=0.9"
 
     api_host: str = "127.0.0.1"
     api_port: int = 8000

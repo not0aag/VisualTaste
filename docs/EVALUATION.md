@@ -1550,3 +1550,218 @@ widens the posterior, so R4 explores more (coverage 0.82 to 0.91). The option
 stays off: the one gain is small, on R3 only, and in the one scenario built
 for it. H4's finding stands: under drift, R3+R5's interest features (+0.021)
 help about as much as the best fade.
+
+---
+
+## Phase 16: the tuned R4+R5, with and without interest allocation, on S1-S6 (2026-11-04 20:02 UTC)
+
+```
+python -m visualtaste.jobs.evaluate --study phase16_default --seeds 20 --swipes 1000
+```
+
+**SIMULATED.** Variants and their calibration: `backend/visualtaste/eval/sim.py`. Every number is mean ± sd across seeds; comparisons are paired by seed (Part 2 §4.1). An interest counts as found at 5 likes.
+
+### S1_semantic
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.467 ± 0.014 | 3.00 ± 0.00 | 1.00 ± 0.00 | 62 ± 22 | -- | -- | 1.00 ± 0.00 | 0.484 ± 0.004 | 0.261 ± 0.002 | -- | 0.655 ± 0.021 | -- | -- |
+| `r3` | 20 | 0.637 ± 0.046 | 2.85 ± 0.36 | 0.85 ± 0.36 | 265 ± 331 | -- | -- | 0.33 ± 0.12 | 0.291 ± 0.032 | 0.155 ± 0.023 | 0.513 ± 0.017 | 0.649 ± 0.025 | 0.643 ± 0.033 | 0.054 ± 0.023 |
+| `r4+r5` | 20 | 0.543 ± 0.046 | 3.00 ± 0.00 | 1.00 ± 0.00 | 63 ± 22 | -- | 1.00 ± 0.00 | 0.77 ± 0.08 | 0.518 ± 0.025 | 0.229 ± 0.022 | 0.602 ± 0.026 | 0.705 ± 0.026 | 0.669 ± 0.020 | 0.035 ± 0.009 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 20 | 0.601 ± 0.045 | 3.00 ± 0.00 | 1.00 ± 0.00 | 65 ± 27 | -- | 1.00 ± 0.00 | 0.47 ± 0.15 | 0.390 ± 0.035 | 0.192 ± 0.022 | 0.547 ± 0.020 | 0.691 ± 0.031 | 0.648 ± 0.027 | 0.040 ± 0.012 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 20 | 0.580 ± 0.044 | 3.00 ± 0.00 | 1.00 ± 0.00 | 67 ± 31 | -- | 1.00 ± 0.00 | 0.56 ± 0.13 | 0.434 ± 0.031 | 0.195 ± 0.017 | 0.566 ± 0.028 | 0.683 ± 0.038 | 0.661 ± 0.028 | 0.038 ± 0.012 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 33 | 0 of 60 |
+| `r3` | 31 | 3 of 60 |
+| `r4+r5` | 33 | 0 of 60 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 33 | 0 of 60 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 33 | 0 of 60 |
+
+### S2_appearance
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.482 ± 0.018 | 3.00 ± 0.00 | 1.00 ± 0.00 | 57 ± 16 | -- | -- | 1.00 ± 0.00 | 0.484 ± 0.004 | 0.261 ± 0.002 | -- | 0.613 ± 0.015 | -- | -- |
+| `r3` | 20 | 0.709 ± 0.041 | 2.85 ± 0.36 | 0.85 ± 0.36 | 215 ± 334 | -- | -- | 0.41 ± 0.14 | 0.326 ± 0.027 | 0.174 ± 0.017 | 0.502 ± 0.034 | 0.718 ± 0.039 | 0.592 ± 0.047 | 0.041 ± 0.017 |
+| `r4+r5` | 20 | 0.654 ± 0.046 | 3.00 ± 0.00 | 1.00 ± 0.00 | 72 ± 56 | -- | 1.00 ± 0.00 | 0.68 ± 0.12 | 0.511 ± 0.028 | 0.238 ± 0.025 | 0.624 ± 0.032 | 0.758 ± 0.037 | 0.593 ± 0.039 | 0.040 ± 0.014 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 20 | 0.686 ± 0.035 | 3.00 ± 0.00 | 1.00 ± 0.00 | 62 ± 19 | -- | 1.00 ± 0.00 | 0.51 ± 0.15 | 0.402 ± 0.026 | 0.199 ± 0.016 | 0.575 ± 0.030 | 0.744 ± 0.030 | 0.580 ± 0.038 | 0.032 ± 0.010 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 20 | 0.675 ± 0.038 | 3.00 ± 0.00 | 1.00 ± 0.00 | 62 ± 19 | -- | 1.00 ± 0.00 | 0.54 ± 0.12 | 0.446 ± 0.030 | 0.204 ± 0.017 | 0.596 ± 0.032 | 0.744 ± 0.030 | 0.592 ± 0.033 | 0.034 ± 0.012 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 34 | 0 of 60 |
+| `r3` | 33 | 3 of 60 |
+| `r4+r5` | 34 | 0 of 60 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 34 | 0 of 60 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 34 | 0 of 60 |
+
+### S3_colour
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.436 ± 0.014 | 2.00 ± 0.00 | 1.00 ± 0.00 | 51 ± 32 | -- | -- | 1.00 ± 0.00 | 0.484 ± 0.004 | 0.261 ± 0.002 | -- | 0.670 ± 0.014 | -- | -- |
+| `r3` | 20 | 0.495 ± 0.030 | 2.00 ± 0.00 | 1.00 ± 0.00 | 89 ± 149 | -- | -- | 0.60 ± 0.11 | 0.352 ± 0.036 | 0.191 ± 0.023 | 0.508 ± 0.027 | 0.645 ± 0.027 | 0.702 ± 0.014 | 0.047 ± 0.018 |
+| `r4+r5` | 20 | 0.465 ± 0.016 | 2.00 ± 0.00 | 1.00 ± 0.00 | 61 ± 56 | -- | 1.00 ± 0.00 | 0.92 ± 0.03 | 0.592 ± 0.015 | 0.304 ± 0.013 | 0.532 ± 0.020 | 0.650 ± 0.022 | 0.697 ± 0.004 | 0.036 ± 0.010 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 20 | 0.485 ± 0.018 | 2.00 ± 0.00 | 1.00 ± 0.00 | 56 ± 49 | -- | 1.00 ± 0.00 | 0.75 ± 0.08 | 0.495 ± 0.028 | 0.248 ± 0.017 | 0.527 ± 0.020 | 0.653 ± 0.020 | 0.699 ± 0.006 | 0.037 ± 0.010 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 20 | 0.482 ± 0.019 | 2.00 ± 0.00 | 1.00 ± 0.00 | 60 ± 55 | -- | 1.00 ± 0.00 | 0.78 ± 0.07 | 0.491 ± 0.018 | 0.239 ± 0.015 | 0.524 ± 0.020 | 0.641 ± 0.020 | 0.702 ± 0.007 | 0.041 ± 0.014 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 22 | 0 of 40 |
+| `r3` | 22 | 0 of 40 |
+| `r4+r5` | 22 | 0 of 40 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 22 | 0 of 40 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 22 | 0 of 40 |
+
+### S4_conjunctive
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.469 ± 0.014 | 3.00 ± 0.00 | 1.00 ± 0.00 | 58 ± 23 | -- | -- | 1.00 ± 0.00 | 0.484 ± 0.004 | 0.261 ± 0.002 | -- | 0.620 ± 0.022 | -- | -- |
+| `r3` | 20 | 0.530 ± 0.028 | 3.00 ± 0.00 | 1.00 ± 0.00 | 112 ± 77 | -- | -- | 0.49 ± 0.13 | 0.325 ± 0.032 | 0.175 ± 0.021 | 0.503 ± 0.023 | 0.630 ± 0.028 | 0.701 ± 0.013 | 0.048 ± 0.020 |
+| `r4+r5` | 20 | 0.459 ± 0.022 | 3.00 ± 0.00 | 1.00 ± 0.00 | 62 ± 28 | -- | 1.00 ± 0.00 | 0.89 ± 0.05 | 0.549 ± 0.009 | 0.261 ± 0.014 | 0.557 ± 0.022 | 0.641 ± 0.019 | 0.696 ± 0.010 | 0.035 ± 0.008 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 20 | 0.506 ± 0.034 | 3.00 ± 0.00 | 1.00 ± 0.00 | 58 ± 22 | -- | 1.00 ± 0.00 | 0.65 ± 0.16 | 0.451 ± 0.032 | 0.217 ± 0.015 | 0.532 ± 0.023 | 0.634 ± 0.030 | 0.696 ± 0.006 | 0.038 ± 0.013 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 20 | 0.502 ± 0.027 | 3.00 ± 0.00 | 1.00 ± 0.00 | 58 ± 22 | -- | 1.00 ± 0.00 | 0.77 ± 0.12 | 0.467 ± 0.018 | 0.217 ± 0.014 | 0.534 ± 0.027 | 0.631 ± 0.026 | 0.698 ± 0.008 | 0.037 ± 0.011 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 34 | 0 of 60 |
+| `r3` | 34 | 0 of 60 |
+| `r4+r5` | 34 | 0 of 60 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 34 | 0 of 60 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 34 | 0 of 60 |
+
+### S5_drift
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.448 ± 0.022 | 3.00 ± 0.00 | 1.00 ± 0.00 | 532 ± 22 | 32 ± 22 | -- | 1.00 ± 0.00 | 0.484 ± 0.004 | 0.261 ± 0.002 | -- | 0.672 ± 0.021 | -- | -- |
+| `r3` | 20 | 0.599 ± 0.066 | 2.45 ± 0.50 | 0.45 ± 0.50 | 842 ± 205 | 298 ± 218 | -- | 0.42 ± 0.20 | 0.297 ± 0.031 | 0.157 ± 0.019 | 0.506 ± 0.023 | 0.677 ± 0.035 | 0.671 ± 0.050 | 0.063 ± 0.032 |
+| `r4+r5` | 20 | 0.522 ± 0.039 | 3.00 ± 0.00 | 1.00 ± 0.00 | 585 ± 89 | 85 ± 89 | 1.00 ± 0.00 | 0.80 ± 0.10 | 0.515 ± 0.020 | 0.230 ± 0.018 | 0.616 ± 0.031 | 0.724 ± 0.021 | 0.676 ± 0.018 | 0.045 ± 0.009 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 20 | 0.559 ± 0.052 | 2.80 ± 0.40 | 0.80 ± 0.40 | 642 ± 187 | 142 ± 187 | 1.00 ± 0.00 | 0.59 ± 0.20 | 0.403 ± 0.035 | 0.198 ± 0.019 | 0.540 ± 0.027 | 0.713 ± 0.030 | 0.677 ± 0.036 | 0.045 ± 0.018 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 20 | 0.534 ± 0.047 | 2.85 ± 0.36 | 0.85 ± 0.36 | 649 ± 169 | 149 ± 169 | 1.00 ± 0.00 | 0.70 ± 0.12 | 0.454 ± 0.020 | 0.202 ± 0.013 | 0.560 ± 0.032 | 0.699 ± 0.029 | 0.689 ± 0.026 | 0.051 ± 0.020 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 64 | 0 of 60 |
+| `r3` | 51 | 11 of 60 |
+| `r4+r5` | 59 | 0 of 60 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 54 | 4 of 60 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 55 | 3 of 60 |
+
+### S6_six_interests
+
+| spec | seeds | like rate | found | all found | swipes to find all | S5 recovery (swipes) | id stability | coverage | diversity | novelty | replay AUC | oracle AUC | replay log loss | ECE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `r0` | 20 | 0.463 ± 0.012 | 6.00 ± 0.00 | 1.00 ± 0.00 | 130 ± 34 | -- | -- | 1.00 ± 0.00 | 0.484 ± 0.004 | 0.261 ± 0.002 | -- | 0.649 ± 0.021 | -- | -- |
+| `r3` | 20 | 0.603 ± 0.037 | 4.75 ± 0.77 | 0.15 ± 0.36 | 910 ± 219 | -- | -- | 0.38 ± 0.11 | 0.295 ± 0.026 | 0.156 ± 0.020 | 0.501 ± 0.025 | 0.645 ± 0.024 | 0.671 ± 0.022 | 0.054 ± 0.017 |
+| `r4+r5` | 20 | 0.526 ± 0.025 | 6.00 ± 0.00 | 1.00 ± 0.00 | 171 ± 73 | -- | 1.00 ± 0.01 | 0.80 ± 0.06 | 0.529 ± 0.016 | 0.228 ± 0.014 | 0.593 ± 0.019 | 0.699 ± 0.019 | 0.683 ± 0.011 | 0.030 ± 0.009 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 20 | 0.573 ± 0.036 | 6.00 ± 0.00 | 1.00 ± 0.00 | 217 ± 100 | -- | 1.00 ± 0.00 | 0.44 ± 0.18 | 0.394 ± 0.044 | 0.187 ± 0.020 | 0.560 ± 0.030 | 0.674 ± 0.027 | 0.668 ± 0.026 | 0.044 ± 0.011 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 20 | 0.556 ± 0.023 | 5.95 ± 0.22 | 0.95 ± 0.22 | 261 ± 210 | -- | 1.00 ± 0.00 | 0.65 ± 0.10 | 0.457 ± 0.020 | 0.193 ± 0.011 | 0.560 ± 0.026 | 0.667 ± 0.023 | 0.685 ± 0.015 | 0.036 ± 0.015 |
+
+| spec | median swipes to find an interest | censored (never found) |
+| --- | --- | --- |
+| `r0` | 66 | 0 of 120 |
+| `r3` | 57 | 25 of 120 |
+| `r4+r5` | 68 | 0 of 120 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 70 | 0 of 120 |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 70 | 1 of 120 |
+
+### Comparisons
+
+| variant | comparison | metric | mean diff | 90% CI | sign test (W-L) | losing seeds | seeds | verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| S1_semantic | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | like_rate | +0.0578 | [+0.0397, +0.0775] | 19-1 (p = 4.01e-05) | 1743 | 20 | **supported** |
+| S1_semantic | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | interests_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S1_semantic | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | coverage_last_500 | -0.3000 | [-0.3656, -0.2383] | 0-20 (p = 1.91e-06) | 1729, 1730, 1731, 1732, 1733, 1734, 1735, 1736, 1737, 1738, 1739, 1740, 1741, 1742, 1743, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S1_semantic | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | like_rate | +0.0370 | [+0.0184, +0.0574] | 17-3 (p = 0.00258) | 1730, 1736, 1744 | 20 | **supported** |
+| S1_semantic | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | interests_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S1_semantic | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | coverage_last_500 | -0.2117 | [-0.2742, -0.1508] | 2-17 (p = 0.000729) | 1729, 1731, 1732, 1733, 1734, 1735, 1736, 1737, 1739, 1740, 1741, 1742, 1743, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S2_appearance | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | like_rate | +0.0314 | [+0.0173, +0.0465] | 13-6 (p = 0.167) | 1729, 1741, 1742, 1744, 1745, 1746 | 20 | **supported** |
+| S2_appearance | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | interests_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S2_appearance | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | coverage_last_500 | -0.1727 | [-0.2273, -0.1141] | 3-17 (p = 0.00258) | 1729, 1730, 1731, 1733, 1734, 1735, 1736, 1737, 1738, 1739, 1740, 1742, 1743, 1744, 1746, 1747, 1748 | 20 | **not supported** |
+| S2_appearance | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | like_rate | +0.0211 | [+0.0025, +0.0394] | 15-5 (p = 0.0414) | 1729, 1734, 1741, 1745, 1746 | 20 | **supported** |
+| S2_appearance | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | interests_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S2_appearance | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | coverage_last_500 | -0.1422 | [-0.1969, -0.0875] | 2-18 (p = 0.000402) | 1729, 1730, 1731, 1732, 1733, 1735, 1736, 1737, 1738, 1739, 1740, 1742, 1743, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S3_colour | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | like_rate | +0.0192 | [+0.0127, +0.0249] | 18-2 (p = 0.000402) | 1730, 1746 | 20 | **supported** |
+| S3_colour | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | interests_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S3_colour | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | coverage_last_500 | -0.1688 | [-0.2023, -0.1344] | 1-19 (p = 4.01e-05) | 1729, 1730, 1731, 1732, 1733, 1734, 1735, 1736, 1737, 1738, 1739, 1740, 1741, 1742, 1743, 1744, 1745, 1746, 1747 | 20 | **not supported** |
+| S3_colour | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | like_rate | +0.0167 | [+0.0107, +0.0230] | 16-3 (p = 0.00443) | 1730, 1732, 1741 | 20 | **supported** |
+| S3_colour | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | interests_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S3_colour | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | coverage_last_500 | -0.1406 | [-0.1695, -0.1125] | 0-20 (p = 1.91e-06) | 1729, 1730, 1731, 1732, 1733, 1734, 1735, 1736, 1737, 1738, 1739, 1740, 1741, 1742, 1743, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S4_conjunctive | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | like_rate | +0.0471 | [+0.0336, +0.0602] | 18-2 (p = 0.000402) | 1729, 1731 | 20 | **supported** |
+| S4_conjunctive | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | interests_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S4_conjunctive | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | coverage_last_500 | -0.2445 | [-0.3117, -0.1781] | 1-18 (p = 7.63e-05) | 1730, 1731, 1732, 1733, 1735, 1736, 1737, 1738, 1739, 1740, 1741, 1742, 1743, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S4_conjunctive | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | like_rate | +0.0429 | [+0.0315, +0.0537] | 18-2 (p = 0.000402) | 1729, 1731 | 20 | **supported** |
+| S4_conjunctive | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | interests_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S4_conjunctive | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | coverage_last_500 | -0.1266 | [-0.1812, -0.0742] | 3-16 (p = 0.00443) | 1730, 1733, 1735, 1736, 1737, 1738, 1739, 1740, 1741, 1742, 1743, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S5_drift | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | like_rate | +0.0364 | [+0.0157, +0.0594] | 14-6 (p = 0.115) | 1733, 1735, 1740, 1741, 1743, 1744 | 20 | **supported** |
+| S5_drift | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | interests_found | -0.2000 | [-0.3500, -0.0500] | 0-4 (p = 0.125) | 1729, 1737, 1739, 1746 | 20 | **not supported** |
+| S5_drift | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | coverage_last_500 | -0.2148 | [-0.3055, -0.1313] | 3-17 (p = 0.00258) | 1729, 1730, 1731, 1733, 1734, 1735, 1736, 1737, 1738, 1739, 1740, 1742, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S5_drift | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | like_rate | +0.0117 | [-0.0092, +0.0342] | 11-9 (p = 0.824) | 1732, 1733, 1734, 1736, 1740, 1741, 1743, 1744, 1745 | 20 | **inconclusive** |
+| S5_drift | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | interests_found | -0.1500 | [-0.3000, -0.0500] | 0-3 (p = 0.25) | 1735, 1737, 1746 | 20 | **not supported** |
+| S5_drift | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | coverage_last_500 | -0.0969 | [-0.1532, -0.0430] | 5-14 (p = 0.0636) | 1729, 1731, 1734, 1735, 1737, 1738, 1739, 1740, 1742, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S6_six_interests | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | like_rate | +0.0475 | [+0.0333, +0.0622] | 19-1 (p = 4.01e-05) | 1745 | 20 | **supported** |
+| S6_six_interests | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | interests_found | +0.0000 | [+0.0000, +0.0000] | 0-0 (p = nan) | none | 20 | **inconclusive** |
+| S6_six_interests | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` vs `r4+r5` | coverage_last_500 | -0.3531 | [-0.4242, -0.2828] | 0-20 (p = 1.91e-06) | 1729, 1730, 1731, 1732, 1733, 1734, 1735, 1736, 1737, 1738, 1739, 1740, 1741, 1742, 1743, 1744, 1745, 1746, 1747, 1748 | 20 | **not supported** |
+| S6_six_interests | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | like_rate | +0.0299 | [+0.0197, +0.0402] | 19-1 (p = 4.01e-05) | 1736 | 20 | **supported** |
+| S6_six_interests | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | interests_found | -0.0500 | [-0.1500, +0.0000] | 0-1 (p = 1) | 1743 | 20 | **inconclusive** |
+| S6_six_interests | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` vs `r4+r5` | coverage_last_500 | -0.1414 | [-0.1812, -0.1016] | 2-18 (p = 0.000402) | 1729, 1730, 1731, 1732, 1733, 1734, 1735, 1736, 1737, 1738, 1739, 1740, 1742, 1743, 1744, 1746, 1747, 1748 | 20 | **not supported** |
+
+**Like-rate gain kept** (H3 needs R4 to keep >= 70% of R3's gain over R0): (R4 - R0) / (R3 - R0), paired bootstrap 90% CI over seeds.
+
+| variant | spec | gain kept | 90% CI | meets 70%? |
+| --- | --- | --- | --- | --- |
+| S1_semantic | `r4+r5` | 0.45 | [0.34, 0.55] | no |
+| S1_semantic | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 0.79 | [0.71, 0.86] | yes |
+| S1_semantic | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 0.67 | [0.59, 0.74] | inconclusive |
+| S2_appearance | `r4+r5` | 0.76 | [0.67, 0.86] | inconclusive |
+| S2_appearance | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 0.90 | [0.83, 0.97] | yes |
+| S2_appearance | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 0.85 | [0.78, 0.93] | yes |
+| S3_colour | `r4+r5` | 0.49 | [0.38, 0.65] | no |
+| S3_colour | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 0.82 | [0.68, 0.98] | inconclusive |
+| S3_colour | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 0.78 | [0.63, 0.97] | inconclusive |
+| S4_conjunctive | `r4+r5` | -0.16 | [-0.31, -0.02] | no |
+| S4_conjunctive | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 0.60 | [0.41, 0.82] | inconclusive |
+| S4_conjunctive | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 0.53 | [0.38, 0.71] | inconclusive |
+| S5_drift | `r4+r5` | 0.49 | [0.36, 0.64] | no |
+| S5_drift | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 0.73 | [0.62, 0.85] | inconclusive |
+| S5_drift | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 0.57 | [0.49, 0.65] | no |
+| S6_six_interests | `r4+r5` | 0.45 | [0.37, 0.54] | no |
+| S6_six_interests | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | 0.78 | [0.69, 0.89] | inconclusive |
+| S6_six_interests | `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1` | 0.66 | [0.60, 0.72] | inconclusive |
+
+### Reading the default study (phase16)
+
+The three exploration settings from `phase15_explore`, tested on R4+R5
+across all six scenarios, raise its like rate in every one: S1 +0.058, S2
++0.031, S3 +0.019, S4 +0.047, S5 +0.036, S6 +0.048 (all supported). They keep
+0.60-0.90 of R3's gain over R0, meeting the 70% bar in S1 and S2. Every
+interest is still found in every seed in five scenarios. Under drift (S5) 4
+of 20 seeds miss one (80% against 100%). The price is coverage, 0.14-0.35
+lower.
+
+Adding interest allocation on top makes it worse, not better: lower like
+rate than the settings alone in every scenario. Allocation helped the
+untuned R4+R5 (`phase15_alloc`) because it narrowed an over-wide batch; the
+tuned settings already do that.
+
+Choosing the default by the unchanged rule (`default_rung_choice`: z-scored
+like rate, interests found and coverage, mean rank over S1, S2, S3, S5, S6),
+with the final study's eligible rungs plus both new variants. R4+R5 is
+byte-identical in both studies, which was checked:
+
+| rung | S1 | S2 | S3 | S5 | S6 | mean rank |
+| --- | --- | --- | --- | --- | --- | --- |
+| `r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9` | +0.91 | +1.21 | +0.68 | +0.75 | +0.74 | 2.6 |
+| `r4+r5` | +0.78 | +1.44 | -0.11 | +1.25 | +0.64 | 2.8 |
+| `r4+r5:...,alloc=1` | +0.78 | +1.13 | +0.60 | +0.75 | +1.00 | 3.2 |
+| `r4` | +0.68 | +1.52 | -0.44 | +1.06 | +0.56 | 3.6 |
+| `r3` | +0.87 | +0.59 | +0.88 | +0.19 | +0.51 | 4.2 |
+| `r3+r5` | +0.53 | +0.64 | +1.07 | +0.44 | +0.07 | 4.6 |
+| `r1` | -4.54 | -6.52 | -2.68 | -4.44 | -3.52 | 7.0 |
+
+**Chosen: the tuned R4+R5** (mean rank 2.6 against 2.8), a narrow win. The
+app applies the settings through `settings.r4_options` (DECISIONS #31).

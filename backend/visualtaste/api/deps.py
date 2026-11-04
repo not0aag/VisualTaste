@@ -373,7 +373,7 @@ class AppState:
         active = registry.active_version(connection)
         if active is None:
             try:
-                self.model = load_rung(self.settings.default_rung, self.settings)
+                self.model = serving_rung(self.settings.default_rung, self.settings)
             except KeyError:
                 self.notes.append(f"unknown default rung {self.settings.default_rung!r}")
                 self.model = ColdStartRecommender(seed=self.settings.seed)
@@ -385,7 +385,7 @@ class AppState:
             return
 
         try:
-            self.model = load_rung(active.rung, self.settings)
+            self.model = serving_rung(active.rung, self.settings)
             artifacts = registry.artifact_dir(
                 connection, active.version, models_root=self.settings.models_dir
             )
@@ -533,7 +533,7 @@ def load_version(connection: sqlite3.Connection, settings: Settings, version: st
     stored = registry.get_version(connection, version)
     if stored is None:
         raise KeyError(f"no such model version: {version}")
-    model = load_rung(stored.rung, settings)
+    model = serving_rung(stored.rung, settings)
     model.load(registry.artifact_dir(connection, version, models_root=settings.models_dir))
     return model
 
@@ -588,6 +588,22 @@ def load_rung(rung: str, settings: Settings) -> Recommender:
             model.tau_post = settings.r4_tau_post
         return model
     raise KeyError(f"unknown rung {rung!r}; it may be from a later phase than this build")
+
+
+def serving_rung(rung: str, settings: Settings) -> Recommender:
+    """`load_rung` plus the app's R4 options (`settings.r4_options`).
+
+    The app builds every model through this; the simulator uses `load_rung`
+    and spells its options out per study, so a change here never alters what
+    a cached study means.
+    """
+    model = load_rung(rung, settings)
+    if rung in ("r4", "r4+r5") and settings.r4_options:
+        from visualtaste.eval.study import RungSpec
+
+        for attribute, value in RungSpec.parse(f"{rung}:{settings.r4_options}").overrides:
+            setattr(model, attribute, value)
+    return model
 
 
 # The single process-wide state. Created in `main.py` at startup rather than

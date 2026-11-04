@@ -65,7 +65,7 @@ def measure(rung: str, labels: int, requests: int, seed: int, settings=None) -> 
     from fastapi.testclient import TestClient
 
     from visualtaste.api import deps
-    from visualtaste.api.deps import AppState, load_rung
+    from visualtaste.api.deps import AppState, serving_rung
     from visualtaste.api.main import app
     from visualtaste.api.routes import feed as feed_route
     from visualtaste.config import get_settings
@@ -90,7 +90,7 @@ def measure(rung: str, labels: int, requests: int, seed: int, settings=None) -> 
         try:
             profile_id = _seed_profile(state, connection, labels, seed)
             state.profile_id = profile_id
-            model = load_rung(rung, settings)
+            model = serving_rung(rung, settings)
             model.fit(
                 build_label_set(
                     connection, profile_id, weights=label_weights(settings.skip_weight)

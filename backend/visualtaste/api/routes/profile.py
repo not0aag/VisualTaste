@@ -91,11 +91,11 @@ def reset_profile(
     # on the old one would be describing someone else's taste. The old version
     # is deactivated too, or a restart would load it straight back. The default
     # rung starts unfitted and takes over once the new profile can train it.
-    from visualtaste.api.deps import load_rung
+    from visualtaste.api.deps import serving_rung
     from visualtaste.rec import registry
 
     registry.deactivate_all(connection)
-    state.swap(load_rung(state.settings.default_rung, state.settings), "r0_bootstrap")
+    state.swap(serving_rung(state.settings.default_rung, state.settings), "r0_bootstrap")
 
     return ResetResponse(
         previous_profile_id=previous,

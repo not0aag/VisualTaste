@@ -162,8 +162,14 @@ run on 20 paired seeds.
 | Let old labels fade, for taste drift | **Does not help.** No faster recovery after the taste changes; costs R4 like rate |
 | Re-tune R3's regularisation on every third refit only | Neutral for R3, −0.011 like rate for R4. Kept for quick experiments only |
 
-The two that work are being tested together on all six scenarios
-(`phase16_default`) before either becomes the default.
+The two that work were then tested on all six scenarios
+(`phase16_default`). The exploration settings raise R4+R5's like rate in
+every scenario (+0.019 to +0.058) and keep 60–90% of R3's gain. Every
+interest is still found in every seed in five scenarios; under drift, 4 of 20
+seeds miss one. Allocation on top of them makes things worse. The rule that
+chose the default ranks the tuned version first (mean rank 2.6 against 2.8),
+so the app now uses it. The simulator's own models are unchanged, so no
+cached result moved.
 
 ## Speed, measured end to end
 

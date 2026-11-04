@@ -269,8 +269,11 @@ BOARD_RUNGS = (
     ("r3", "r3", "R3 logistic regression"),
     ("r3-r5", "r3+r5", "R3+R5"),
     ("r4", "r4", "R4 Thompson sampling"),
-    ("r4-r5", "r4+r5", "R4+R5 (default)"),
+    ("r4-r5", "r4+r5", "R4+R5"),
+    ("r4-r5__tau_halflife-200_mmr_top-50_mmr-0.9", "tuned", "R4+R5 tuned (default)"),
 )
+#: Rows not in the final study come from the study that measured them.
+BOARD_STUDY = {"tuned": "phase16_default"}
 
 
 def _ramp(hex_low: str, hex_high: str, value: float) -> tuple[float, float, float]:
@@ -287,9 +290,9 @@ def _ink(rgb) -> str:
 def chart_scoreboard() -> None:
     like = np.full((len(BOARD_RUNGS), len(SCENARIOS)), np.nan)
     found = np.full_like(like, np.nan)
-    for i, (folder, _, _) in enumerate(BOARD_RUNGS):
+    for i, (folder, key, _) in enumerate(BOARD_RUNGS):
         for j, (variant, _) in enumerate(SCENARIOS):
-            runs = sessions("phase14_final", variant, folder)
+            runs = sessions(BOARD_STUDY.get(key, "phase14_final"), variant, folder)
             if runs:
                 like[i, j] = np.mean([r["like_rate"] for r in runs])
                 found[i, j] = np.mean([bool(r["all_found"]) for r in runs])
@@ -359,11 +362,11 @@ def chart_scoreboard() -> None:
         0.012,
         0.955,
         "Mean of 20 seeds × 1,000 swipes per cell. Brighter is better. "
-        "R3 likes most; R4 and R4+R5 never miss an interest.",
+        "R3 likes most; the default keeps most of that and still finds every interest in 5 of 6.",
         fontsize=9.5,
         color=TEXT_2,
     )
-    footer(fig, "SIMULATED · phase14_final · docs/EVALUATION.md")
+    footer(fig, "SIMULATED · phase14_final, last row phase16_default · docs/EVALUATION.md")
     fig.subplots_adjust(left=0.15, right=0.99, top=0.80, bottom=0.08)
     fig.savefig(OUT / "chart-scoreboard.png", bbox_inches="tight", pad_inches=0.25)
     plt.close(fig)

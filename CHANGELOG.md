@@ -7,6 +7,12 @@ All notable changes. Dates are when the work landed on `main`.
 Work toward 1.0.0, following [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ### Evaluation
+- `phase16_default`: the app's default is now R4+R5 with tuned exploration
+  (like rate +0.02 to +0.06 in all six scenarios; DECISIONS #31). The
+  simulator's models are unchanged.
+- Five follow-up studies recorded: exploration settings and interest
+  allocation help; the kNN hybrid, label decay and less frequent tuning do
+  not.
 - H2, H3, H4 and H5 all have recorded verdicts. H5: the neural ranker did not
   beat R3+R5 at up to 4,900 labels.
 - `phase14_final`: every serving rung on all six scenarios, 840 sessions.

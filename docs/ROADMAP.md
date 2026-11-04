@@ -601,7 +601,8 @@ VisualTaste is finished when:
 | Green CI on `main` | done |
 | Default rung chosen by the final study (R4+R5, DECISIONS #29) | done |
 | D1 trade-off | mostly closed on R4: 0.70 (S1) and 0.80 (S6) of R3's gain with every interest found; not yet tested on R4+R5 or S2–S5 |
-| D2 hybrid, D3 interest allocation, D6 label decay | done: D2 and D6 do not help (options stay off); D3 lifts R4+R5's like rate (+0.029 S1, +0.015 S6) with every interest found. Next default study: D1's combination plus D3 on all six scenarios |
+| D2 hybrid, D3 interest allocation, D6 label decay | done: D2 and D6 do not help (options stay off); D3 helps the untuned R4+R5 but not the tuned one |
+| Next default (phase16) | done: R4+R5 with D1's settings is the new app default (DECISIONS #31) |
 | D4 describe your taste, D5 doubly robust OPE, E1, E2, E4, F1–F9, G1–G3, H2, H4, H6, H7, I1–I4 | done (E4 and F8 decided against, with reasons) |
 | Try it without a GPU (demo pack, live demo) | live demo done: https://not0aag.github.io/VisualTaste/ (rebuilds on frontend changes); demo pack rebuilt and install-tested, waiting on the owner to publish the `demo-pack` release |
 | A3 latency | measured end to end: R0–R3 within 50 ms p95 up to 1,000 labels; the default R4+R5 at 53–66 ms, over budget. Profiled in BENCHMARKS.md; one fix landed (−6 ms); next is the shared candidate set |

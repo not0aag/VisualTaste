@@ -303,3 +303,11 @@ What would close the gap: one long-lived connection for the API instead of
 one per request (it changes the threading model, see `db/repo.py`), or
 moving impression writes after the response. Both are larger changes than
 a 10-15 ms overshoot that a person swiping does not notice.
+
+### The tuned default (2026-11-04)
+
+The app's R4+R5 now runs with `settings.r4_options` (DECISIONS #31). Same
+benchmark, 200 requests per row: p50 42.9 / 44.7 / 47.0 ms and p95 54.9 /
+65.8 / 59.5 ms at 100 / 1,000 / 3,000 labels, so it is still over budget by
+about the same margin. Its after-response propensity work is shorter
+(419-523 ms against 601-713 ms), since MMR picks from 50 images, not 500.

@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/stats.svg" alt="50,000 images served · 7 recommenders · 1.58 million simulated swipes · 66 ms feed latency at p95 for the default model · 1,000+ automated tests" width="100%">
+  <img src="docs/images/stats.svg" alt="50,000 images served · 7 recommenders · 3.5 million simulated swipes · 66 ms feed latency at p95 for the default model · 1,000+ automated tests" width="100%">
 </p>
 
 <p align="center">
@@ -34,7 +34,7 @@
 >
 > | | |
 > | --- | --- |
-> | **Default recommender** | R4+R5 (Thompson sampling + interest tracking) finds **every** planted interest in **100% of seeds** across all six scenarios; the best pure-accuracy model (R3) manages 15% when there are six interests |
+> | **Default recommender** | R4+R5 (Thompson sampling + interest tracking, tuned) keeps **60–90% of the best model's like-rate gain** and still finds **every** planted interest in **100% of seeds** in five of six scenarios; that best model (R3) finds all six interests in only 15% of seeds |
 > | **Learning** | logistic regression lifts the like rate from **0.47 to 0.64–0.71** within 1,000 swipes |
 > | **Neural ranker** | did **not** beat the linear model at up to 4,900 labels; reported as a negative result |
 > | **Describe your taste** | typing a few words raises the cold-start like rate by **+0.05**, with no interest lost at the chosen 20% share |
@@ -223,7 +223,7 @@ Each rung answers a weakness of the one below it, and each is tested against it 
 | **R5** · multi-interest | k-means interests over your likes, log-sum-exp scoring, Hungarian matching so interest ids stay stable, and concept-word labels | Real taste is several separate things. R5 names them and can track each one. |
 | **R6** · neural ranker | A per-block LayerNorm MLP trained with BCE + 0.5 BPR, as a 5-seed ensemble, with bootstrap Thompson sampling | A non-linear ranker for when labels are plentiful. It refuses to train below 1,500 labels and is never switched on automatically. |
 
-**The default is R4+R5**, chosen by the final study (all six scenarios, 20 seeds each) on like rate, interests found and coverage together; it gives up 0.03 to 0.10 of like rate against R3 for its breadth ([DECISIONS #29](docs/DECISIONS.md)). R3 and R4 can also take R5's interest features (`r3+r5`, `r4+r5`). Interest features are computed time-respectingly, from strictly earlier likes only, and a dedicated test checks for leakage.
+**The default is R4+R5 with tuned exploration** (the temperature fades as labels arrive, a narrower diversity shortlist, more weight on relevance), chosen by a pre-set rule on like rate, interests found and coverage over all six scenarios ([DECISIONS #29](docs/DECISIONS.md), [#31](docs/DECISIONS.md)). It gives up 0.01 to 0.04 of like rate against R3 for its breadth. R3 and R4 can also take R5's interest features (`r3+r5`, `r4+r5`). Interest features are computed time-respectingly, from strictly earlier likes only, and a dedicated test checks for leakage.
 
 ---
 
@@ -240,7 +240,7 @@ A recommender that is only ever tried by its author proves nothing. VisualTaste 
 | S5 · drift | taste changes mid-session; can the model notice? |
 | S6 · six interests | twice as many interests to find |
 
-Every comparison is **paired** (the same simulated user meets every model), run over **20 seeds × 1,000 swipes**, and reported with a paired-bootstrap 90% interval and a sign test. The verdict is written down either way. So far that is **1,524 simulated sessions and 1.58 million swipes**.
+Every comparison is **paired** (the same simulated user meets every model), run over **20 seeds × 1,000 swipes**, and reported with a paired-bootstrap 90% interval and a sign test. The verdict is written down either way. So far that is **3,610 simulated sessions and 3.5 million swipes**.
 
 | | Hypothesis | Result |
 | --- | --- | --- |
@@ -278,7 +278,7 @@ That reach has a price, and the simulator measures it without flattery. R4 start
   <img src="docs/images/chart-learning.png" alt="Rolling like rate: R3 climbs from 51% to about 66%; R0 stays near 47%; R4 dips to about 42%, then rises to about 61% by swipe 1,000" width="100%">
 </p>
 
-Making R4 keep more of R3's gain without losing its reach was the open problem. A follow-up study closes most of it: fading the sampling temperature over the session, narrowing the diversity shortlist and weighting relevance more (`r4:tau_halflife=200,mmr_top=50,mmr=0.9`) keeps **70% of R3's gain on S1 and 80% on S6 while still finding every interest in every seed**, at the cost of some coverage. It is not yet the default: it has been tested on R4 alone, on two scenarios ([EVALUATION.md](docs/EVALUATION.md)).
+Making R4 keep more of R3's gain without losing its reach was the open problem. Two follow-up studies close most of it: fading the sampling temperature over the session, narrowing the diversity shortlist and weighting relevance more (`tau_halflife=200,mmr_top=50,mmr=0.9`) raises R4+R5's like rate in **all six scenarios** (+0.02 to +0.06) and keeps **60–90% of R3's gain**, while every interest is still found in every seed in five of them (80% under drift). It costs some coverage. The same pre-set rule that picked the default ranks it first, so it **is now the default** ([EVALUATION.md](docs/EVALUATION.md)).
 
 <p align="center">
   <img src="docs/images/chart-explore.png" alt="Like rate against coverage for R0, R3, R4, four single R4 settings and the three combined: the combination moves R4 from 0.53 to 0.59 like rate on S1 and from 0.52 to 0.58 on S6, giving up coverage" width="100%">

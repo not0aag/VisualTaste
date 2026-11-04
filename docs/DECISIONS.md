@@ -799,3 +799,27 @@ the same narrowing H3 found in learned rungs. At 20% coverage stays at 100%
 and, with three interests, nothing is lost. The app's `TEXT_SHARE` is 0.2.
 The simulator keeps 0.6 as the default for the spec `r0:describe=1`, because
 that is what its cached results were run with.
+
+## 31. The app's R4+R5 runs with tuned exploration settings
+
+**Date:** 2026-11-04
+**Evidence:** `phase16_default`, 20 seeds x 1,000 swipes on S1-S6, docs/EVALUATION.md.
+
+The default rung stays R4+R5, now with three settings: the sampling
+temperature fades over the first labels (`tau_halflife=200`), MMR picks from
+a 50-image shortlist (`mmr_top=50`), and relevance gets more weight
+(`mmr=0.9`). Chosen by the same rule as #29, which ranks it first (mean rank
+2.6 against the untuned 2.8). Like rate rises in all six scenarios (+0.019 to
++0.058). Every interest is still found in five; under drift, 4 of 20 seeds
+miss one. Coverage falls by 0.14-0.35.
+
+**How it is applied.** `settings.r4_options` holds the settings in the
+simulator's spec syntax, and `api/deps.serving_rung` applies them wherever
+the app builds a model (startup, retrain, reload, reset, the latency
+benchmark). The simulator keeps using `load_rung`, which is unchanged, so
+every cached study keeps its meaning (golden seeds byte-identical;
+`tests/test_serving_rung.py`). Setting `VT_R4_OPTIONS=""` restores the
+previous behaviour.
+
+**Not adopted:** interest allocation on top (`alloc=1`). It ranks third and
+lowers the like rate against the settings alone in every scenario.
