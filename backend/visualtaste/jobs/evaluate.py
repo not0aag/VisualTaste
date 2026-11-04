@@ -590,6 +590,24 @@ PRESETS[ALLOC_STUDY] = Preset(
 )
 
 
+#: The next default: D1's exploration settings and D3's interest allocation,
+#: each tested on two scenarios, now together and apart on all six.
+DEFAULT2_STUDY = "phase16_default"
+_TUNED = "r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9"
+_TUNED_ALLOC = "r4+r5:tau_halflife=200,mmr_top=50,mmr=0.9,alloc=1"
+PRESETS[DEFAULT2_STUDY] = Preset(
+    title="Phase 16: the tuned R4+R5, with and without interest allocation, on S1-S6",
+    variants=(_S1, _S2, _S3, _S4, _S5, _S6),
+    specs=("r0", "r3", "r4+r5", _TUNED, _TUNED_ALLOC),
+    comparisons=tuple(
+        (variant, other, "r4+r5", metric, "higher")
+        for variant in (_S1, _S2, _S3, _S4, _S5, _S6)
+        for other in (_TUNED, _TUNED_ALLOC)
+        for metric in ("like_rate", "interests_found", "coverage_last_500")
+    ),
+)
+
+
 def default_rung_choice(
     results: dict[tuple[str, str], list],
     *,
