@@ -149,6 +149,34 @@ A description raises the early like rate and costs the interests it does not
 mention. The tension is the same as in H3. The app uses 20%: in S1 it loses
 nothing measurable, and the cost on S6 is shown honestly.
 
+## After the final study: five follow-ups
+
+Each idea was added as an opt-in option, so no earlier result moved, and was
+run on 20 paired seeds.
+
+| idea | result |
+| --- | --- |
+| Fade R4's sampling temperature, narrow its diversity shortlist, weight relevance more | **Works.** Together they keep 70% (S1) and 80% (S6) of R3's like-rate gain, against R4's 40%, and still find every interest in every seed. They give up some coverage |
+| Share each batch among the interests already found (R4+R5) | **Works.** Like rate +0.029 (S1) and +0.015 (S6), no interest lost. The first use of R5's interests that changes what is served for the better |
+| Blend kNN's ranking into R3's | **Does not help.** Fewer interests found on S1, lower like rate on S2 |
+| Let old labels fade, for taste drift | **Does not help.** No faster recovery after the taste changes; costs R4 like rate |
+| Re-tune R3's regularisation on every third refit only | Neutral for R3, −0.011 like rate for R4. Kept for quick experiments only |
+
+The two that work are being tested together on all six scenarios
+(`phase16_default`) before either becomes the default.
+
+## Speed, measured end to end
+
+The feed has a 50 ms p95 budget. Measured through the whole request (HTTP,
+database, model, explanation), R0 to R3 stay inside it up to 1,000 labels
+and R0 up to 3,000; the default R4+R5 takes 53–66 ms. A profile showed the
+model's own work is 10–25 ms. The rest is the request around it, about
+20 ms of it SQLite on Windows. Two fixes landed: explanations stopped
+repeating work per card, and each profile's "already seen" set is kept
+between requests instead of being re-read. Both were checked to leave every
+result byte-identical. The remaining overshoot is reported in the README as
+a miss, not rounded away.
+
 ## Engineering notes
 
 - **Speed-ups were kept bit-identical.** Each optimisation was checked by
